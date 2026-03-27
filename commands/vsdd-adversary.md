@@ -31,7 +31,7 @@ Run after `/vsdd-impl` completes Phases 2b and 2c. Requires active feature at ph
    - `reviews/sprint-N/output/verdict.json`
    - `reviews/sprint-N/output/findings/FIND-NNN.json` (one per finding)
 6. **Record gate**: `recordGate(feature, '3', overallVerdict, 'adversary')`
-7. **If PASS**: transition to Phase 5, display summary
+7. **If PASS**: transition to Phase 5 (strict or lean with required proofs) or Phase 6 (lean with zero required proof obligations), display summary
 8. **If FAIL**: display findings grouped by dimension, proceed to `/vsdd-feedback`
 
 ## Fresh Context Requirement

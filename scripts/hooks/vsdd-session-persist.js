@@ -24,6 +24,9 @@ run('vsdd-session-persist', async (_payload) => {
     if (index.features[activeFeature]) {
       index.features[activeFeature].currentPhase = state.currentPhase;
       index.features[activeFeature].updatedAt = new Date().toISOString();
+      if (Object.prototype.hasOwnProperty.call(state, 'language')) {
+        index.features[activeFeature].language = state.language == null ? null : state.language;
+      }
       writeIndex(index);
     }
 

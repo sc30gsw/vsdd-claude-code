@@ -409,8 +409,8 @@ vsdd/<feature>/phase-6     # Convergence achieved
 |-------|-------|-------|-------------|---------------|
 | vsdd-orchestrator | sonnet | Read, Write, Glob, Grep, Bash | Coordinator | Linear Accountability |
 | vsdd-builder | sonnet | Read, Write, Edit, Bash, Glob, Grep | Generator | Red Before Green |
-| vsdd-adversary | opus | Read, Grep, Glob (READ-ONLY) | Evaluator | Forced Negativity + Entropy Resistance |
-| vsdd-verifier | sonnet | Read, Bash, Grep, Glob | Specialist | Verification-First Architecture |
+| vsdd-adversary | opus | Read, Write, Edit, Grep, Glob (writes only `reviews/**/output/`) | Evaluator | Forced Negativity + Entropy Resistance |
+| vsdd-verifier | sonnet | Read, Write, Edit, Bash, Grep, Glob | Specialist | Verification-First Architecture |
 
 ### Agent Communication (File-Based, per Harness Design)
 
@@ -418,7 +418,7 @@ vsdd/<feature>/phase-6     # Convergence achieved
 |-------|-----------|------------|
 | Orchestrator | `features/<feature>/state.json`, `reviews/*/input/manifest.json`, `escalations/` | Everything in `.vsdd/features/<feature>/` |
 | Builder | `specs/`, `contracts/sprint-{N}.md`, `evidence/`, source code, tests | `state.json`, `contracts/*-review.md`, `reviews/*/output/verdict.json` |
-| Adversary | `reviews/*/output/verdict.json`, `contracts/sprint-{N}-review.md` | `specs/`, `contracts/sprint-{N}.md`, source code, tests (READ-ONLY) |
+| Adversary | `reviews/*/output/verdict.json`, `reviews/*/output/findings/*`, `contracts/sprint-{N}-review.md` (optional) | `specs/`, `contracts/sprint-{N}.md`, source code, tests (read); output only under `reviews/**/output/` |
 | Verifier | `verification/` | `specs/`, source code, tests, proof obligation registry |
 
 ---

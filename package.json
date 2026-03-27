@@ -34,5 +34,8 @@
   "license": "MIT",
   "engines": {
     "node": ">=18.0.0"
+  },
+  "scripts": {
+    "verify:state": "node scripts/verify-vsdd-state.js"
   }
 }

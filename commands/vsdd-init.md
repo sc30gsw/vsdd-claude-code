@@ -29,10 +29,15 @@ Run at the start of every new feature development cycle. Must be run before `/vs
          verification/mutation-results/
          escalations/
    ```
-4. **Write initial state.json** with `currentPhase: "init"`, specified mode, empty traceability/gates
-5. **Update .vsdd/index.json**: add feature entry, set as activeFeature
-6. **Append to history.jsonl**: `{event: "feature_created", ...}`
-7. **Display confirmation**: feature name, mode, language profile, next action
+4. **Initialize via state library** (do not hand-author `state.json`):
+   ```javascript
+   const { initFeature } = require('./scripts/lib/vsdd-state');
+   // language: optional string rust|python|typescript|go|cpp
+   initFeature('<feature-name>', '<strict|lean>', languageOrUndefined);
+   ```
+   This writes `state.json` with `currentPhase: "init"`, mode, optional `language` field, empty traceability/gates/proofObligations, and updates `.vsdd/index.json` (including `language` on the feature entry when provided).
+5. **Append to history.jsonl**: `{event: "feature_created", ...}` (done by `initFeature`)
+6. **Display confirmation**: feature name, mode, language (if any), next action
 
 ## Examples
 

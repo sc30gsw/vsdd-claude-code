@@ -23,9 +23,15 @@ In lean mode with no proof obligations, this phase is automatically SKIPped.
 5. **Write verification-report.md** with all results
 6. **Transition to Phase 6** if all required obligations pass
 
-## Language Auto-Detection
+## Language profile resolution
 
-The verifier reads the language profile from `.vsdd/index.json` (set during `/vsdd-init`).
+1. **`state.json.language`** (canonical; set by `initFeature(..., language)` at `/vsdd-init`)
+2. Else **`.vsdd/index.json` → `features.<name>.language`** (denormalized cache)
+3. Else treat as **unspecified** — verifier should infer from the repo (lockfiles, extensions) or ask the human.
+
+Use `getLanguageForFeature(featureName)` from `scripts/lib/vsdd-state.js` for (1)+(2).
+
+Load tool hints from the installed plugin copy of `manifests/language-profiles.json` (tiers, install commands, red/green/coverage commands) for the resolved language.
 
 ## Examples
 

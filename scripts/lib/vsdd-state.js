@@ -17,8 +17,10 @@ const VALID_PHASES = new Set([
   '3', '4', '5', '6', 'complete',
 ]);
 
-// ── Legal Phase Transitions (adjacency map) ──
-const TRANSITION_MAP = {
+const VALID_LANGUAGES = new Set(['rust', 'python', 'typescript', 'go', 'cpp']);
+
+// ── Strict mode: full linear ceremony (PLAN.md) ──
+const STRICT_TRANSITION_MAP = {
   'init':     ['1a'],
   '1a':       ['1b'],
   '1b':       ['1c'],
@@ -26,15 +28,92 @@ const TRANSITION_MAP = {
   '2a':       ['2b'],
   '2b':       ['2c'],
   '2c':       ['3'],
-  '3':        ['4'],
+  '3':        ['4', '5'],
   '4':        ['1a', '2a', '2b', '2c', '5'],
   '5':        ['6'],
   '6':        ['complete', '3'],
   'complete': [],
 };
 
-// ── Lean Mode: Phases that can be skipped ──
+/** @deprecated Use getAllowedTransitions(state) — kept for backward compatibility */
+const TRANSITION_MAP = STRICT_TRANSITION_MAP;
+
+// ── Lean Mode: phases that may be skipped via alternate transitions ──
 const LEAN_OPTIONAL_PHASES = new Set(['1b', '2c', '5']);
+
+/**
+ * Allowed next phases from currentPhase, mode-aware.
+ * @param {object} state full state (uses currentPhase, mode, gates, proofObligations)
+ * @returns {string[]}
+ */
+function getAllowedTransitions(state) {
+  const current = state.currentPhase;
+  const mode = state.mode;
+
+  if (mode === 'strict') {
+    return [...(STRICT_TRANSITION_MAP[current] || [])];
+  }
+
+  // Lean: abbreviated path 1a -> 1c (skip 1b), 2b -> 3 (skip 2c), 3 -> 6 when no required proofs
+  const out = new Set();
+  switch (current) {
+    case 'init':
+      out.add('1a');
+      break;
+    case '1a':
+      out.add('1b');
+      out.add('1c');
+      break;
+    case '1b':
+      out.add('1c');
+      break;
+    case '1c':
+      out.add('2a');
+      break;
+    case '2a':
+      out.add('2b');
+      break;
+    case '2b':
+      out.add('2c');
+      out.add('3');
+      break;
+    case '2c':
+      out.add('3');
+      break;
+    case '3':
+      out.add('4');
+      {
+        const g3 = state.gates && state.gates['3'];
+        if (g3 && g3.verdict === 'PASS') {
+          out.add('5');
+          const required = (state.proofObligations || []).filter(p => p.required);
+          if (required.length === 0) {
+            out.add('6');
+          }
+        }
+      }
+      break;
+    case '4':
+      out.add('1a');
+      out.add('2a');
+      out.add('2b');
+      out.add('2c');
+      out.add('5');
+      break;
+    case '5':
+      out.add('6');
+      break;
+    case '6':
+      out.add('complete');
+      out.add('3');
+      break;
+    case 'complete':
+      break;
+    default:
+      break;
+  }
+  return [...out];
+}
 
 // ── Gate Prerequisites ──
 // Each function returns { ok: boolean, reason?: string }
@@ -47,6 +126,10 @@ const GATE_PREREQUISITES = {
     return { ok: true };
   },
   '1c': (state, featurePath) => {
+    const specPath = path.join(featurePath, 'specs', 'behavioral-spec.md');
+    if (!fs.existsSync(specPath)) {
+      return { ok: false, reason: 'behavioral-spec.md must exist before entering phase 1c' };
+    }
     const archPath = path.join(featurePath, 'specs', 'verification-architecture.md');
     if (state.mode === 'lean') return { ok: true };
     if (!fs.existsSync(archPath)) {
@@ -63,7 +146,10 @@ const GATE_PREREQUISITES = {
     return { ok: false, reason: 'Spec review gate must PASS (or SKIP in lean mode)' };
   },
   '2b': (state, featurePath) => {
-    const sprint = state.sprintCount || 1;
+    if (!state.sprintCount || state.sprintCount < 1) {
+      return { ok: false, reason: 'No sprint started yet. Run /vsdd-tdd to start sprint 1 and generate red phase evidence.' };
+    }
+    const sprint = state.sprintCount;
     const redLog = path.join(featurePath, 'evidence', `sprint-${sprint}-red-phase.log`);
     if (!fs.existsSync(redLog)) {
       return { ok: false, reason: `Red phase evidence (sprint-${sprint}-red-phase.log) required` };
@@ -71,10 +157,29 @@ const GATE_PREREQUISITES = {
     return { ok: true };
   },
   '2c': (state, featurePath) => {
-    const sprint = state.sprintCount || 1;
+    if (!state.sprintCount || state.sprintCount < 1) {
+      return { ok: false, reason: 'No sprint started yet. Run /vsdd-tdd to start sprint 1.' };
+    }
+    const sprint = state.sprintCount;
     const greenLog = path.join(featurePath, 'evidence', `sprint-${sprint}-green-phase.log`);
     if (!fs.existsSync(greenLog)) {
       return { ok: false, reason: `Green phase evidence (sprint-${sprint}-green-phase.log) required` };
+    }
+    return { ok: true };
+  },
+  '3': (state, featurePath) => {
+    if (!state.sprintCount || state.sprintCount < 1) {
+      return { ok: false, reason: 'No sprint started yet. Complete phase 2b first.' };
+    }
+    const sprint = state.sprintCount;
+    const greenLog = path.join(featurePath, 'evidence', `sprint-${sprint}-green-phase.log`);
+    if (!fs.existsSync(greenLog)) {
+      return { ok: false, reason: `Green phase evidence (sprint-${sprint}-green-phase.log) required before adversarial review (phase 3)` };
+    }
+    // Verify the log contains a passing marker (not just file existence)
+    const content = fs.readFileSync(greenLog, 'utf8');
+    if (!/passing|passed|ok\b/i.test(content)) {
+      return { ok: false, reason: `Green phase log (sprint-${sprint}-green-phase.log) does not contain a passing marker. Ensure all tests pass before entering phase 3.` };
     }
     return { ok: true };
   },
@@ -88,11 +193,13 @@ const GATE_PREREQUISITES = {
   },
   '6': (state, featurePath) => {
     const reportPath = path.join(featurePath, 'verification', 'verification-report.md');
-    if (state.mode === 'lean' && state.proofObligations.length === 0) return { ok: true };
+    const requiredProofs = (state.proofObligations || []).filter(p => p.required);
+    if (state.mode === 'lean' && requiredProofs.length === 0) {
+      return { ok: true };
+    }
     if (!fs.existsSync(reportPath)) {
       return { ok: false, reason: 'verification-report.md required for phase 6' };
     }
-    const requiredProofs = state.proofObligations.filter(p => p.required);
     const failedProofs = requiredProofs.filter(p => p.status !== 'proved' && p.status !== 'skipped');
     if (failedProofs.length > 0) {
       return { ok: false, reason: `Required proof obligations not met: ${failedProofs.map(p => p.id).join(', ')}` };
@@ -175,6 +282,12 @@ function validateState(state) {
   if (!state.createdAt) errors.push('createdAt is required');
   if (!state.updatedAt) errors.push('updatedAt is required');
 
+  if (state.language !== undefined && state.language !== null) {
+    if (typeof state.language !== 'string' || !VALID_LANGUAGES.has(state.language)) {
+      errors.push('language must be one of: rust, python, typescript, go, cpp, or null/omitted');
+    }
+  }
+
   if (errors.length > 0) {
     throw new Error(`Invalid VSDD state: ${errors.join('; ')}`);
   }
@@ -224,12 +337,17 @@ function deleteState(featureName) {
 
 // ── Phase Transitions ──
 
-function validateTransition(currentPhase, targetPhase) {
-  const allowed = TRANSITION_MAP[currentPhase];
-  if (!allowed || !allowed.includes(targetPhase)) {
+/**
+ * @param {object} state full feature state (must include currentPhase, mode, gates, proofObligations)
+ * @param {string} targetPhase
+ */
+function validateTransition(state, targetPhase) {
+  const currentPhase = state.currentPhase;
+  const allowed = getAllowedTransitions(state);
+  if (!allowed.includes(targetPhase)) {
     return {
       ok: false,
-      reason: `Illegal transition: ${currentPhase} -> ${targetPhase}. Allowed: ${(allowed || []).join(', ')}`,
+      reason: `Illegal transition: ${currentPhase} -> ${targetPhase}. Allowed: ${allowed.join(', ') || '(none)'}`,
     };
   }
   return { ok: true };
@@ -239,16 +357,30 @@ function transitionPhase(featureName, targetPhase, reason) {
   const state = readState(featureName);
   const current = state.currentPhase;
 
-  // 1. Check transition legality
-  const transResult = validateTransition(current, targetPhase);
+  // 1. Check transition legality (mode-aware)
+  const transResult = validateTransition(state, targetPhase);
   if (!transResult.ok) {
     throw new Error(transResult.reason);
   }
 
-  // 2. Lean mode: skip optional phases
-  if (state.mode === 'lean' && LEAN_OPTIONAL_PHASES.has(targetPhase)) {
-    // Allow but don't enforce prerequisites for skippable phases
+  // 1b. Phase 3 -> 5 or 6: adversary must have recorded PASS
+  if (current === '3' && (targetPhase === '5' || targetPhase === '6')) {
+    const g3 = state.gates['3'];
+    if (!g3 || g3.verdict !== 'PASS') {
+      throw new Error('Adversary gate (phase 3) must be PASS before entering phase 5 or 6');
+    }
   }
+  if (current === '3' && targetPhase === '6') {
+    if (state.mode !== 'lean') {
+      throw new Error('Direct transition 3 -> 6 is only allowed in lean mode');
+    }
+    const required = (state.proofObligations || []).filter(p => p.required);
+    if (required.length > 0) {
+      throw new Error('Direct 3 -> 6 requires zero required proof obligations; use phase 5 first');
+    }
+  }
+
+  // 2. Lean mode: optional phases — prerequisites still enforced below unless waived in GATE_PREREQUISITES
 
   // 3. Check gate prerequisites
   const prereq = GATE_PREREQUISITES[targetPhase];
@@ -287,6 +419,19 @@ function transitionPhase(featureName, targetPhase, reason) {
   });
 
   writeState(featureName, state);
+
+  // Sync index.json so currentPhase stays consistent without requiring session-persist hook
+  try {
+    const index = readIndex();
+    if (index.features[featureName]) {
+      index.features[featureName].currentPhase = targetPhase;
+      index.features[featureName].updatedAt = state.updatedAt;
+      writeIndex(index);
+    }
+  } catch (_e) {
+    // Non-fatal: state.json is the source of truth; index is a convenience cache
+  }
+
   appendHistory({
     event: 'phase_transition',
     featureName,
@@ -322,6 +467,24 @@ function writeIndex(index) {
 function getActiveFeature() {
   const index = readIndex();
   return index.activeFeature;
+}
+
+/**
+ * Language profile for verification (from state.json, else denormalized index).
+ * @param {string} featureName
+ * @returns {string|null} e.g. 'rust' | 'typescript' | null
+ */
+function getLanguageForFeature(featureName) {
+  const state = readState(featureName);
+  if (state.language && VALID_LANGUAGES.has(state.language)) {
+    return state.language;
+  }
+  const index = readIndex();
+  const entry = index.features[featureName];
+  if (entry && entry.language && VALID_LANGUAGES.has(entry.language)) {
+    return entry.language;
+  }
+  return null;
 }
 
 function setActiveFeature(featureName) {
@@ -378,12 +541,21 @@ function writeEscalation(featureName, escalation) {
 
 // ── Feature Initialization ──
 
-function initFeature(featureName, mode = 'lean') {
+function initFeature(featureName, mode = 'lean', language = null) {
   if (!featureName || typeof featureName !== 'string') {
     throw new Error('featureName is required');
   }
   if (!['strict', 'lean'].includes(mode)) {
     throw new Error('mode must be "strict" or "lean"');
+  }
+
+  let languageNorm = null;
+  if (language != null && language !== '') {
+    const lang = String(language).toLowerCase();
+    if (!VALID_LANGUAGES.has(lang)) {
+      throw new Error(`language must be one of: ${[...VALID_LANGUAGES].join(', ')}`);
+    }
+    languageNorm = lang;
   }
 
   const featurePath = getFeaturePath(featureName);
@@ -413,6 +585,7 @@ function initFeature(featureName, mode = 'lean') {
   const state = {
     featureName,
     mode,
+    ...(languageNorm != null ? { language: languageNorm } : {}),
     currentPhase: 'init',
     phaseHistory: [],
     iterations: {},
@@ -427,6 +600,7 @@ function initFeature(featureName, mode = 'lean') {
     updatedAt: now,
   };
 
+  validateState(state);
   atomicWriteJson(getStatePath(featureName), state);
 
   // Update index
@@ -435,6 +609,7 @@ function initFeature(featureName, mode = 'lean') {
     status: 'active',
     createdAt: now,
     mode,
+    ...(languageNorm != null ? { language: languageNorm } : {}),
     currentPhase: 'init',
     updatedAt: now,
   };
@@ -446,6 +621,7 @@ function initFeature(featureName, mode = 'lean') {
     event: 'feature_created',
     featureName,
     mode,
+    ...(languageNorm != null ? { language: languageNorm } : {}),
   });
 
   return state;
@@ -496,9 +672,12 @@ module.exports = {
   // Constants
   VSDD_DIR,
   VALID_PHASES,
+  VALID_LANGUAGES,
+  STRICT_TRANSITION_MAP,
   TRANSITION_MAP,
   LEAN_OPTIONAL_PHASES,
   ITERATION_LIMITS,
+  getAllowedTransitions,
 
   // Path helpers
   getVsddRoot,
@@ -520,6 +699,7 @@ module.exports = {
   readIndex,
   writeIndex,
   getActiveFeature,
+  getLanguageForFeature,
   setActiveFeature,
 
   // History

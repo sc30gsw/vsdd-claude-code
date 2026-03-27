@@ -50,7 +50,7 @@ The adversary (`vsdd-adversary`) runs on the Opus model and is always spawned as
 Every requirement, test, implementation block, adversary finding, and formal proof is assigned a bead identifier and linked in a directed graph. Any line of code can be traced back to its originating requirement. The full chain is preserved in an append-only `history.jsonl` audit log.
 
 **Gate enforcement via Claude Code hooks**
-The `vsdd-gate-check.js` hook runs on `PreToolUse` for all write operations. It reads the current pipeline phase from `state.json` and blocks any file write that is not appropriate for the active phase. Gate strictness is controlled by the `VSDD_HOOK_PROFILE` environment variable.
+The `vsdd-gate-check.js` hook runs on `PreToolUse` for `Write`/`Edit`/`MultiEdit` and for `Bash` when the command appears to redirect or otherwise write into project source or test paths disallowed for the current phase. Gate strictness is controlled by the `VSDD_HOOK_PROFILE` environment variable.
 
 **Language verification profiles**
 - **Rust** -- Kani (formal verification), proptest (property testing), cargo-fuzz / AFL++ (fuzzing), cargo-mutants (mutation testing)
@@ -72,7 +72,7 @@ The `/vsdd-commit` command generates conventional commit messages that include p
 |---|---|---|---|
 | `vsdd-orchestrator` | sonnet | Read, Write, Glob, Grep, Bash | Pipeline coordinator and gate enforcer. Never skips gate checks. |
 | `vsdd-builder` | sonnet | Read, Write, Edit, Bash, Glob, Grep | Spec author and TDD implementer. Phase-aware file writing only. |
-| `vsdd-adversary` | **opus** | Read, Grep, Glob (READ-ONLY) | Adversarial reviewer. Fresh context per review, no write access. |
+| `vsdd-adversary` | **opus** | Read, Write, Edit, Grep, Glob | Adversarial reviewer. Fresh context; writes only `reviews/**/output/` (verdict + findings). |
 | `vsdd-verifier` | sonnet | Read, Bash, Grep, Glob | Formal verification coordinator. Language-profile aware. |
 
 Agents communicate exclusively through files under `.vsdd/features/<feature-name>/`. There is no shared conversational context between the builder and the adversary.
@@ -291,7 +291,7 @@ bash install.sh --profile minimal
 # Standard: full workflow with agents and skills (recommended)
 bash install.sh --profile standard
 
-# Strict: adds gate enforcement hooks and session scripts
+# Strict: same hook bundle as standard; set VSDD_HOOK_PROFILE=strict for the strict hook map (e.g. auto-commit hook enabled)
 bash install.sh --profile strict
 ```
 
@@ -316,8 +316,8 @@ Language profiles install the appropriate verification skill and configure the v
 | Agents | no | yes | yes |
 | Skills | no | yes | yes |
 | Contexts | no | yes | yes |
-| Hooks | no | no | yes |
-| Hook scripts | no | no | yes |
+| Hooks | no | yes | yes |
+| Hook scripts (`scripts/hooks/`, `scripts/lib/`) | no | yes | yes |
 
 ---
 
@@ -377,7 +377,7 @@ The `VSDD_HOOK_PROFILE` environment variable controls which hooks are active. Ho
 
 | Hook | Event | minimal | standard | strict |
 |---|---|---|---|---|
-| Gate enforcement | PreToolUse (Write/Edit) | OFF | ON | ON |
+| Gate enforcement | PreToolUse (Write/Edit/Bash heuristics) | OFF | ON | ON |
 | Session persistence | SessionStart | ON | ON | ON |
 | State persist on exit | Stop | ON | ON | ON |
 | Pre-compact checkpoint | PreCompact | OFF | ON | ON |

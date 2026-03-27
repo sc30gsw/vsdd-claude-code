@@ -17,6 +17,12 @@
           "status": { "type": "string", "enum": ["active", "paused", "complete", "abandoned"] },
           "createdAt": { "type": "string" },
           "mode": { "type": "string", "enum": ["strict", "lean"] },
+          "language": {
+            "anyOf": [
+              { "type": "null" },
+              { "type": "string", "enum": ["rust", "python", "typescript", "go", "cpp"] }
+            ]
+          },
           "currentPhase": { "type": "string" },
           "updatedAt": { "type": "string" }
         }

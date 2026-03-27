@@ -82,8 +82,6 @@ case "$PROFILE" in
       install_module "agents" "$PLUGIN_DIR"
       install_module "skills" "$PLUGIN_DIR"
       install_module "contexts" "$PLUGIN_DIR"
-    fi
-    if [[ "$PROFILE" == "strict" ]]; then
       install_module "hooks" "$PLUGIN_DIR"
       install_module "scripts" "$PLUGIN_DIR"
     fi
@@ -123,8 +121,11 @@ echo "  2. Run: /vsdd-init <feature-name> --mode lean"
 echo "  3. Run: /vsdd-spec"
 echo "  4. Run: /vsdd-status"
 echo ""
+if [[ "$PROFILE" == "standard" || "$PROFILE" == "strict" ]]; then
+  echo "Hooks: Default VSDD_HOOK_PROFILE=standard (gate enforcement on Write/Edit/Bash heuristics, session hooks, pre-compact)."
+  echo ""
+fi
 if [[ "$PROFILE" == "strict" ]]; then
-  echo "Strict mode: Set VSDD_HOOK_PROFILE=strict in your environment for full gate enforcement."
-  echo "Optional auto-commit: Set VSDD_AUTO_COMMIT=true (disabled by default)."
+  echo "Strict hook profile: export VSDD_HOOK_PROFILE=strict (enables auto-commit hook path; still requires VSDD_AUTO_COMMIT=true to commit)."
   echo ""
 fi

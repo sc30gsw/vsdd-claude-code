@@ -51,9 +51,14 @@ run('vsdd-session-start', async (_payload) => {
 
     const phaseDesc = phaseDescriptions[state.currentPhase] || state.currentPhase;
 
+    const langLine =
+      state.language && typeof state.language === 'string'
+        ? ` | Lang: ${state.language}`
+        : '';
+
     const lines = [
       '',
-      `📋 **VSDD Active**: \`${activeFeature}\` | Mode: ${state.mode} | ${phaseDesc}`,
+      `📋 **VSDD Active**: \`${activeFeature}\` | Mode: ${state.mode}${langLine} | ${phaseDesc}`,
       `   Sprint: ${state.sprintCount} | Iteration: ${state.iterations[state.currentPhase] || 0}`,
     ];
 

@@ -6,8 +6,8 @@
 |-------|-------|-------|------|----------------|
 | vsdd-orchestrator | sonnet | Read,Write,Glob,Grep,Bash | Pipeline coordinator, gate enforcer | Never skip gate checks |
 | vsdd-builder | sonnet | Read,Write,Edit,Bash,Glob,Grep | Spec author, TDD implementer | Phase-aware file writing only |
-| vsdd-adversary | **opus** | Read,Grep,Glob | Adversarial reviewer | READ-ONLY, fresh context per review |
-| vsdd-verifier | sonnet | Read,Bash,Grep,Glob | Verification coordinator | Language-profile aware |
+| vsdd-adversary | **opus** | Read,Write,Edit,Grep,Glob | Adversarial reviewer | Writes **only** `reviews/**/output/`; fresh context per review |
+| vsdd-verifier | sonnet | Read,Write,Edit,Bash,Grep,Glob | Verification coordinator | Writes `verification/**` + updates obligations in `state.json` |
 
 ## When to Use Each Agent
 
@@ -30,6 +30,7 @@
 - `/vsdd-adversary`, `/vsdd-spec-review` commands
 - **ALWAYS spawned as a FRESH agent instance** (new conversation, zero Builder context)
 - Reviews from disk only - reads review manifest and artifacts
+- Writes `verdict.json` and `findings/*.json` under the review output directory only
 - Produces binary PASS/FAIL verdicts with concrete evidence
 
 ### vsdd-verifier
@@ -65,4 +66,4 @@ init -> 1a -> 1b -> 1c -> 2a -> 2b -> 2c -> 3 -> 4 -> [1a|2a|2b|2c|5] -> 5 -> 6 
                                                                          convergence loop (max 2)
 ```
 
-All transitions validated against TRANSITION_MAP in scripts/lib/vsdd-state.js.
+All transitions validated with `getAllowedTransitions(state)` / `validateTransition(state, target)` in `scripts/lib/vsdd-state.js` (mode-aware: strict vs lean).

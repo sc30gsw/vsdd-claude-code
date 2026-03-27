@@ -3,7 +3,7 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Write|Edit|MultiEdit",
+        "matcher": "Write|Edit|MultiEdit|Bash",
         "hooks": [
           {
             "type": "command",
@@ -12,7 +12,7 @@
             "timeout": 10
           }
         ],
-        "description": "Block out-of-phase file writes based on current VSDD pipeline phase"
+        "description": "Block out-of-phase writes (tools + Bash heuristics) based on current VSDD pipeline phase"
       }
     ],
     "SessionStart": [
