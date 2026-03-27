@@ -1,0 +1,52 @@
+---
+description: Initialize a VSDD feature pipeline. Creates the .vsdd/features/<name>/ directory tree, sets mode (strict|lean), and activates the feature. Must be run before any other VSDD command.
+---
+
+## What
+Initializes a new VSDD feature pipeline for the specified feature name. Creates all required directories and state files, sets the operating mode (strict or lean), and marks the feature as active.
+
+## When
+Run at the start of every new feature development cycle. Must be run before `/vsdd-spec`, `/vsdd-tdd`, or any other VSDD command.
+
+## How
+
+1. **Parse arguments**: `<feature-name> [--mode strict|lean] [--language rust|python|typescript|go|cpp]`
+2. **Validate feature name**: must be kebab-case (a-z0-9 and hyphens only)
+3. **Create directory structure**:
+   ```
+   .vsdd/
+     index.json (created/updated)
+     history.jsonl (created if missing)
+     features/
+       <feature-name>/
+         state.json
+         specs/
+         contracts/
+         reviews/
+         evidence/
+         verification/proof-harnesses/
+         verification/fuzz-results/
+         verification/mutation-results/
+         escalations/
+   ```
+4. **Write initial state.json** with `currentPhase: "init"`, specified mode, empty traceability/gates
+5. **Update .vsdd/index.json**: add feature entry, set as activeFeature
+6. **Append to history.jsonl**: `{event: "feature_created", ...}`
+7. **Display confirmation**: feature name, mode, language profile, next action
+
+## Examples
+
+```bash
+/vsdd-init user-auth --mode lean
+/vsdd-init payment-service --mode strict --language rust
+/vsdd-init search-feature
+```
+
+## Mode Selection Guide
+
+| Use `lean` when | Use `strict` when |
+|-----------------|-------------------|
+| Prototyping / product work | Safety-critical code |
+| Small, low-risk features | Financial/security features |
+| Time-constrained work | High-assurance requirements |
+| Learning the VSDD workflow | Production deployment gates |

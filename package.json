@@ -1,0 +1,38 @@
+{
+  "name": "vsdd-claude-code",
+  "version": "1.0.0",
+  "description": "Verified Spec-Driven Development workflow plugin for Claude Code",
+  "main": "scripts/lib/vsdd-state.js",
+  "bin": {
+    "vsdd": "./install.sh"
+  },
+  "files": [
+    ".claude-plugin/",
+    "agents/",
+    "commands/",
+    "skills/",
+    "hooks/",
+    "rules/",
+    "schemas/",
+    "scripts/",
+    "manifests/",
+    "contexts/",
+    "CLAUDE.md",
+    "AGENTS.md",
+    "install.sh"
+  ],
+  "keywords": [
+    "claude-code",
+    "plugin",
+    "vsdd",
+    "spec-driven-development",
+    "tdd",
+    "formal-verification",
+    "adversarial-review"
+  ],
+  "author": "VSDD Contributors",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

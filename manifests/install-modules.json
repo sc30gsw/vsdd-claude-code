@@ -1,0 +1,108 @@
+{
+  "modules": [
+    {
+      "id": "vsdd-rules",
+      "kind": "rules",
+      "description": "VSDD principles, gate enforcement, and anti-slop bias rules",
+      "paths": ["rules/common/"],
+      "targets": ["claude"],
+      "dependencies": [],
+      "defaultInstall": true,
+      "cost": "light",
+      "stability": "stable"
+    },
+    {
+      "id": "vsdd-commands",
+      "kind": "commands",
+      "description": "12 VSDD slash commands for pipeline control",
+      "paths": ["commands/"],
+      "targets": ["claude"],
+      "dependencies": ["vsdd-rules"],
+      "defaultInstall": true,
+      "cost": "light",
+      "stability": "stable"
+    },
+    {
+      "id": "vsdd-agents",
+      "kind": "agents",
+      "description": "4 VSDD agents: orchestrator, builder, adversary (opus), verifier",
+      "paths": [
+        "agents/vsdd-orchestrator.md",
+        "agents/vsdd-builder.md",
+        "agents/vsdd-adversary.md",
+        "agents/vsdd-verifier.md"
+      ],
+      "targets": ["claude"],
+      "dependencies": ["vsdd-rules", "vsdd-commands"],
+      "defaultInstall": true,
+      "cost": "medium",
+      "stability": "stable"
+    },
+    {
+      "id": "vsdd-skills",
+      "kind": "skills",
+      "description": "10 core VSDD skills for spec, adversarial review, traceability, and git",
+      "paths": [
+        "skills/vsdd-spec-crystallization/",
+        "skills/vsdd-sprint-contracts/",
+        "skills/vsdd-adversarial-refinement/",
+        "skills/vsdd-grading-criteria/",
+        "skills/vsdd-feedback-routing/",
+        "skills/vsdd-convergence-detection/",
+        "skills/vsdd-formal-hardening/",
+        "skills/vsdd-verification-architecture/",
+        "skills/vsdd-traceability/",
+        "skills/vsdd-git-integration/"
+      ],
+      "targets": ["claude"],
+      "dependencies": ["vsdd-rules"],
+      "defaultInstall": true,
+      "cost": "medium",
+      "stability": "stable"
+    },
+    {
+      "id": "vsdd-hooks",
+      "kind": "hooks",
+      "description": "Gate enforcement, session persistence, and auto-commit hooks",
+      "paths": ["hooks/hooks.json", "scripts/"],
+      "targets": ["claude"],
+      "dependencies": ["vsdd-rules"],
+      "defaultInstall": false,
+      "cost": "medium",
+      "stability": "beta"
+    },
+    {
+      "id": "vsdd-language-rust",
+      "kind": "skills",
+      "description": "Rust-specific VSDD skill: Kani, proptest, cargo-fuzz, cargo-mutants",
+      "paths": ["skills/vsdd-language-rust/"],
+      "targets": ["claude"],
+      "dependencies": ["vsdd-skills"],
+      "defaultInstall": false,
+      "cost": "light",
+      "stability": "stable"
+    },
+    {
+      "id": "vsdd-language-python",
+      "kind": "skills",
+      "description": "Python-specific VSDD skill: hypothesis, mutmut",
+      "paths": ["skills/vsdd-language-python/"],
+      "targets": ["claude"],
+      "dependencies": ["vsdd-skills"],
+      "defaultInstall": false,
+      "cost": "light",
+      "stability": "stable"
+    },
+    {
+      "id": "vsdd-language-typescript",
+      "kind": "skills",
+      "description": "TypeScript-specific VSDD skill: fast-check, stryker",
+      "paths": ["skills/vsdd-language-typescript/"],
+      "targets": ["claude"],
+      "dependencies": ["vsdd-skills"],
+      "defaultInstall": false,
+      "cost": "light",
+      "stability": "stable"
+    }
+  ]
+}

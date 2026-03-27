@@ -1,0 +1,71 @@
+{
+  "profiles": {
+    "minimal": {
+      "description": "Core VSDD commands and rules only. No hooks, no agents.",
+      "modules": ["vsdd-rules", "vsdd-commands"],
+      "hookProfile": "minimal"
+    },
+    "standard": {
+      "description": "Full VSDD workflow: rules, commands, agents, skills, and standard hooks.",
+      "modules": ["vsdd-rules", "vsdd-commands", "vsdd-agents", "vsdd-skills", "vsdd-hooks"],
+      "hookProfile": "standard"
+    },
+    "strict": {
+      "description": "Full VSDD with gate enforcement and auto-commit. For high-assurance work.",
+      "modules": ["vsdd-rules", "vsdd-commands", "vsdd-agents", "vsdd-skills", "vsdd-hooks"],
+      "hookProfile": "strict"
+    }
+  },
+  "languageProfiles": {
+    "rust": {
+      "modules": ["vsdd-rules", "vsdd-commands", "vsdd-agents", "vsdd-skills", "vsdd-hooks", "vsdd-language-rust"],
+      "verificationToolset": {
+        "formalVerification": ["kani", "cbmc"],
+        "propertyTesting": ["proptest"],
+        "fuzzing": ["cargo-fuzz", "afl"],
+        "mutationTesting": ["cargo-mutants"],
+        "staticAnalysis": ["clippy", "semgrep"]
+      }
+    },
+    "python": {
+      "modules": ["vsdd-rules", "vsdd-commands", "vsdd-agents", "vsdd-skills", "vsdd-hooks", "vsdd-language-python"],
+      "verificationToolset": {
+        "formalVerification": [],
+        "propertyTesting": ["hypothesis"],
+        "fuzzing": ["python-afl", "atheris"],
+        "mutationTesting": ["mutmut"],
+        "staticAnalysis": ["mypy", "ruff", "semgrep"]
+      }
+    },
+    "typescript": {
+      "modules": ["vsdd-rules", "vsdd-commands", "vsdd-agents", "vsdd-skills", "vsdd-hooks", "vsdd-language-typescript"],
+      "verificationToolset": {
+        "formalVerification": [],
+        "propertyTesting": ["fast-check"],
+        "fuzzing": ["jsfuzz"],
+        "mutationTesting": ["stryker"],
+        "staticAnalysis": ["typescript", "eslint", "semgrep"]
+      }
+    },
+    "go": {
+      "modules": ["vsdd-rules", "vsdd-commands", "vsdd-agents", "vsdd-skills", "vsdd-hooks"],
+      "verificationToolset": {
+        "formalVerification": [],
+        "propertyTesting": ["rapid"],
+        "fuzzing": ["go-fuzz"],
+        "mutationTesting": ["go-mutesting"],
+        "staticAnalysis": ["staticcheck", "vet"]
+      }
+    },
+    "cpp": {
+      "modules": ["vsdd-rules", "vsdd-commands", "vsdd-agents", "vsdd-skills", "vsdd-hooks"],
+      "verificationToolset": {
+        "formalVerification": ["cbmc"],
+        "propertyTesting": [],
+        "fuzzing": ["afl++", "libfuzzer"],
+        "mutationTesting": ["mull"],
+        "staticAnalysis": ["clang-tidy", "cppcheck"]
+      }
+    }
+  }
+}

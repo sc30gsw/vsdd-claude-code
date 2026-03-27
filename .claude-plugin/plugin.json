@@ -1,0 +1,17 @@
+{
+  "name": "vsdd-claude-code",
+  "version": "1.0.0",
+  "description": "Verified Spec-Driven Development (VSDD) workflow for Claude Code - enforces spec-first, test-first, adversarial review, and formal verification as sequential quality gates",
+  "agents": [
+    "./agents/vsdd-orchestrator.md",
+    "./agents/vsdd-builder.md",
+    "./agents/vsdd-adversary.md",
+    "./agents/vsdd-verifier.md"
+  ],
+  "commands": [
+    "./commands/"
+  ],
+  "skills": [
+    "./skills/"
+  ]
+}

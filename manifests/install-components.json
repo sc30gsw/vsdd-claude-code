@@ -1,0 +1,32 @@
+{
+  "components": {
+    "baseline": [
+      {"id": "vsdd-core", "modules": ["vsdd-rules", "vsdd-commands"]},
+      {"id": "vsdd-full", "modules": ["vsdd-rules", "vsdd-commands", "vsdd-agents", "vsdd-skills"]},
+      {"id": "vsdd-strict", "modules": ["vsdd-rules", "vsdd-commands", "vsdd-agents", "vsdd-skills", "vsdd-hooks"]}
+    ],
+    "language": [
+      {"id": "lang:rust", "modules": ["vsdd-language-rust"]},
+      {"id": "lang:python", "modules": ["vsdd-language-python"]},
+      {"id": "lang:typescript", "modules": ["vsdd-language-typescript"]}
+    ],
+    "agent": [
+      {"id": "agent:orchestrator", "modules": ["vsdd-agents"], "path": "agents/vsdd-orchestrator.md"},
+      {"id": "agent:builder", "modules": ["vsdd-agents"], "path": "agents/vsdd-builder.md"},
+      {"id": "agent:adversary", "modules": ["vsdd-agents"], "path": "agents/vsdd-adversary.md"},
+      {"id": "agent:verifier", "modules": ["vsdd-agents"], "path": "agents/vsdd-verifier.md"}
+    ],
+    "skill": [
+      {"id": "skill:spec-crystallization", "modules": ["vsdd-skills"]},
+      {"id": "skill:sprint-contracts", "modules": ["vsdd-skills"]},
+      {"id": "skill:adversarial-refinement", "modules": ["vsdd-skills"]},
+      {"id": "skill:grading-criteria", "modules": ["vsdd-skills"]},
+      {"id": "skill:feedback-routing", "modules": ["vsdd-skills"]},
+      {"id": "skill:convergence-detection", "modules": ["vsdd-skills"]},
+      {"id": "skill:formal-hardening", "modules": ["vsdd-skills"]},
+      {"id": "skill:verification-architecture", "modules": ["vsdd-skills"]},
+      {"id": "skill:traceability", "modules": ["vsdd-skills"]},
+      {"id": "skill:git-integration", "modules": ["vsdd-skills"]}
+    ]
+  }
+}

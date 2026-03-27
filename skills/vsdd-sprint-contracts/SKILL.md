@@ -1,0 +1,71 @@
+---
+name: vsdd-sprint-contracts
+description: Use this skill when writing sprint contracts in VSDD strict mode. Provides grading criteria patterns, dimension weight guidelines, and pass threshold formulation for the 5 review dimensions.
+origin: VSDD
+---
+
+# VSDD Sprint Contracts
+
+## When to Activate
+- Phase 2a in strict mode (before adversarial review)
+- Writing grading criteria for a sprint
+- Reviewing a sprint contract before approving
+
+## 5 Review Dimensions
+
+| Dimension | Focus | Typical Weight |
+|-----------|-------|---------------|
+| spec_fidelity | Do tests and code match the spec? | 0.30 |
+| edge_case_coverage | Are edge cases from spec tested? | 0.25 |
+| implementation_correctness | Is logic correct? | 0.25 |
+| structural_integrity | Is code organized well? | 0.10 |
+| verification_readiness | Is pure core isolatable? | 0.10 |
+
+## Pass Threshold Formulation
+
+Pass thresholds MUST be binary-evaluable (yes/no), NOT numeric:
+
+**Good** (binary):
+- "Every REQ-XXX ID in behavioral-spec.md has at least one test case"
+- "All error return values are typed, not generic exceptions"
+- "Pure parsing functions accept only primitives and return Result types"
+
+**Bad** (subjective):
+- "Code quality is good"
+- "Most edge cases covered"
+- "Reasonable error handling"
+
+## Negotiation Protocol
+
+1. Builder proposes contract → sets `status: draft`
+2. Adversary reviews criteria → may request changes
+3. Maximum 2 negotiation rounds (`negotiationRound` field)
+4. Human approves final contract before implementation
+
+## Sprint Contract Template
+
+```markdown
+---
+sprintNumber: 1
+feature: my-feature
+scope: "Core parsing logic with error handling"
+negotiationRound: 0
+status: draft
+---
+
+## Sprint Scope
+
+[Description of what this sprint implements]
+
+## Grading Criteria
+
+### CRIT-001
+- **Dimension**: spec_fidelity
+- **Description**: All REQ-XXX items have corresponding test cases
+- **Weight**: 0.30
+- **Pass Threshold**: Every requirement ID (REQ-NNN) in behavioral-spec.md appears in at least one test function name or test docstring
+- **Bead**: BEAD-001
+
+### CRIT-002
+...
+```

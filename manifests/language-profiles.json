@@ -1,0 +1,88 @@
+{
+  "profiles": {
+    "rust": {
+      "language": "Rust",
+      "testRunner": "cargo test",
+      "testFilePattern": "**/*_test.rs",
+      "sourcePattern": "src/**/*.rs",
+      "verificationToolset": {
+        "tier1": {
+          "propertyTesting": {"tool": "proptest", "install": "cargo add proptest --dev"},
+          "fuzzing": {"tool": "cargo-fuzz", "install": "cargo install cargo-fuzz"},
+          "mutationTesting": {"tool": "cargo-mutants", "install": "cargo install cargo-mutants"}
+        },
+        "tier2": {
+          "formalVerification": {"tool": "kani", "install": "cargo install kani-verifier", "run": "cargo kani"}
+        },
+        "tier3": {
+          "formalVerification": {"tool": "cbmc", "install": "brew install cbmc"}
+        }
+      },
+      "redPhaseCommand": "cargo test 2>&1",
+      "greenPhaseCommand": "cargo test 2>&1",
+      "coverageCommand": "cargo tarpaulin --out Json"
+    },
+    "python": {
+      "language": "Python",
+      "testRunner": "pytest",
+      "testFilePattern": "**/test_*.py",
+      "sourcePattern": "src/**/*.py",
+      "verificationToolset": {
+        "tier1": {
+          "propertyTesting": {"tool": "hypothesis", "install": "pip install hypothesis"},
+          "mutationTesting": {"tool": "mutmut", "install": "pip install mutmut"}
+        }
+      },
+      "redPhaseCommand": "pytest -v 2>&1",
+      "greenPhaseCommand": "pytest -v 2>&1",
+      "coverageCommand": "pytest --cov=src --cov-report=json"
+    },
+    "typescript": {
+      "language": "TypeScript",
+      "testRunner": "vitest",
+      "testFilePattern": "**/*.test.ts",
+      "sourcePattern": "src/**/*.ts",
+      "verificationToolset": {
+        "tier1": {
+          "propertyTesting": {"tool": "fast-check", "install": "npm install -D fast-check"},
+          "mutationTesting": {"tool": "@stryker-mutator/core", "install": "npm install -D @stryker-mutator/core"}
+        }
+      },
+      "redPhaseCommand": "npx vitest run 2>&1",
+      "greenPhaseCommand": "npx vitest run 2>&1",
+      "coverageCommand": "npx vitest run --coverage"
+    },
+    "go": {
+      "language": "Go",
+      "testRunner": "go test",
+      "testFilePattern": "**/*_test.go",
+      "sourcePattern": "**/*.go",
+      "verificationToolset": {
+        "tier1": {
+          "propertyTesting": {"tool": "rapid", "install": "go get pgregory.net/rapid"},
+          "fuzzing": {"tool": "go-fuzz", "install": "go install github.com/dvyukov/go-fuzz/go-fuzz@latest"}
+        }
+      },
+      "redPhaseCommand": "go test ./... 2>&1",
+      "greenPhaseCommand": "go test ./... 2>&1",
+      "coverageCommand": "go test ./... -coverprofile=coverage.out"
+    },
+    "cpp": {
+      "language": "C/C++",
+      "testRunner": "cmake --build . && ctest",
+      "testFilePattern": "tests/**/*.cpp",
+      "sourcePattern": "src/**/*.cpp",
+      "verificationToolset": {
+        "tier2": {
+          "formalVerification": {"tool": "cbmc", "install": "brew install cbmc"}
+        },
+        "tier1": {
+          "fuzzing": {"tool": "libfuzzer", "install": "clang with -fsanitize=fuzzer"}
+        }
+      },
+      "redPhaseCommand": "cmake --build . && ctest -V 2>&1",
+      "greenPhaseCommand": "cmake --build . && ctest -V 2>&1",
+      "coverageCommand": "cmake --build . && ctest && gcovr --json coverage.json"
+    }
+  }
+}
