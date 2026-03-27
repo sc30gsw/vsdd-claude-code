@@ -240,7 +240,7 @@ npx vsdd-claude-code --profile standard
 
 | プロファイル | 内容 | 適用シーン |
 |------------|------|----------|
-| minimal | rules + commands のみ | 試用、軽量な利用 |
+| minimal | rules + commands + core runtime scripts のみ | 試用、軽量な利用 |
 | standard | + agents, skills, contexts, hooks, scripts（既定 `VSDD_HOOK_PROFILE=standard`） | 通常の開発作業 |
 | strict | standard と同じファイル構成。`VSDD_HOOK_PROFILE=strict` で厳しいフックマップ（自動コミットフック有効化など） | 高保証作業、チーム開発 |
 
@@ -262,7 +262,7 @@ bash install.sh --profile standard --language cpp
 npx vsdd-claude-code --profile standard --language typescript
 ```
 
-各言語プロファイルには検証ツールの設定、テストコマンド、カバレッジコマンドがプリセットされている。
+各言語プロファイルには検証ツールの設定、テストコマンド、カバレッジコマンドがプリセットされている。Rust/Python/TypeScript は専用スキルも追加され、Go/C++ は manifest ベースのツールプロファイルとして動作する。
 
 ---
 
@@ -334,6 +334,8 @@ REQ-001 [spec-requirement] active
 ---
 
 ## フックプロファイル表
+
+この表は hooks bundle が導入されている前提の挙動を示す。install profile の `minimal` は hooks 自体を導入しない。
 
 | フック | minimal | standard | strict |
 |--------|---------|----------|--------|

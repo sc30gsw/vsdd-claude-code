@@ -1,18 +1,18 @@
 {
   "profiles": {
     "minimal": {
-      "description": "Core VSDD commands and rules only. No hooks, no agents.",
-      "modules": ["vsdd-rules", "vsdd-commands"],
+      "description": "Core VSDD commands, rules, and runtime libraries. No hooks, no agents.",
+      "modules": ["vsdd-rules", "vsdd-runtime", "vsdd-commands"],
       "hookProfile": "minimal"
     },
     "standard": {
       "description": "Full VSDD workflow: rules, commands, agents, skills, and standard hooks.",
-      "modules": ["vsdd-rules", "vsdd-commands", "vsdd-agents", "vsdd-skills", "vsdd-hooks"],
+      "modules": ["vsdd-rules", "vsdd-runtime", "vsdd-commands", "vsdd-agents", "vsdd-skills", "vsdd-hooks"],
       "hookProfile": "standard"
     },
     "strict": {
       "description": "Full VSDD with gate enforcement and auto-commit. For high-assurance work.",
-      "modules": ["vsdd-rules", "vsdd-commands", "vsdd-agents", "vsdd-skills", "vsdd-hooks"],
+      "modules": ["vsdd-rules", "vsdd-runtime", "vsdd-commands", "vsdd-agents", "vsdd-skills", "vsdd-hooks"],
       "hookProfile": "strict"
     }
   },
@@ -48,7 +48,7 @@
       }
     },
     "go": {
-      "modules": ["vsdd-rules", "vsdd-commands", "vsdd-agents", "vsdd-skills", "vsdd-hooks"],
+      "modules": ["vsdd-rules", "vsdd-runtime", "vsdd-commands", "vsdd-agents", "vsdd-skills", "vsdd-hooks", "vsdd-language-go-profile"],
       "verificationToolset": {
         "formalVerification": [],
         "propertyTesting": ["rapid"],
@@ -58,7 +58,7 @@
       }
     },
     "cpp": {
-      "modules": ["vsdd-rules", "vsdd-commands", "vsdd-agents", "vsdd-skills", "vsdd-hooks"],
+      "modules": ["vsdd-rules", "vsdd-runtime", "vsdd-commands", "vsdd-agents", "vsdd-skills", "vsdd-hooks", "vsdd-language-cpp-profile"],
       "verificationToolset": {
         "formalVerification": ["cbmc"],
         "propertyTesting": [],

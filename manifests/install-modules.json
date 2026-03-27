@@ -12,12 +12,23 @@
       "stability": "stable"
     },
     {
+      "id": "vsdd-runtime",
+      "kind": "runtime",
+      "description": "Core VSDD state and traceability libraries required by the slash commands",
+      "paths": ["scripts/lib/"],
+      "targets": ["claude"],
+      "dependencies": [],
+      "defaultInstall": true,
+      "cost": "light",
+      "stability": "stable"
+    },
+    {
       "id": "vsdd-commands",
       "kind": "commands",
       "description": "12 VSDD slash commands for pipeline control",
       "paths": ["commands/"],
       "targets": ["claude"],
-      "dependencies": ["vsdd-rules"],
+      "dependencies": ["vsdd-rules", "vsdd-runtime"],
       "defaultInstall": true,
       "cost": "light",
       "stability": "stable"
@@ -98,6 +109,28 @@
       "kind": "skills",
       "description": "TypeScript-specific VSDD skill: fast-check, stryker",
       "paths": ["skills/vsdd-language-typescript/"],
+      "targets": ["claude"],
+      "dependencies": ["vsdd-skills"],
+      "defaultInstall": false,
+      "cost": "light",
+      "stability": "stable"
+    },
+    {
+      "id": "vsdd-language-go-profile",
+      "kind": "manifests",
+      "description": "Go verification tool profile (manifest-backed; no dedicated skill bundle)",
+      "paths": ["manifests/language-profiles.json"],
+      "targets": ["claude"],
+      "dependencies": ["vsdd-skills"],
+      "defaultInstall": false,
+      "cost": "light",
+      "stability": "stable"
+    },
+    {
+      "id": "vsdd-language-cpp-profile",
+      "kind": "manifests",
+      "description": "C/C++ verification tool profile (manifest-backed; no dedicated skill bundle)",
+      "paths": ["manifests/language-profiles.json"],
       "targets": ["claude"],
       "dependencies": ["vsdd-skills"],
       "defaultInstall": false,

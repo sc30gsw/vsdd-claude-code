@@ -73,7 +73,7 @@ The `/vsdd-commit` command generates conventional commit messages that include p
 | `vsdd-orchestrator` | sonnet | Read, Write, Glob, Grep, Bash | Pipeline coordinator and gate enforcer. Never skips gate checks. |
 | `vsdd-builder` | sonnet | Read, Write, Edit, Bash, Glob, Grep | Spec author and TDD implementer. Phase-aware file writing only. |
 | `vsdd-adversary` | **opus** | Read, Write, Edit, Grep, Glob | Adversarial reviewer. Fresh context; writes only `reviews/**/output/` (verdict + findings). |
-| `vsdd-verifier` | sonnet | Read, Bash, Grep, Glob | Formal verification coordinator. Language-profile aware. |
+| `vsdd-verifier` | sonnet | Read, Write, Edit, Bash, Grep, Glob | Formal verification coordinator. Language-profile aware. |
 
 Agents communicate exclusively through files under `.vsdd/features/<feature-name>/`. There is no shared conversational context between the builder and the adversary.
 
@@ -300,7 +300,7 @@ Select mode at initialization:
 ### Install Profiles
 
 ```bash
-# Minimal: rules and commands only
+# Minimal: rules, commands, and core runtime libraries only
 bash install.sh --profile minimal
 
 # Standard: full workflow with agents and skills (recommended)
@@ -326,7 +326,7 @@ bash install.sh --profile standard --language go
 bash install.sh --profile standard --language cpp
 ```
 
-Language profiles install the appropriate verification skill and configure the verifier agent with the correct toolset.
+Language profiles configure the verifier agent with the correct toolset. Rust/Python/TypeScript also install dedicated language skills; Go/C++ use the manifest-backed tool profile without an extra skill bundle.
 
 ### Profile Contents
 
@@ -338,7 +338,8 @@ Language profiles install the appropriate verification skill and configure the v
 | Skills | no | yes | yes |
 | Contexts | no | yes | yes |
 | Hooks | no | yes | yes |
-| Hook scripts (`scripts/hooks/`, `scripts/lib/`) | no | yes | yes |
+| Core runtime scripts (`scripts/lib/`) | yes | yes | yes |
+| Hook scripts (`scripts/hooks/`) | no | yes | yes |
 
 ---
 
@@ -395,6 +396,7 @@ Every state change to a bead is appended to `.vsdd/history.jsonl`, providing a c
 ## Hook Profiles
 
 The `VSDD_HOOK_PROFILE` environment variable controls which hooks are active. Hooks are defined in `hooks/hooks.json` and loaded automatically by Claude Code v2.1+ plugin convention.
+These semantics apply when the hook bundle is installed. The `minimal` install profile does not install hooks.
 
 | Hook | Event | minimal | standard | strict |
 |---|---|---|---|---|

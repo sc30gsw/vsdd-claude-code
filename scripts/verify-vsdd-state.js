@@ -84,6 +84,37 @@ function runGateHook(root, payload) {
   assert(allowed.status === 0, 'read-only cat should remain allowed during phase 1a');
 }
 
+// ── Control files: direct edits must be blocked ──
+{
+  const root = tmpDir();
+  process.chdir(root);
+  const feat = 'control-feature';
+  initFeature(feat, 'strict');
+
+  const blocked = runGateHook(root, {
+    tool_name: 'Write',
+    tool_input: { file_path: path.join(root, `.vsdd/features/${feat}/state.json`) },
+  });
+  assert(blocked.status === 2, 'direct state.json edits should be blocked in every phase');
+}
+
+// ── Spec review gate: tests must still be blocked before phase 2a ──
+{
+  const root = tmpDir();
+  process.chdir(root);
+  const feat = 'spec-review-feature';
+  initFeature(feat, 'lean');
+  transitionPhase(feat, '1a');
+  writeFile(root, `.vsdd/features/${feat}/specs/behavioral-spec.md`, '# Behavioral\n');
+  transitionPhase(feat, '1c');
+
+  const blocked = runGateHook(root, {
+    tool_name: 'Write',
+    tool_input: { file_path: path.join(root, 'tests/example.test.ts') },
+  });
+  assert(blocked.status === 2, 'tests should stay blocked during phase 1c');
+}
+
 // ── Lean: 1a -> 1c -> 2a -> 2b -> 3 -> 6 -> complete (skip 1b, 2c, 5) ──
 {
   const root = tmpDir();

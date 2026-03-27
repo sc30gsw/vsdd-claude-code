@@ -90,7 +90,9 @@ case "$PROFILE" in
     echo "Installing profile: ${PROFILE}"
     install_module "rules" "$PLUGIN_DIR"
     install_module "commands" "$PLUGIN_DIR"
-    if [[ "$PROFILE" != "minimal" ]]; then
+    if [[ "$PROFILE" == "minimal" ]]; then
+      install_module "scripts/lib" "$PLUGIN_DIR"
+    else
       install_module "agents" "$PLUGIN_DIR"
       install_module "skills" "$PLUGIN_DIR"
       install_module "contexts" "$PLUGIN_DIR"
@@ -109,7 +111,11 @@ if [[ -n "$LANGUAGE" ]]; then
   case "$LANGUAGE" in
     rust|python|typescript|go|cpp)
       echo "Installing language profile: ${LANGUAGE}"
-      install_module "skills/vsdd-language-${LANGUAGE}" "$PLUGIN_DIR"
+      if [[ -d "${SCRIPT_DIR}/skills/vsdd-language-${LANGUAGE}" ]]; then
+        install_module "skills/vsdd-language-${LANGUAGE}" "$PLUGIN_DIR"
+      else
+        echo "  Using manifest-backed language profile for: ${LANGUAGE}"
+      fi
       install_module "manifests/language-profiles.json" "$PLUGIN_DIR"
       ;;
     *)

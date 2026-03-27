@@ -37,7 +37,19 @@
           "verdict": { "type": "string", "enum": ["PASS", "FAIL", "SKIP"] },
           "timestamp": { "type": "string" },
           "reviewedBy": { "type": "string", "enum": ["adversary", "verifier", "human"] },
-          "details": { "type": "string" }
+          "details": {
+            "anyOf": [
+              { "type": "string" },
+              { "type": "object" },
+              { "type": "array" },
+              { "type": "null" }
+            ]
+          },
+          "adversaryVerdict": { "type": "string", "enum": ["PASS", "FAIL", "SKIP"] },
+          "adversaryReviewedAt": { "type": "string" },
+          "humanVerdict": { "type": "string", "enum": ["PASS", "FAIL", "SKIP"] },
+          "humanApproved": { "type": "boolean" },
+          "humanApprovedAt": { "type": "string" }
         }
       }
     },

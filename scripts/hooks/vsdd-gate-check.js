@@ -27,9 +27,9 @@ const WRITE_RESTRICTIONS = [
     },
   },
   {
-    // Test files: blocked in phases init, 1a, 1b
+    // Test files: blocked until phase 2a
     name: 'test files',
-    blockedInPhases: new Set(['init', '1a', '1b']),
+    blockedInPhases: new Set(['init', '1a', '1b', '1c']),
     matches: (filePath) => {
       const norm = filePath.replace(/\\/g, '/').toLowerCase();
       return (
@@ -45,7 +45,7 @@ const WRITE_RESTRICTIONS = [
   {
     // Spec files: only writable in spec phases and phase 4 feedback
     name: 'spec files (outside spec phases)',
-    blockedInPhases: new Set(['2a', '2b', '2c', '3', '5', '6', 'complete']),
+    blockedInPhases: new Set(['init', '2a', '2b', '2c', '3', '5', '6', 'complete']),
     matches: (filePath) => {
       const norm = filePath.replace(/\\/g, '/');
       return norm.includes('.vsdd/') && norm.includes('/specs/');
@@ -87,23 +87,59 @@ const WRITE_RESTRICTIONS = [
       return norm.includes('.vsdd/') && /\/evidence\/sprint-\d+-coverage\.json$/i.test(norm);
     },
   },
+  {
+    // Pipeline state must flow through the state library, not direct edits
+    name: 'VSDD control files',
+    blockedInPhases: new Set(['init', '1a', '1b', '1c', '2a', '2b', '2c', '3', '4', '5', '6', 'complete']),
+    matches: (filePath) => {
+      const norm = filePath.replace(/\\/g, '/');
+      return (
+        norm.includes('/.vsdd/') && (
+          norm.endsWith('/index.json') ||
+          norm.endsWith('/history.jsonl') ||
+          norm.endsWith('/active-feature.txt') ||
+          norm.endsWith('/state.json')
+        )
+      );
+    },
+  },
+  {
+    // Review manifests and verdicts are only writable while a review is running
+    name: 'review artifacts',
+    blockedInPhases: new Set(['init', '1a', '1b', '2a', '2b', '2c', '4', '5', '6', 'complete']),
+    matches: (filePath) => {
+      const norm = filePath.replace(/\\/g, '/');
+      return norm.includes('/.vsdd/') && norm.includes('/reviews/');
+    },
+  },
+  {
+    // The approved sprint contract is part of the gate and should not change mid-review
+    name: 'approved sprint contracts',
+    blockedInPhases: new Set(['init', '1a', '1b', '1c', '3', '5', '6', 'complete']),
+    matches: (filePath) => {
+      const norm = filePath.replace(/\\/g, '/');
+      return norm.includes('/.vsdd/') && /\/contracts\/sprint-\d+\.md$/i.test(norm);
+    },
+  },
+  {
+    // Contract review notes can only be updated during feedback/refinement
+    name: 'contract review notes',
+    blockedInPhases: new Set(['init', '1a', '1b', '1c', '2a', '2b', '2c', '5', '6', 'complete']),
+    matches: (filePath) => {
+      const norm = filePath.replace(/\\/g, '/');
+      return norm.includes('/.vsdd/') && /\/contracts\/sprint-\d+-review\.md$/i.test(norm);
+    },
+  },
+  {
+    // Escalations are audit records and should only be created via the orchestration library
+    name: 'escalation records',
+    blockedInPhases: new Set(['init', '1a', '1b', '1c', '2a', '2b', '2c', '3', '4', '5', '6', 'complete']),
+    matches: (filePath) => {
+      const norm = filePath.replace(/\\/g, '/');
+      return norm.includes('/.vsdd/') && norm.includes('/escalations/');
+    },
+  },
 ];
-
-// Paths always allowed regardless of phase
-function isAlwaysAllowed(filePath) {
-  const norm = filePath.replace(/\\/g, '/');
-  return (
-    norm.includes('/.vsdd/') && (
-      norm.includes('/state.json') ||
-      norm.includes('/index.json') ||
-      norm.includes('/history.jsonl') ||
-      norm.includes('/active-feature.txt') ||
-      norm.includes('/reviews/') ||
-      norm.includes('/contracts/') ||
-      norm.includes('/escalations/')
-    )
-  );
-}
 
 function stripQuotes(s) {
   const t = String(s).trim();
@@ -219,7 +255,6 @@ function extractWriteTargetsFromBash(command) {
 
 function checkRestrictionsForPath(filePath, currentPhase, activeFeature) {
   if (!filePath) return null;
-  if (isAlwaysAllowed(filePath)) return null;
 
   for (const restriction of WRITE_RESTRICTIONS) {
     if (restriction.blockedInPhases.has(currentPhase) && restriction.matches(filePath)) {
@@ -256,9 +291,6 @@ run('vsdd-gate-check', async (payload) => {
   // Write / Edit / MultiEdit
   if (['Write', 'Edit', 'MultiEdit'].includes(toolName)) {
     if (!filePath) {
-      return { blocked: false };
-    }
-    if (isAlwaysAllowed(filePath)) {
       return { blocked: false };
     }
     const msg = checkRestrictionsForPath(filePath, currentPhase, activeFeature);
