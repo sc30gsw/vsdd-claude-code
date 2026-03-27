@@ -21,18 +21,23 @@ Run after `/vsdd-tdd` completes Phase 2a with red phase evidence. Requires activ
 5. **Run tests** and verify ALL pass:
    ```bash
    npm test 2>&1 | tee .vsdd/features/<name>/evidence/sprint-N-green-phase.log
-   grep -q "passing\|PASSED\|ok" sprint-N-green-phase.log
    ```
+6. **Record green phase evidence** with explicit markers at the top of the log:
+   ```text
+   target-feature-tests: PASS
+   regression-baseline: PASS
+   ```
+7. **Append the raw passing output** after those markers so Phase 3 can prove both signals
 
 ### Phase 2c (Refactor)
-6. **Transition to 2c**
-7. **Invoke vsdd-builder agent** to refactor:
+8. **Transition to 2c**
+9. **Invoke vsdd-builder agent** to refactor:
    - Eliminate code duplication
    - Improve naming clarity
    - Extract functions with clear responsibilities
    - Do NOT add features, change behavior, or modify spec
-8. **Verify tests still pass** after each refactor step
-9. **Refresh green evidence** after the final refactor run so Phase 3 sees post-refactor test results
+10. **Verify tests still pass** after each refactor step
+11. **Refresh green evidence** after the final refactor run, again including `target-feature-tests: PASS` and `regression-baseline: PASS`, so Phase 3 sees post-refactor test results
 
 ## Examples
 

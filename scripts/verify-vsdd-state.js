@@ -12,6 +12,7 @@ const os = require('os');
 const { spawnSync } = require('child_process');
 
 const vsdd = require('./lib/vsdd-state');
+const traceability = require('./lib/vsdd-traceability');
 const {
   initFeature,
   readState,
@@ -82,6 +83,18 @@ function runGateHook(root, payload) {
     tool_input: { command: 'cat src/x.ts' },
   });
   assert(allowed.status === 0, 'read-only cat should remain allowed during phase 1a');
+
+  const blockedTsx = runGateHook(root, {
+    tool_name: 'Write',
+    tool_input: { file_path: path.join(root, 'src/App.tsx') },
+  });
+  assert(blockedTsx.status === 2, 'tsx source should be blocked during phase 1a');
+
+  const blockedHeader = runGateHook(root, {
+    tool_name: 'Write',
+    tool_input: { file_path: path.join(root, 'src/parser.hpp') },
+  });
+  assert(blockedHeader.status === 2, 'C++ headers should be blocked during phase 1a');
 }
 
 // ── Control files: direct edits must be blocked ──
@@ -130,11 +143,39 @@ function runGateHook(root, payload) {
   transitionPhase(feat, '1c');
   recordGate(feat, '1c', 'PASS', 'adversary');
   transitionPhase(feat, '2a');
-  writeFile(root, `.vsdd/features/${feat}/evidence/sprint-1-red-phase.log`, 'FAIL red phase as expected\n');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
+    'new-feature-tests: FAIL\nregression-baseline: PASS\n'
+  );
   transitionPhase(feat, '2b');
-  writeFile(root, `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`, 'All tests passing\n');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    'target-feature-tests: PASS\nregression-baseline: PASS\n'
+  );
   transitionPhase(feat, '3');
   recordGate(feat, '3', 'PASS', 'adversary');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/reviews/sprint-1/output/verdict.json`,
+    JSON.stringify({
+      sprintNumber: 1,
+      feature: feat,
+      overallVerdict: 'PASS',
+      timestamp: new Date().toISOString(),
+      iteration: 1,
+      dimensions: [
+        { name: 'spec_fidelity', verdict: 'PASS', findings: [] },
+      ],
+      convergenceSignals: {
+        findingCount: 0,
+        previousFindingCount: 1,
+        allCriteriaEvaluated: true,
+        duplicateFindings: [],
+      },
+    }, null, 2) + '\n'
+  );
   transitionPhase(feat, '6');
   transitionPhase(feat, 'complete');
 
@@ -154,8 +195,16 @@ function runGateHook(root, payload) {
   transitionPhase(feat, '1c');
   recordGate(feat, '1c', 'PASS', 'adversary');
   transitionPhase(feat, '2a');
-  writeFile(root, `.vsdd/features/${feat}/evidence/sprint-1-red-phase.log`, 'FAIL red phase as expected\n');
-  writeFile(root, `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`, 'All tests passing\n');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
+    'new-feature-tests: FAIL\nregression-baseline: PASS\n'
+  );
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    'target-feature-tests: PASS\nregression-baseline: PASS\n'
+  );
   const staleGreenLog = path.join(root, `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`);
   const staleDate = new Date(Date.now() - 5000);
   fs.utimesSync(staleGreenLog, staleDate, staleDate);
@@ -164,6 +213,52 @@ function runGateHook(root, payload) {
   assertThrows(
     () => transitionPhase(feat, '2c'),
     'Green phase evidence (sprint-1-green-phase.log) must be recorded after entering phase 2b'
+  );
+}
+
+// ── Red evidence: regression baseline marker is mandatory before phase 2b ──
+{
+  const root = tmpDir();
+  process.chdir(root);
+  const feat = 'red-evidence-feature';
+  initFeature(feat, 'lean');
+
+  transitionPhase(feat, '1a');
+  writeFile(root, `.vsdd/features/${feat}/specs/behavioral-spec.md`, '# Behavioral\n');
+  transitionPhase(feat, '1c');
+  recordGate(feat, '1c', 'PASS', 'adversary');
+  transitionPhase(feat, '2a');
+  writeFile(root, `.vsdd/features/${feat}/evidence/sprint-1-red-phase.log`, 'new-feature-tests: FAIL\n');
+
+  assertThrows(
+    () => transitionPhase(feat, '2b'),
+    'regression baseline'
+  );
+}
+
+// ── Green evidence: target + regression markers are mandatory before phase 3 ──
+{
+  const root = tmpDir();
+  process.chdir(root);
+  const feat = 'green-evidence-feature';
+  initFeature(feat, 'lean');
+
+  transitionPhase(feat, '1a');
+  writeFile(root, `.vsdd/features/${feat}/specs/behavioral-spec.md`, '# Behavioral\n');
+  transitionPhase(feat, '1c');
+  recordGate(feat, '1c', 'PASS', 'adversary');
+  transitionPhase(feat, '2a');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
+    'new-feature-tests: FAIL\nregression-baseline: PASS\n'
+  );
+  transitionPhase(feat, '2b');
+  writeFile(root, `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`, 'target-feature-tests: PASS\n');
+
+  assertThrows(
+    () => transitionPhase(feat, '3'),
+    'regression baseline'
   );
 }
 
@@ -187,11 +282,23 @@ function runGateHook(root, payload) {
 
   recordGate(feat, '1c', 'PASS', 'human', { approvedBasedOn: 'adversary' });
   transitionPhase(feat, '2a');
-  writeFile(root, `.vsdd/features/${feat}/evidence/sprint-1-red-phase.log`, 'FAIL red phase as expected\n');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
+    'new-feature-tests: FAIL\nregression-baseline: PASS\n'
+  );
   transitionPhase(feat, '2b');
-  writeFile(root, `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`, 'All tests passing\n');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    'target-feature-tests: PASS\nregression-baseline: PASS\n'
+  );
   transitionPhase(feat, '2c');
-  writeFile(root, `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`, 'All tests passing after refactor\n');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    'target-feature-tests: PASS\nregression-baseline: PASS\nafter-refactor: PASS\n'
+  );
   writeFile(
     root,
     `.vsdd/features/${feat}/contracts/sprint-1.md`,
@@ -247,6 +354,180 @@ function runGateHook(root, payload) {
   assert(end.currentPhase === 'complete', 'strict should end at complete');
   assert(end.gates['1c'].adversaryVerdict === 'PASS', 'strict 1c gate should retain adversary verdict');
   assert(end.gates['1c'].humanApproved === true, 'strict 1c gate should retain human approval');
+}
+
+// ── Convergence: duplicate findings must block completion ──
+{
+  const root = tmpDir();
+  process.chdir(root);
+  const feat = 'duplicate-findings-feature';
+  initFeature(feat, 'strict');
+
+  transitionPhase(feat, '1a');
+  writeFile(root, `.vsdd/features/${feat}/specs/behavioral-spec.md`, '# B\n');
+  transitionPhase(feat, '1b');
+  writeFile(root, `.vsdd/features/${feat}/specs/verification-architecture.md`, '# V\n');
+  transitionPhase(feat, '1c');
+  recordGate(feat, '1c', 'PASS', 'adversary');
+  recordGate(feat, '1c', 'PASS', 'human', { approvedBasedOn: 'adversary' });
+  transitionPhase(feat, '2a');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
+    'new-feature-tests: FAIL\nregression-baseline: PASS\n'
+  );
+  transitionPhase(feat, '2b');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    'target-feature-tests: PASS\nregression-baseline: PASS\n'
+  );
+  transitionPhase(feat, '2c');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    'target-feature-tests: PASS\nregression-baseline: PASS\n'
+  );
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/contracts/sprint-1.md`,
+    [
+      '---',
+      'sprintNumber: 1',
+      'feature: duplicate-findings-feature',
+      'status: approved',
+      'criteria:',
+      '  - id: CRIT-001',
+      '    dimension: spec_fidelity',
+      '    description: All requirements are represented in tests',
+      '    weight: 0.30',
+      '    passThreshold: Every REQ-XXX has at least one test',
+      '---',
+      '',
+      '# Contract',
+      '',
+    ].join('\n')
+  );
+  transitionPhase(feat, '3');
+  recordGate(feat, '3', 'PASS', 'adversary');
+  transitionPhase(feat, '5');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/reviews/sprint-1/output/verdict.json`,
+    JSON.stringify({
+      sprintNumber: 1,
+      feature: feat,
+      overallVerdict: 'PASS',
+      timestamp: new Date().toISOString(),
+      iteration: 2,
+      dimensions: [
+        { name: 'spec_fidelity', verdict: 'PASS', findings: [] },
+      ],
+      convergenceSignals: {
+        findingCount: 0,
+        previousFindingCount: 1,
+        allCriteriaEvaluated: true,
+        duplicateFindings: ['FIND-001'],
+      },
+    }, null, 2) + '\n'
+  );
+  writeFile(root, `.vsdd/features/${feat}/verification/verification-report.md`, '# Report\n');
+  transitionPhase(feat, '6');
+
+  assertThrows(
+    () => transitionPhase(feat, 'complete'),
+    'duplicate findings'
+  );
+}
+
+// ── Convergence: open adversary findings must block completion ──
+{
+  const root = tmpDir();
+  process.chdir(root);
+  const feat = 'open-finding-feature';
+  initFeature(feat, 'strict');
+
+  transitionPhase(feat, '1a');
+  writeFile(root, `.vsdd/features/${feat}/specs/behavioral-spec.md`, '# B\n');
+  transitionPhase(feat, '1b');
+  writeFile(root, `.vsdd/features/${feat}/specs/verification-architecture.md`, '# V\n');
+  transitionPhase(feat, '1c');
+  recordGate(feat, '1c', 'PASS', 'adversary');
+  recordGate(feat, '1c', 'PASS', 'human', { approvedBasedOn: 'adversary' });
+  transitionPhase(feat, '2a');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
+    'new-feature-tests: FAIL\nregression-baseline: PASS\n'
+  );
+  transitionPhase(feat, '2b');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    'target-feature-tests: PASS\nregression-baseline: PASS\n'
+  );
+  transitionPhase(feat, '2c');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    'target-feature-tests: PASS\nregression-baseline: PASS\n'
+  );
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/contracts/sprint-1.md`,
+    [
+      '---',
+      'sprintNumber: 1',
+      'feature: open-finding-feature',
+      'status: approved',
+      'criteria:',
+      '  - id: CRIT-001',
+      '    dimension: spec_fidelity',
+      '    description: All requirements are represented in tests',
+      '    weight: 0.30',
+      '    passThreshold: Every REQ-XXX has at least one test',
+      '---',
+      '',
+      '# Contract',
+      '',
+    ].join('\n')
+  );
+  transitionPhase(feat, '3');
+  recordGate(feat, '3', 'PASS', 'adversary');
+  transitionPhase(feat, '5');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/reviews/sprint-1/output/verdict.json`,
+    JSON.stringify({
+      sprintNumber: 1,
+      feature: feat,
+      overallVerdict: 'PASS',
+      timestamp: new Date().toISOString(),
+      iteration: 2,
+      dimensions: [
+        { name: 'spec_fidelity', verdict: 'PASS', findings: [] },
+      ],
+      convergenceSignals: {
+        findingCount: 0,
+        previousFindingCount: 1,
+        allCriteriaEvaluated: true,
+        duplicateFindings: [],
+      },
+    }, null, 2) + '\n'
+  );
+  writeFile(root, `.vsdd/features/${feat}/verification/verification-report.md`, '# Report\n');
+  traceability.createBead(feat, {
+    type: 'adversary-finding',
+    artifactPath: `.vsdd/features/${feat}/reviews/sprint-1/output/findings/FIND-001.json`,
+    status: 'open',
+    externalId: 'FIND-001',
+  });
+  transitionPhase(feat, '6');
+
+  assertThrows(
+    () => transitionPhase(feat, 'complete'),
+    'Open adversary findings'
+  );
 }
 
 // eslint-disable-next-line no-console

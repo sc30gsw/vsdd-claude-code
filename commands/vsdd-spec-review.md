@@ -10,7 +10,7 @@ Run after `/vsdd-spec` completes Phase 1a and 1b. Requires active feature at pha
 
 ## How
 
-1. **Write review manifest** to `reviews/sprint-1/input/manifest.json`:
+1. **Write spec review manifest** to `reviews/spec/iteration-N/input/manifest.json`:
    ```json
    {
      "reviewType": "spec",
@@ -20,7 +20,7 @@ Run after `/vsdd-spec` completes Phase 1a and 1b. Requires active feature at pha
    ```
 2. **Spawn fresh vsdd-adversary agent** (new context, no Builder history)
 3. **Adversary reads and reviews** spec files only (no source code yet)
-4. **Collect verdict** from `reviews/sprint-1/output/verdict.json`
+4. **Collect verdict** from `reviews/spec/iteration-N/output/verdict.json`
 5. **Record adversary verdict**: `recordGate(feature, '1c', verdict, 'adversary')`
 6. **If PASS in lean mode**: transition to Phase 2a, notify user
 7. **If PASS in strict mode**: require explicit user confirmation, then record human approval:

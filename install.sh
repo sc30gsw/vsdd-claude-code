@@ -84,51 +84,28 @@ echo "Installing VSDD plugin to: ${PLUGIN_DIR}"
 echo "  Installing plugin manifest..."
 [[ "$DRY_RUN" == "false" ]] && cp -r "${SCRIPT_DIR}/.claude-plugin" "${PLUGIN_DIR}/"
 
-# Install based on profile
-case "$PROFILE" in
-  minimal|standard|strict)
-    echo "Installing profile: ${PROFILE}"
-    install_module "rules" "$PLUGIN_DIR"
-    install_module "commands" "$PLUGIN_DIR"
-    if [[ "$PROFILE" == "minimal" ]]; then
-      install_module "scripts/lib" "$PLUGIN_DIR"
-    else
-      install_module "agents" "$PLUGIN_DIR"
-      install_module "skills" "$PLUGIN_DIR"
-      install_module "contexts" "$PLUGIN_DIR"
-      install_module "hooks" "$PLUGIN_DIR"
-      install_module "scripts" "$PLUGIN_DIR"
-    fi
-    ;;
-  *)
-    echo "Error: Unknown profile '${PROFILE}'. Use: minimal, standard, strict"
-    exit 1
-    ;;
-esac
+echo "Installing profile: ${PROFILE}"
 
-# Install language profile if specified
+resolver_args=(
+  "${SCRIPT_DIR}/scripts/install/resolve-install-plan.js"
+  --profile "${PROFILE}"
+  --format paths
+)
+
 if [[ -n "$LANGUAGE" ]]; then
-  case "$LANGUAGE" in
-    rust|python|typescript|go|cpp)
-      echo "Installing language profile: ${LANGUAGE}"
-      if [[ -d "${SCRIPT_DIR}/skills/vsdd-language-${LANGUAGE}" ]]; then
-        install_module "skills/vsdd-language-${LANGUAGE}" "$PLUGIN_DIR"
-      else
-        echo "  Using manifest-backed language profile for: ${LANGUAGE}"
-      fi
-      install_module "manifests/language-profiles.json" "$PLUGIN_DIR"
-      ;;
-    *)
-      echo "Warning: Unknown language '${LANGUAGE}'. Supported: rust, python, typescript, go, cpp"
-      ;;
-  esac
+  echo "Installing language profile: ${LANGUAGE}"
+  resolver_args+=(--language "${LANGUAGE}")
 fi
 
-# Copy schemas and manifests
-install_module "schemas" "$PLUGIN_DIR"
-install_module "manifests" "$PLUGIN_DIR"
-install_module "CLAUDE.md" "$PLUGIN_DIR"
-install_module "AGENTS.md" "$PLUGIN_DIR"
+INSTALL_PATHS=()
+while IFS= read -r install_path; do
+  INSTALL_PATHS+=("$install_path")
+done < <(node "${resolver_args[@]}")
+
+for install_path in "${INSTALL_PATHS[@]}"; do
+  [[ -n "$install_path" ]] || continue
+  install_module "$install_path" "$PLUGIN_DIR"
+done
 
 echo ""
 echo "✅ VSDD Claude Code Plugin installed successfully!"

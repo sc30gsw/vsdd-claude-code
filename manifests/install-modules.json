@@ -23,12 +23,45 @@
       "stability": "stable"
     },
     {
+      "id": "vsdd-schemas",
+      "kind": "schemas",
+      "description": "JSON schemas for VSDD state, grading, findings, contracts, and beads",
+      "paths": ["schemas/"],
+      "targets": ["claude"],
+      "dependencies": [],
+      "defaultInstall": true,
+      "cost": "light",
+      "stability": "stable"
+    },
+    {
+      "id": "vsdd-manifests",
+      "kind": "manifests",
+      "description": "Install and language profile manifests used by the installer and verifier",
+      "paths": ["manifests/"],
+      "targets": ["claude"],
+      "dependencies": [],
+      "defaultInstall": true,
+      "cost": "light",
+      "stability": "stable"
+    },
+    {
+      "id": "vsdd-docs",
+      "kind": "docs",
+      "description": "Methodology and orchestration reference documents shipped with the plugin",
+      "paths": ["CLAUDE.md", "VSDD.md", "AGENTS.md"],
+      "targets": ["claude"],
+      "dependencies": [],
+      "defaultInstall": true,
+      "cost": "light",
+      "stability": "stable"
+    },
+    {
       "id": "vsdd-commands",
       "kind": "commands",
       "description": "12 VSDD slash commands for pipeline control",
       "paths": ["commands/"],
       "targets": ["claude"],
-      "dependencies": ["vsdd-rules", "vsdd-runtime"],
+      "dependencies": ["vsdd-rules", "vsdd-runtime", "vsdd-schemas"],
       "defaultInstall": true,
       "cost": "light",
       "stability": "stable"

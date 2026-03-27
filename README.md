@@ -128,12 +128,16 @@ Language verification skills: `vsdd-language-rust`, `vsdd-language-python`, `vsd
         sprint-{N}.md             # Work contract
         sprint-{N}-review.md      # Adversary feedback on contract
       reviews/
+        spec/
+          iteration-{N}/
+            input/manifest.json   # Spec review manifest (Phase 1c)
+            output/verdict.json
         sprint-{N}/
           input/manifest.json     # Orchestrator writes before review
           output/verdict.json     # Adversary writes after review
       evidence/
-        sprint-{N}-red-phase.log  # Failing test evidence
-        sprint-{N}-green-phase.log
+        sprint-{N}-red-phase.log  # Contains new-feature-tests: FAIL and regression-baseline: PASS
+        sprint-{N}-green-phase.log # Contains target-feature-tests: PASS and regression-baseline: PASS
         sprint-{N}-coverage.json
       verification/
         proof-harnesses/
@@ -265,11 +269,13 @@ Gate prerequisites:
 | 1b | `behavioral-spec.md` exists |
 | 1c | `verification-architecture.md` exists |
 | 2a | Lean: spec review PASS or SKIP. Strict: adversary PASS plus explicit human approval |
-| 2b | Red phase evidence exists, contains failure markers, and was recorded after entering 2a |
-| 2c | Green phase evidence exists, contains pass markers, and was recorded after entering 2b |
-| 3 | Tests pass post-refactor, with green evidence recorded after the latest implementation/refactor phase |
+| 2b | Red phase evidence exists, was recorded after entering 2a, and proves both `new-feature-tests: FAIL` and `regression-baseline: PASS` |
+| 2c | Green phase evidence exists, was recorded after entering 2b, and proves both `target-feature-tests: PASS` and `regression-baseline: PASS` |
+| 3 | Tests pass post-refactor, with green evidence recorded after the latest implementation/refactor phase and carrying both target/regression PASS markers |
 | 5 | Adversary verdict PASS |
 | 6 | Verification report exists and all required proof obligations pass |
+
+Evidence logs use explicit top-of-file markers so hooks can distinguish "new tests failed" from "baseline still green" and "target tests passed" from "regression suite passed".
 
 ---
 

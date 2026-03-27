@@ -69,9 +69,13 @@ Write `specs/verification-architecture.md`:
 
 1. Generate tests for every requirement in behavioral-spec.md
 2. Verify tests fail: `npm test` / `cargo test` / `pytest` - confirm FAILURE
-3. Record red phase evidence: `echo "$(date): Tests failing as expected" > .vsdd/features/<name>/evidence/sprint-N-red-phase.log`
-4. Append test output to log
-5. Verify regression baseline still passes (existing tests green)
+3. Verify the regression baseline still passes (existing tests green)
+4. Record red phase evidence in a structured form:
+   ```text
+   new-feature-tests: FAIL
+   regression-baseline: PASS
+   ```
+5. Append the failing test output after those markers so the gate can prove both conditions
 
 ## Phase 2b: Implementation (Green Phase)
 
@@ -79,7 +83,12 @@ Write `specs/verification-architecture.md`:
 2. Do NOT add features beyond what tests require
 3. Do NOT optimize prematurely
 4. Run tests: all must pass
-5. Record green phase evidence: `echo "$(date): All tests passing" > .vsdd/features/<name>/evidence/sprint-N-green-phase.log`
+5. Record green phase evidence in a structured form:
+   ```text
+   target-feature-tests: PASS
+   regression-baseline: PASS
+   ```
+6. Append the passing test output after those markers
 
 ## Phase 2c: Refactor
 

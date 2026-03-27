@@ -20,11 +20,15 @@ Run after spec review gate (Phase 1c) passes. Requires active feature at phase `
 5. **Run tests** and verify they FAIL:
    ```bash
    npm test 2>&1 | tee .vsdd/features/<name>/evidence/sprint-N-red-phase.log
-   grep -q "FAIL\|ERROR\|failed" sprint-N-red-phase.log
    ```
 6. **Verify regression baseline**: run existing tests separately to confirm they still pass
-7. **Record red phase evidence** in the active sprint
-8. **Display summary**: sprint number, N tests generated, all failing as expected
+7. **Record red phase evidence** in the active sprint with explicit markers at the top of the log:
+   ```text
+   new-feature-tests: FAIL
+   regression-baseline: PASS
+   ```
+8. **Append the raw failing test output** after those markers so the gate can prove both conditions
+9. **Display summary**: sprint number, N tests generated, all failing as expected
 
 ## CRITICAL: Red Phase Validation
 If ANY new test passes before implementation, STOP. The test is invalid (it's testing the wrong thing or the implementation already exists). Fix the test first.

@@ -3,6 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { assertValidDocument } = require('./vsdd-schema');
 
 // ── Constants ──
 const VSDD_DIR = '.vsdd';
@@ -18,6 +19,26 @@ const VALID_PHASES = new Set([
 ]);
 
 const VALID_LANGUAGES = new Set(['rust', 'python', 'typescript', 'go', 'cpp']);
+const RED_EVIDENCE_PATTERNS = [
+  {
+    pattern: /new[-\s]?feature[-\s]?tests:\s*(fail|failed|failing)\b|new tests.*fail|tests failing as expected/i,
+    description: 'new feature tests failing marker',
+  },
+  {
+    pattern: /regression[-\s]?baseline:\s*(pass|passed|passing|green)\b|regression baseline.*pass|regression suite.*pass|existing tests.*pass/i,
+    description: 'regression baseline pass marker',
+  },
+];
+const GREEN_EVIDENCE_PATTERNS = [
+  {
+    pattern: /target[-\s]?feature[-\s]?tests:\s*(pass|passed|passing|green)\b|all tests passing|target feature tests.*pass/i,
+    description: 'target feature pass marker',
+  },
+  {
+    pattern: /regression[-\s]?baseline:\s*(pass|passed|passing|green)\b|regression baseline.*pass|regression suite.*pass|existing tests.*pass/i,
+    description: 'regression baseline pass marker',
+  },
+];
 
 // ── Strict mode: full linear ceremony (PLAN.md) ──
 const STRICT_TRANSITION_MAP = {
@@ -176,9 +197,9 @@ const GATE_PREREQUISITES = {
       return freshness;
     }
 
-    const contentCheck = validateEvidenceLogContent(
+    const contentCheck = validateEvidenceLogMarkers(
       redLog,
-      /fail(?:ed|ing)?|error|not ok\b/i,
+      RED_EVIDENCE_PATTERNS,
       `Red phase evidence (sprint-${sprint}-red-phase.log)`
     );
     if (!contentCheck.ok) {
@@ -207,9 +228,9 @@ const GATE_PREREQUISITES = {
       return freshness;
     }
 
-    const contentCheck = validateEvidenceLogContent(
+    const contentCheck = validateEvidenceLogMarkers(
       greenLog,
-      /passing|passed|ok\b/i,
+      GREEN_EVIDENCE_PATTERNS,
       `Green phase evidence (sprint-${sprint}-green-phase.log)`
     );
     if (!contentCheck.ok) {
@@ -239,13 +260,16 @@ const GATE_PREREQUISITES = {
       return freshness;
     }
 
-    const contentCheck = validateEvidenceLogContent(
+    const contentCheck = validateEvidenceLogMarkers(
       greenLog,
-      /passing|passed|ok\b/i,
+      GREEN_EVIDENCE_PATTERNS,
       `Green phase log (sprint-${sprint}-green-phase.log)`
     );
     if (!contentCheck.ok) {
-      return { ok: false, reason: `Green phase log (sprint-${sprint}-green-phase.log) does not contain a passing marker. Ensure all tests pass before entering phase 3.` };
+      return {
+        ok: false,
+        reason: `Green phase log (sprint-${sprint}-green-phase.log) must prove both target feature tests and the regression baseline passed before entering phase 3.`,
+      };
     }
     if (state.mode === 'strict') {
       return validateApprovedSprintContract(state.featureName, sprint);
@@ -278,6 +302,7 @@ const GATE_PREREQUISITES = {
     }
     return { ok: true };
   },
+  'complete': (state) => validateConvergenceForCompletion(state.featureName, state),
 };
 
 // ── Iteration Limits (safety valve) ──
@@ -404,6 +429,64 @@ function parseMarkdownFrontmatter(content) {
   return frontmatter;
 }
 
+function parseStructuredFrontmatter(content) {
+  const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+  if (!match) return {};
+
+  const result = {};
+  let currentArrayKey = null;
+  let currentArrayItem = null;
+
+  for (const rawLine of match[1].split(/\r?\n/)) {
+    if (!rawLine.trim() || rawLine.trim().startsWith('#')) {
+      continue;
+    }
+
+    const topLevelMatch = rawLine.match(/^([A-Za-z][A-Za-z0-9_-]*):\s*(.*)$/);
+    if (topLevelMatch && !rawLine.startsWith(' ')) {
+      const [, key, rawValue] = topLevelMatch;
+      if (rawValue === '') {
+        result[key] = [];
+        currentArrayKey = key;
+        currentArrayItem = null;
+      } else {
+        result[key] = coerceFrontmatterScalar(rawValue);
+        currentArrayKey = null;
+        currentArrayItem = null;
+      }
+      continue;
+    }
+
+    if (currentArrayKey) {
+      const arrayItemMatch = rawLine.match(/^\s*-\s*([A-Za-z][A-Za-z0-9_-]*):\s*(.*)$/);
+      if (arrayItemMatch) {
+        currentArrayItem = {
+          [arrayItemMatch[1]]: coerceFrontmatterScalar(arrayItemMatch[2]),
+        };
+        result[currentArrayKey].push(currentArrayItem);
+        continue;
+      }
+
+      const nestedMatch = rawLine.match(/^\s+([A-Za-z][A-Za-z0-9_-]*):\s*(.*)$/);
+      if (nestedMatch && currentArrayItem) {
+        currentArrayItem[nestedMatch[1]] = coerceFrontmatterScalar(nestedMatch[2]);
+      }
+    }
+  }
+
+  return result;
+}
+
+function coerceFrontmatterScalar(rawValue) {
+  const trimmed = String(rawValue || '').trim();
+  if (trimmed === '') return '';
+  if (trimmed === 'true') return true;
+  if (trimmed === 'false') return false;
+  if (/^-?\d+$/.test(trimmed)) return Number.parseInt(trimmed, 10);
+  if (/^-?\d+\.\d+$/.test(trimmed)) return Number.parseFloat(trimmed);
+  return trimmed.replace(/^['"]|['"]$/g, '');
+}
+
 function validateApprovedSprintContract(featureName, sprintNumber) {
   const contractPath = getSprintContractPath(featureName, sprintNumber);
   if (!fs.existsSync(contractPath)) {
@@ -411,8 +494,11 @@ function validateApprovedSprintContract(featureName, sprintNumber) {
   }
 
   const content = fs.readFileSync(contractPath, 'utf8');
-  if (!hasSprintCriteria(content)) {
-    return { ok: false, reason: `Sprint contract sprint-${sprintNumber}.md must define at least one CRIT-XXX criterion` };
+  const frontmatterObject = parseStructuredFrontmatter(content);
+  try {
+    assertValidDocument('contract', frontmatterObject, `sprint contract sprint-${sprintNumber}.md`);
+  } catch (error) {
+    return { ok: false, reason: error.message };
   }
 
   const frontmatter = parseMarkdownFrontmatter(content);
@@ -420,7 +506,11 @@ function validateApprovedSprintContract(featureName, sprintNumber) {
     return { ok: false, reason: `Sprint contract sprint-${sprintNumber}.md must have status: approved before Phase 3` };
   }
 
-  return { ok: true, contractPath };
+  if (!hasSprintCriteria(content)) {
+    return { ok: false, reason: `Sprint contract sprint-${sprintNumber}.md must define at least one CRIT-XXX criterion` };
+  }
+
+  return { ok: true, contractPath, frontmatter: frontmatterObject };
 }
 
 function getLatestPhaseTimestamp(state, phase) {
@@ -461,6 +551,19 @@ function validateEvidenceLogContent(filePath, pattern, description) {
   return { ok: true };
 }
 
+function validateEvidenceLogMarkers(filePath, checks, description) {
+  const content = fs.readFileSync(filePath, 'utf8');
+  for (const check of checks) {
+    if (!check.pattern.test(content)) {
+      return {
+        ok: false,
+        reason: `${description} must include a ${check.description}`,
+      };
+    }
+  }
+  return { ok: true };
+}
+
 function validateCriteriaCoverage(featureName, sprintNumber) {
   const contractCheck = validateApprovedSprintContract(featureName, sprintNumber);
   if (!contractCheck.ok) {
@@ -472,12 +575,128 @@ function validateCriteriaCoverage(featureName, sprintNumber) {
     return { ok: false, reason: `Review verdict required for sprint ${sprintNumber}: reviews/sprint-${sprintNumber}/output/verdict.json` };
   }
 
-  const verdict = JSON.parse(fs.readFileSync(verdictPath, 'utf8'));
+  let verdict;
+  try {
+    verdict = JSON.parse(fs.readFileSync(verdictPath, 'utf8'));
+    assertValidDocument('grading', verdict, `review verdict sprint-${sprintNumber}`);
+  } catch (error) {
+    return { ok: false, reason: error.message };
+  }
   if (!verdict.convergenceSignals || verdict.convergenceSignals.allCriteriaEvaluated !== true) {
     return { ok: false, reason: `Sprint ${sprintNumber} verdict must set convergenceSignals.allCriteriaEvaluated=true before Phase 6` };
   }
 
   return { ok: true, verdictPath };
+}
+
+function getSprintVerdictPath(featureName, sprintNumber) {
+  return path.join(getFeaturePath(featureName), 'reviews', `sprint-${sprintNumber}`, 'output', 'verdict.json');
+}
+
+function readSprintVerdict(featureName, sprintNumber) {
+  const verdictPath = getSprintVerdictPath(featureName, sprintNumber);
+  if (!fs.existsSync(verdictPath)) {
+    return {
+      ok: false,
+      reason: `Review verdict required for sprint ${sprintNumber}: reviews/sprint-${sprintNumber}/output/verdict.json`,
+    };
+  }
+
+  try {
+    const verdict = JSON.parse(fs.readFileSync(verdictPath, 'utf8'));
+    assertValidDocument('grading', verdict, `review verdict sprint-${sprintNumber}`);
+    return { ok: true, verdict, verdictPath };
+  } catch (error) {
+    return {
+      ok: false,
+      reason: `Review verdict for sprint ${sprintNumber} is not valid JSON: ${error.message}`,
+    };
+  }
+}
+
+function getFindingFiles(featureName, sprintNumber) {
+  const findingsDir = path.join(getFeaturePath(featureName), 'reviews', `sprint-${sprintNumber}`, 'output', 'findings');
+  if (!fs.existsSync(findingsDir)) {
+    return [];
+  }
+
+  return fs.readdirSync(findingsDir)
+    .filter((name) => name.endsWith('.json'))
+    .map((name) => path.join(findingsDir, name));
+}
+
+function resolveEvidenceFilePath(evidencePath) {
+  if (!evidencePath || typeof evidencePath !== 'string') {
+    return null;
+  }
+
+  return path.isAbsolute(evidencePath)
+    ? evidencePath
+    : path.resolve(process.cwd(), evidencePath);
+}
+
+function validateFindingSpecificity(featureName, sprintNumber) {
+  for (const findingPath of getFindingFiles(featureName, sprintNumber)) {
+    let finding;
+    try {
+      finding = JSON.parse(fs.readFileSync(findingPath, 'utf8'));
+      assertValidDocument('finding', finding, path.relative(process.cwd(), findingPath));
+    } catch (error) {
+      return {
+        ok: false,
+        reason: `Finding file is not valid JSON: ${path.relative(process.cwd(), findingPath)} (${error.message})`,
+      };
+    }
+
+    const evidencePath = resolveEvidenceFilePath(
+      finding && finding.evidence && finding.evidence.filePath
+    );
+    if (!evidencePath || !fs.existsSync(evidencePath)) {
+      return {
+        ok: false,
+        reason: `Finding specificity check failed: evidence.filePath is missing or does not exist in ${path.relative(process.cwd(), findingPath)}`,
+      };
+    }
+  }
+
+  return { ok: true };
+}
+
+function validateConvergenceForCompletion(featureName, state) {
+  if (!state.sprintCount || state.sprintCount < 1) {
+    return { ok: false, reason: 'Cannot complete a feature with no sprint history' };
+  }
+
+  const verdictResult = readSprintVerdict(featureName, state.sprintCount);
+  if (!verdictResult.ok) {
+    return verdictResult;
+  }
+
+  const { verdict } = verdictResult;
+  if (verdict.overallVerdict !== 'PASS') {
+    return { ok: false, reason: 'Latest adversary verdict must be PASS before completion' };
+  }
+
+  const convergenceSignals = verdict.convergenceSignals || {};
+  if ((convergenceSignals.findingCount || 0) !== 0) {
+    return { ok: false, reason: 'Completion requires zero active findings in convergenceSignals.findingCount' };
+  }
+
+  if (Array.isArray(convergenceSignals.duplicateFindings) && convergenceSignals.duplicateFindings.length > 0) {
+    return { ok: false, reason: 'Completion is blocked while duplicate findings remain in convergenceSignals.duplicateFindings' };
+  }
+
+  const openFindingBeads = state.traceability.beads.filter(
+    (bead) => bead.type === 'adversary-finding' && bead.status === 'open'
+  );
+  if (openFindingBeads.length > 0) {
+    return {
+      ok: false,
+      reason: `Open adversary findings remain: ${openFindingBeads.map((bead) => bead.externalId || bead.beadId).join(', ')}`,
+    };
+  }
+
+  return validateFindingSpecificity(featureName, state.sprintCount);
 }
 
 // ── Validation ──
@@ -552,12 +771,14 @@ function readState(featureName) {
   const raw = fs.readFileSync(statePath, 'utf8');
   const state = JSON.parse(raw);
   validateState(state);
+  assertValidDocument('state', state, `state for feature ${featureName}`);
   return state;
 }
 
 function writeState(featureName, state) {
   state.updatedAt = new Date().toISOString();
   validateState(state);
+  assertValidDocument('state', state, `state for feature ${featureName}`);
   atomicWriteJson(getStatePath(featureName), state);
 }
 
@@ -713,11 +934,13 @@ function readIndex() {
   const raw = fs.readFileSync(indexPath, 'utf8');
   const index = JSON.parse(raw);
   validateIndex(index);
+  assertValidDocument('index', index, 'VSDD index');
   return index;
 }
 
 function writeIndex(index) {
   validateIndex(index);
+  assertValidDocument('index', index, 'VSDD index');
   atomicWriteJson(getIndexPath(), index);
   syncActiveFeatureFile(index.activeFeature);
 }

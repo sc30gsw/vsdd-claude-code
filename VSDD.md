@@ -1,0 +1,55 @@
+# VSDD Methodology Overview
+
+VSDD stands for Verified Spec-Driven Development.
+
+It combines four constraints into one workflow:
+
+1. Spec-first: define behavioral requirements before code.
+2. Red-before-green: write failing tests before implementation.
+3. Adversarial review: use a fresh-context reviewer that judges only from artifacts on disk.
+4. Selective formal hardening: require proof only where the feature declares required obligations.
+
+## Phases
+
+1. `1a` Behavioral specification
+2. `1b` Verification architecture
+3. `1c` Spec review gate
+4. `2a` Test generation (Red)
+5. `2b` Implementation (Green)
+6. `2c` Refactor
+7. `3` Adversarial review
+8. `4` Feedback routing
+9. `5` Formal hardening
+10. `6` Convergence
+
+## Modes
+
+- `lean`: fewer mandatory gates, intended for normal product work.
+- `strict`: sprint contracts, stronger review gates, and tighter convergence requirements.
+
+## Required Artifacts
+
+- `specs/behavioral-spec.md`
+- `specs/verification-architecture.md` in strict mode
+- `evidence/sprint-N-red-phase.log` with:
+  - `new-feature-tests: FAIL`
+  - `regression-baseline: PASS`
+- `evidence/sprint-N-green-phase.log` with:
+  - `target-feature-tests: PASS`
+  - `regression-baseline: PASS`
+- `reviews/sprint-N/output/verdict.json`
+- `verification/verification-report.md` when required proof obligations exist
+
+## Completion Rule
+
+A feature is complete only when:
+
+- the latest adversary verdict is `PASS`
+- current convergence finding count is zero
+- no duplicate findings remain
+- no `adversary-finding` bead remains open
+- all required proof obligations are satisfied
+
+## Traceability
+
+Every requirement, test, implementation change, finding, and proof can be linked through the bead graph in `.vsdd/features/<feature>/state.json`.

@@ -11,7 +11,7 @@ Run after Phase 5 (formal hardening) completes. Requires active feature at phase
 ## How
 
 1. **Check finding diminishment**: compare `convergenceSignals.findingCount` across iterations
-   - Converged if: monotonically decreasing OR zero findings
+   - Completion requires the current sprint to reach `findingCount = 0`
 2. **Check finding specificity**: verify all `evidence.filePath` values are real files
    ```bash
    for f in reviews/sprint-*/output/findings/*.json; do
@@ -20,8 +20,9 @@ Run after Phase 5 (formal hardening) completes. Requires active feature at phase
    done
    ```
 3. **Check criteria coverage**: verify `reviews/sprint-N/output/verdict.json` sets `convergenceSignals.allCriteriaEvaluated = true` for all CRIT-XXX from the approved contract
-4. **Check duplicate detection**: compare current findings against resolved FIND-XXX beads
-5. **All 4 dimensions converged?**
+4. **Check duplicate detection**: `convergenceSignals.duplicateFindings` must be empty
+5. **Check open finding beads**: no `adversary-finding` bead may remain in `open` status
+6. **All 4 dimensions converged?**
    - YES: record gate PASS, transition to `complete`, display success summary
    - NO: record failure details, check iteration limit (max 2)
      - Under limit: route back to Phase 3 for re-review

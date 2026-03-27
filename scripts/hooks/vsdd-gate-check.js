@@ -3,6 +3,7 @@
 const path = require('path');
 const { run } = require('./run-with-flags');
 const { getActiveFeature, readState } = require('../lib/vsdd-state');
+const SOURCE_FILE_EXTENSION_RE = /\.(ts|tsx|js|jsx|mjs|cjs|py|rs|go|java|cpp|c|cc|cxx|h|hpp|hh|hxx|rb|swift|kt)$/i;
 
 // Phase-to-allowed-paths mapping
 // Each entry: { phases: string[], pattern: RegExp | (filePath: string) => boolean }
@@ -18,7 +19,7 @@ const WRITE_RESTRICTIONS = [
         norm.includes('/lib/') ||
         norm.includes('/app/') ||
         norm.includes('/core/') ||
-        (norm.match(/\.(ts|js|py|rs|go|java|cpp|c|rb|swift|kt)$/) &&
+        (SOURCE_FILE_EXTENSION_RE.test(norm) &&
          !norm.includes('test') &&
          !norm.includes('spec') &&
          !norm.includes('.vsdd/') &&
@@ -197,7 +198,7 @@ function looksLikePathToken(token) {
     value.includes('/') ||
     value.startsWith('.') ||
     /^(src|lib|app|core|test|tests|__tests__|specs|verification|\.vsdd)(\/|$)/.test(value) ||
-    /\.(ts|js|jsx|tsx|py|rs|go|java|cpp|c|rb|swift|kt|json|md|log)$/i.test(value)
+    /\.(ts|tsx|js|jsx|mjs|cjs|py|rs|go|java|cpp|c|cc|cxx|h|hpp|hh|hxx|rb|swift|kt|json|md|log)$/i.test(value)
   );
 }
 

@@ -19,6 +19,7 @@
     "manifests/",
     "contexts/",
     "CLAUDE.md",
+    "VSDD.md",
     "AGENTS.md",
     "install.sh"
   ],
@@ -37,6 +38,8 @@
     "node": ">=18.0.0"
   },
   "scripts": {
-    "verify:state": "node scripts/verify-vsdd-state.js"
+    "verify:state": "node scripts/verify-vsdd-state.js",
+    "verify:runtime": "node scripts/verify-vsdd-runtime.js",
+    "verify": "node scripts/verify-vsdd-state.js && node scripts/verify-vsdd-runtime.js"
   }
 }
