@@ -104,7 +104,7 @@ vsdd-claude-code/
 ```
 .vsdd/
   index.json                          # Known features + active pointers
-  active-feature.txt                  # Current feature name
+  active-feature.txt                  # Mirror of index.json.activeFeature for tool/tooling compatibility
   history.jsonl                       # Global append-only audit log
   features/
     <feature-name>/
@@ -113,7 +113,7 @@ vsdd-claude-code/
         behavioral-spec.md            # Phase 1a output
         verification-architecture.md  # Phase 1b output
       contracts/
-        sprint-{N}.md                  # Work contract (Builder proposes)
+        sprint-{N}.md                  # Work contract (strict mode: must exist, contain CRIT-XXX, and be approved before Phase 3)
         sprint-{N}-review.md           # Contract review (Adversary feedback)
       reviews/
         sprint-{N}/
@@ -160,7 +160,7 @@ vsdd-claude-code/
 
 **Format**: Markdown with YAML frontmatter containing criteria IDs, dimensions, weights, and pass thresholds.
 
-**Flow**: Builder writes -> Adversary reviews -> negotiation (max 2 rounds) -> human approval before implementation begins for that sprint.
+**Flow**: Builder writes -> Adversary reviews -> negotiation (max 2 rounds) -> human approval before adversarial review for that sprint. Runtime enforcement requires `status: approved` and at least one `CRIT-XXX` criterion before strict-mode Phase 3.
 
 ### 3. Concrete Grading (Binary PASS/FAIL per Dimension)
 
@@ -182,6 +182,7 @@ vsdd-claude-code/
 - Session start/resume: load `.vsdd/index.json` and the active feature's `state.json`, output context summary
 - Stop/submit boundary: persist state updates, append to `history.jsonl`
 - PreCompact: snapshot full state before context compaction
+- Keep `.vsdd/active-feature.txt` synchronized as a compatibility mirror of `.vsdd/index.json.activeFeature`
 
 ### 6. Feedback Loop with Safety Valve
 
@@ -363,7 +364,7 @@ vsdd/<feature>/phase-1a    # Spec crystallization complete
 vsdd/<feature>/phase-1c    # Spec gate passed
 vsdd/<feature>/phase-2a    # Red phase (new tests fail, regression baseline remains green)
 vsdd/<feature>/phase-2b    # Green phase (all tests pass)
-vsdd/<feature>/phase-3-i1  # Adversary review iteration 1
+vsdd/<feature>/phase-3     # Adversary review recorded
 vsdd/<feature>/phase-6     # Convergence achieved
 ```
 
@@ -385,9 +386,9 @@ vsdd/<feature>/phase-6     # Convergence achieved
 1. Read `.vsdd/features/<feature>/state.json`
 2. Check if phase changed since last commit
 3. If changed and worktree is clean enough for atomic staging:
-   - `git add` source, tests, `.vsdd/features/<feature>/`, and evidence together
+   - `git add` only files that belong to the active feature and current phase, plus `.vsdd/index.json`, `.vsdd/history.jsonl`, and `.vsdd/active-feature.txt`
    - Commit with conventional format including bead traceability summary
-   - Tag with `vsdd/<feature>/phase-<id>`
+   - Tag with `vsdd/<feature>/phase-<id>` only if that tag does not already exist
 4. If dirty or staging would be partial: emit a pending-checkpoint record and no-op
 
 **Safety Controls**:
@@ -436,13 +437,13 @@ Gate prerequisites:
 | Phase | Requires |
 |-------|----------|
 | 1b | `behavioral-spec.md` exists |
-| 1c | `verification-architecture.md` exists |
-| 2a | Spec gate passed (adversary PASS on spec review) |
+| 1c | `behavioral-spec.md` exists; `verification-architecture.md` is also required in strict mode |
+| 2a | Spec gate passed (adversary PASS on spec review); entering 2a starts sprint `N` for the implementation cycle |
 | 2b | Red phase evidence (new feature tests fail while regression baseline remains green) |
 | 2c | Green phase evidence (target feature tests and regression suite pass) |
-| 3 | Tests pass post-refactor |
+| 3 | Tests pass post-refactor; in strict mode `contracts/sprint-{N}.md` exists with `status: approved` and at least one `CRIT-XXX` |
 | 5 | Adversary verdict PASS |
-| 6 | Verification report exists and all required proof obligations pass |
+| 6 | Verification report exists, all required proof obligations pass, and strict-mode verdict sets `convergenceSignals.allCriteriaEvaluated = true` |
 
 ### Feedback Routing Table (Phase 4)
 
@@ -460,7 +461,7 @@ Gate prerequisites:
 Four-dimensional convergence signals:
 1. **Finding diminishment**: Monotonically decreasing findings count across iterations
 2. **Finding specificity**: Adversary findings must cite real files/lines (hallucination detection)
-3. **Grading criteria coverage**: All contract criteria evaluated
+3. **Grading criteria coverage**: All contract criteria evaluated; enforced via `verdict.json.convergenceSignals.allCriteriaEvaluated = true`
 4. **Duplicate detection**: No regurgitation of previously-addressed findings
 
 ---
