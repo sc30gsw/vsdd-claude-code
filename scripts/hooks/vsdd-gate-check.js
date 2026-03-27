@@ -60,6 +60,33 @@ const WRITE_RESTRICTIONS = [
       return norm.includes('.vsdd/') && norm.includes('/verification/');
     },
   },
+  {
+    // Red-phase evidence: only writable during phase 2a
+    name: 'red phase evidence',
+    blockedInPhases: new Set(['init', '1a', '1b', '1c', '2b', '2c', '3', '4', '5', '6', 'complete']),
+    matches: (filePath) => {
+      const norm = filePath.replace(/\\/g, '/');
+      return norm.includes('.vsdd/') && /\/evidence\/sprint-\d+-red-phase\.log$/i.test(norm);
+    },
+  },
+  {
+    // Green-phase evidence: only writable during implementation/refactor
+    name: 'green phase evidence',
+    blockedInPhases: new Set(['init', '1a', '1b', '1c', '2a', '3', '4', '5', '6', 'complete']),
+    matches: (filePath) => {
+      const norm = filePath.replace(/\\/g, '/');
+      return norm.includes('.vsdd/') && /\/evidence\/sprint-\d+-green-phase\.log$/i.test(norm);
+    },
+  },
+  {
+    // Coverage evidence: allowed only in implementation/verification phases
+    name: 'coverage evidence',
+    blockedInPhases: new Set(['init', '1a', '1b', '1c', '3', '4', '6', 'complete']),
+    matches: (filePath) => {
+      const norm = filePath.replace(/\\/g, '/');
+      return norm.includes('.vsdd/') && /\/evidence\/sprint-\d+-coverage\.json$/i.test(norm);
+    },
+  },
 ];
 
 // Paths always allowed regardless of phase
@@ -71,7 +98,6 @@ function isAlwaysAllowed(filePath) {
       norm.includes('/index.json') ||
       norm.includes('/history.jsonl') ||
       norm.includes('/active-feature.txt') ||
-      norm.includes('/evidence/') ||
       norm.includes('/reviews/') ||
       norm.includes('/contracts/') ||
       norm.includes('/escalations/')
@@ -85,6 +111,69 @@ function stripQuotes(s) {
     return t.slice(1, -1);
   }
   return t;
+}
+
+function splitCommandSegments(command) {
+  return String(command || '')
+    .split(/(?:&&|\|\||[;|\n])/)
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+}
+
+function tokenizeSegment(segment) {
+  return String(segment || '').match(/"[^"]*"|'[^']*'|[^\s]+/g) || [];
+}
+
+function isReadOnlySegment(segment) {
+  const tokens = tokenizeSegment(segment).map(stripQuotes);
+  if (tokens.length === 0) return true;
+
+  const command = tokens[0];
+  const readOnlyCommands = new Set([
+    'cat', 'grep', 'rg', 'ag', 'sed', 'awk', 'head', 'tail', 'less', 'more',
+    'wc', 'ls', 'find', 'stat', 'file', 'diff', 'cmp', 'comm', 'sort',
+    'uniq', 'cut', 'tr', 'basename', 'dirname', 'realpath', 'readlink',
+    'pwd', 'echo', 'printf', 'which', 'type', 'env',
+  ]);
+
+  if (readOnlyCommands.has(command)) {
+    return !(command === 'sed' && tokens.includes('-i'));
+  }
+
+  if (command === 'git') {
+    const subcommand = tokens[1] || '';
+    return new Set([
+      'status', 'diff', 'show', 'log', 'grep', 'rev-parse', 'ls-files',
+      'blame', 'branch', 'remote', 'tag',
+    ]).has(subcommand);
+  }
+
+  return false;
+}
+
+function looksLikePathToken(token) {
+  const value = stripQuotes(token).replace(/[),:]+$/, '');
+  if (!value || value.startsWith('-') || value === '.' || value === '..') {
+    return false;
+  }
+
+  return (
+    value.includes('/') ||
+    value.startsWith('.') ||
+    /^(src|lib|app|core|test|tests|__tests__|specs|verification|\.vsdd)(\/|$)/.test(value) ||
+    /\.(ts|js|jsx|tsx|py|rs|go|java|cpp|c|rb|swift|kt|json|md|log)$/i.test(value)
+  );
+}
+
+function extractPathTokensFromSegment(segment) {
+  const out = new Set();
+  for (const token of tokenizeSegment(segment)) {
+    const value = stripQuotes(token).replace(/[),:]+$/, '');
+    if (looksLikePathToken(value) && !value.includes('*') && !value.includes('?')) {
+      out.add(value);
+    }
+  }
+  return [...out];
 }
 
 /**
@@ -117,6 +206,14 @@ function extractWriteTargetsFromBash(command) {
       }
     }
   }
+
+  for (const segment of splitCommandSegments(cmd)) {
+    if (isReadOnlySegment(segment)) continue;
+    for (const token of extractPathTokensFromSegment(segment)) {
+      out.add(token);
+    }
+  }
+
   return [...out];
 }
 

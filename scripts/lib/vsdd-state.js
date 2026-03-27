@@ -140,7 +140,18 @@ const GATE_PREREQUISITES = {
   '2a': (state) => {
     const gate = state.gates['1c'];
     if (!gate) return { ok: false, reason: 'Spec review gate (1c) must be completed before phase 2a' };
-    if (gate.verdict === 'PASS' || (state.mode === 'lean' && gate.verdict === 'SKIP')) {
+
+    if (state.mode === 'strict') {
+      if (gate.adversaryVerdict !== 'PASS') {
+        return { ok: false, reason: 'Strict mode requires an adversary PASS for phase 1c before phase 2a' };
+      }
+      if (gate.humanApproved !== true) {
+        return { ok: false, reason: 'Strict mode requires explicit human approval for phase 1c before phase 2a' };
+      }
+      return { ok: true };
+    }
+
+    if (gate.verdict === 'PASS' || gate.verdict === 'SKIP') {
       return { ok: true };
     }
     return { ok: false, reason: 'Spec review gate must PASS (or SKIP in lean mode)' };
@@ -154,6 +165,26 @@ const GATE_PREREQUISITES = {
     if (!fs.existsSync(redLog)) {
       return { ok: false, reason: `Red phase evidence (sprint-${sprint}-red-phase.log) required` };
     }
+
+    const freshness = validateEvidenceLogFreshness(
+      redLog,
+      state,
+      '2a',
+      `Red phase evidence (sprint-${sprint}-red-phase.log)`
+    );
+    if (!freshness.ok) {
+      return freshness;
+    }
+
+    const contentCheck = validateEvidenceLogContent(
+      redLog,
+      /fail(?:ed|ing)?|error|not ok\b/i,
+      `Red phase evidence (sprint-${sprint}-red-phase.log)`
+    );
+    if (!contentCheck.ok) {
+      return contentCheck;
+    }
+
     return { ok: true };
   },
   '2c': (state, featurePath) => {
@@ -165,6 +196,26 @@ const GATE_PREREQUISITES = {
     if (!fs.existsSync(greenLog)) {
       return { ok: false, reason: `Green phase evidence (sprint-${sprint}-green-phase.log) required` };
     }
+
+    const freshness = validateEvidenceLogFreshness(
+      greenLog,
+      state,
+      '2b',
+      `Green phase evidence (sprint-${sprint}-green-phase.log)`
+    );
+    if (!freshness.ok) {
+      return freshness;
+    }
+
+    const contentCheck = validateEvidenceLogContent(
+      greenLog,
+      /passing|passed|ok\b/i,
+      `Green phase evidence (sprint-${sprint}-green-phase.log)`
+    );
+    if (!contentCheck.ok) {
+      return contentCheck;
+    }
+
     return { ok: true };
   },
   '3': (state, featurePath) => {
@@ -176,9 +227,24 @@ const GATE_PREREQUISITES = {
     if (!fs.existsSync(greenLog)) {
       return { ok: false, reason: `Green phase evidence (sprint-${sprint}-green-phase.log) required before adversarial review (phase 3)` };
     }
-    // Verify the log contains a passing marker (not just file existence)
-    const content = fs.readFileSync(greenLog, 'utf8');
-    if (!/passing|passed|ok\b/i.test(content)) {
+
+    const freshnessPhase = state.currentPhase === '2c' ? '2c' : '2b';
+    const freshness = validateEvidenceLogFreshness(
+      greenLog,
+      state,
+      freshnessPhase,
+      `Green phase evidence (sprint-${sprint}-green-phase.log)`
+    );
+    if (!freshness.ok) {
+      return freshness;
+    }
+
+    const contentCheck = validateEvidenceLogContent(
+      greenLog,
+      /passing|passed|ok\b/i,
+      `Green phase log (sprint-${sprint}-green-phase.log)`
+    );
+    if (!contentCheck.ok) {
       return { ok: false, reason: `Green phase log (sprint-${sprint}-green-phase.log) does not contain a passing marker. Ensure all tests pass before entering phase 3.` };
     }
     if (state.mode === 'strict') {
@@ -290,7 +356,34 @@ function getSprintContractPath(featureName, sprintNumber) {
 }
 
 function hasSprintCriteria(content) {
-  return /^###\s+CRIT-\d{3,}\b/m.test(content) || /^criteria:\s*\[/m.test(content);
+  return extractContractCriteriaIds(content).length > 0;
+}
+
+function extractContractCriteriaIds(content) {
+  const ids = new Set();
+
+  for (const match of content.matchAll(/^###\s+(CRIT-\d{3,})\b/mg)) {
+    ids.add(match[1]);
+  }
+
+  const frontmatterMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+  if (frontmatterMatch) {
+    const frontmatter = frontmatterMatch[1];
+
+    for (const match of frontmatter.matchAll(/^\s*-\s*id:\s*(CRIT-\d{3,})\s*$/mg)) {
+      ids.add(match[1]);
+    }
+
+    const inlineCriteriaMatch = frontmatter.match(/^\s*criteria:\s*\[([^\]]+)\]\s*$/m);
+    if (inlineCriteriaMatch) {
+      const inlineIds = inlineCriteriaMatch[1].match(/CRIT-\d{3,}/g) || [];
+      for (const id of inlineIds) {
+        ids.add(id);
+      }
+    }
+  }
+
+  return [...ids];
 }
 
 function parseMarkdownFrontmatter(content) {
@@ -328,6 +421,44 @@ function validateApprovedSprintContract(featureName, sprintNumber) {
   }
 
   return { ok: true, contractPath };
+}
+
+function getLatestPhaseTimestamp(state, phase) {
+  for (let i = state.phaseHistory.length - 1; i >= 0; i -= 1) {
+    const entry = state.phaseHistory[i];
+    if (entry.to === phase && entry.timestamp) {
+      const ts = Date.parse(entry.timestamp);
+      if (!Number.isNaN(ts)) {
+        return ts;
+      }
+    }
+  }
+  return null;
+}
+
+function validateEvidenceLogFreshness(filePath, state, phase, description) {
+  const phaseTimestamp = getLatestPhaseTimestamp(state, phase);
+  if (phaseTimestamp == null) {
+    return { ok: false, reason: `${description} requires a recorded transition into phase ${phase}` };
+  }
+
+  const stats = fs.statSync(filePath);
+  if (stats.mtimeMs < phaseTimestamp) {
+    return {
+      ok: false,
+      reason: `${description} must be recorded after entering phase ${phase}`,
+    };
+  }
+
+  return { ok: true };
+}
+
+function validateEvidenceLogContent(filePath, pattern, description) {
+  const content = fs.readFileSync(filePath, 'utf8');
+  if (!pattern.test(content)) {
+    return { ok: false, reason: `${description} does not contain the required marker` };
+  }
+  return { ok: true };
 }
 
 function validateCriteriaCoverage(featureName, sprintNumber) {
@@ -758,12 +889,29 @@ function initFeature(featureName, mode = 'lean', language = null) {
 
 function recordGate(featureName, phase, verdict, reviewedBy, details) {
   const state = readState(featureName);
-  state.gates[phase] = {
+  const timestamp = new Date().toISOString();
+  const existing = state.gates[phase] || {};
+  const nextGate = {
+    ...existing,
     verdict,
-    timestamp: new Date().toISOString(),
-    reviewedBy: reviewedBy || undefined,
-    details: details || undefined,
+    timestamp,
+    reviewedBy: reviewedBy || existing.reviewedBy,
+    details: details !== undefined ? details : existing.details,
   };
+
+  if (phase === '1c') {
+    if (reviewedBy === 'adversary') {
+      nextGate.adversaryVerdict = verdict;
+      nextGate.adversaryReviewedAt = timestamp;
+    }
+    if (reviewedBy === 'human') {
+      nextGate.humanVerdict = verdict;
+      nextGate.humanApproved = verdict === 'PASS';
+      nextGate.humanApprovedAt = verdict === 'PASS' ? timestamp : undefined;
+    }
+  }
+
+  state.gates[phase] = nextGate;
   writeState(featureName, state);
 
   appendHistory({

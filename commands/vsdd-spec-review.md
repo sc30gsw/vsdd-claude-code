@@ -21,10 +21,11 @@ Run after `/vsdd-spec` completes Phase 1a and 1b. Requires active feature at pha
 2. **Spawn fresh vsdd-adversary agent** (new context, no Builder history)
 3. **Adversary reads and reviews** spec files only (no source code yet)
 4. **Collect verdict** from `reviews/sprint-1/output/verdict.json`
-5. **Record gate**: `recordGate(feature, '1c', verdict, 'adversary')`
-6. **If PASS**: transition to Phase 2a, notify user
-7. **If FAIL**: display findings, check iteration limit (max 3), prompt for revision
-8. **Human approval**: in strict mode, require explicit user confirmation before proceeding to 2a
+5. **Record adversary verdict**: `recordGate(feature, '1c', verdict, 'adversary')`
+6. **If PASS in lean mode**: transition to Phase 2a, notify user
+7. **If PASS in strict mode**: require explicit user confirmation, then record human approval:
+   `recordGate(feature, '1c', 'PASS', 'human', { approvedBasedOn: 'adversary' })`
+8. **If FAIL**: display findings, check iteration limit (max 3), prompt for revision
 
 ## Examples
 

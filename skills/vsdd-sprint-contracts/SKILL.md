@@ -51,21 +51,17 @@ feature: my-feature
 scope: "Core parsing logic with error handling"
 negotiationRound: 0
 status: draft
+criteria:
+  - id: CRIT-001
+    dimension: spec_fidelity
+    description: All REQ-XXX items have corresponding test cases
+    weight: 0.30
+    passThreshold: Every requirement ID (REQ-NNN) in behavioral-spec.md appears in at least one test function name or test docstring
+    beadId: BEAD-001
+  - id: CRIT-002
+    dimension: edge_case_coverage
+    description: Critical edge cases from the spec are tested
+    weight: 0.25
+    passThreshold: Every critical edge case section in behavioral-spec.md has an explicit test
 ---
-
-## Sprint Scope
-
-[Description of what this sprint implements]
-
-## Grading Criteria
-
-### CRIT-001
-- **Dimension**: spec_fidelity
-- **Description**: All REQ-XXX items have corresponding test cases
-- **Weight**: 0.30
-- **Pass Threshold**: Every requirement ID (REQ-NNN) in behavioral-spec.md appears in at least one test function name or test docstring
-- **Bead**: BEAD-001
-
-### CRIT-002
-...
 ```

@@ -50,7 +50,7 @@ The adversary (`vsdd-adversary`) runs on the Opus model and is always spawned as
 Every requirement, test, implementation block, adversary finding, and formal proof is assigned a bead identifier and linked in a directed graph. Any line of code can be traced back to its originating requirement. The full chain is preserved in an append-only `history.jsonl` audit log.
 
 **Gate enforcement via Claude Code hooks**
-The `vsdd-gate-check.js` hook runs on `PreToolUse` for `Write`/`Edit`/`MultiEdit` and for `Bash` when the command appears to redirect or otherwise write into project source or test paths disallowed for the current phase. Gate strictness is controlled by the `VSDD_HOOK_PROFILE` environment variable.
+The `vsdd-gate-check.js` hook runs on `PreToolUse` for `Write`/`Edit`/`MultiEdit` and for `Bash` when the command targets phase-restricted paths. It blocks direct writes, shell redirects, in-place edits, and common path-based mutation commands such as `cp` into restricted areas. Gate strictness is controlled by the `VSDD_HOOK_PROFILE` environment variable.
 
 **Language verification profiles**
 - **Rust** -- Kani (formal verification), proptest (property testing), cargo-fuzz / AFL++ (fuzzing), cargo-mutants (mutation testing)
@@ -149,11 +149,25 @@ Language verification skills: `vsdd-language-rust`, `vsdd-language-python`, `vsd
 ## Quick Start
 
 ```bash
+# Clone the repository
+git clone https://github.com/sc30gsw/vsdd-claude-code.git
+cd vsdd-claude-code
+
 # Install the plugin (standard profile)
 bash install.sh --profile standard
 
 # Optional: add a language profile
 bash install.sh --profile standard --language typescript
+```
+
+Alternative package-manager entrypoints also work:
+
+```bash
+npx vsdd-claude-code --profile standard
+pnpm dlx vsdd-claude-code --profile standard
+yarn dlx vsdd-claude-code --profile standard
+bunx vsdd-claude-code --profile standard
+npx vsdd-claude-code --profile standard --dry-run
 ```
 
 ```
@@ -250,10 +264,10 @@ Gate prerequisites:
 |---|---|
 | 1b | `behavioral-spec.md` exists |
 | 1c | `verification-architecture.md` exists |
-| 2a | Adversary PASS on spec review |
-| 2b | Red phase evidence (new tests fail, regression baseline green) |
-| 2c | Green phase evidence (target tests and regression suite pass) |
-| 3 | Tests pass post-refactor |
+| 2a | Lean: spec review PASS or SKIP. Strict: adversary PASS plus explicit human approval |
+| 2b | Red phase evidence exists, contains failure markers, and was recorded after entering 2a |
+| 2c | Green phase evidence exists, contains pass markers, and was recorded after entering 2b |
+| 3 | Tests pass post-refactor, with green evidence recorded after the latest implementation/refactor phase |
 | 5 | Adversary verdict PASS |
 | 6 | Verification report exists and all required proof obligations pass |
 
@@ -294,6 +308,12 @@ bash install.sh --profile standard
 
 # Strict: same hook bundle as standard; set VSDD_HOOK_PROFILE=strict for the strict hook map (e.g. auto-commit hook enabled)
 bash install.sh --profile strict
+```
+
+Alternative package-manager entrypoint:
+
+```bash
+npx vsdd-claude-code --profile standard
 ```
 
 ### Language Profiles

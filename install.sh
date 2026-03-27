@@ -1,10 +1,22 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+resolve_script_path() {
+  local source="${BASH_SOURCE[0]}"
+  while [[ -h "$source" ]]; do
+    local dir
+    dir="$(cd -P "$(dirname "$source")" && pwd)"
+    source="$(readlink "$source")"
+    [[ "$source" != /* ]] && source="${dir}/${source}"
+  done
+  cd -P "$(dirname "$source")" && pwd
+}
+
 # VSDD Claude Code Plugin Installer
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(resolve_script_path)"
 PLUGIN_NAME="vsdd-claude-code"
 VERSION="1.0.0"
+COMMAND_NAME="$(basename "${0}")"
 
 # Default profile
 PROFILE="${VSDD_INSTALL_PROFILE:-standard}"
@@ -18,7 +30,7 @@ while [[ $# -gt 0 ]]; do
     --language)  LANGUAGE="$2"; shift 2 ;;
     --dry-run)   DRY_RUN=true; shift ;;
     --help|-h)
-      echo "Usage: ./install.sh [--profile minimal|standard|strict] [--language rust|python|typescript|go|cpp] [--dry-run]"
+      echo "Usage: ${COMMAND_NAME} [--profile minimal|standard|strict] [--language rust|python|typescript|go|cpp] [--dry-run]"
       exit 0
       ;;
     *) echo "Unknown argument: $1"; exit 1 ;;

@@ -99,21 +99,18 @@ feature: feature-name
 scope: "What this sprint covers"
 negotiationRound: 0
 status: approved
+criteria:
+  - id: CRIT-001
+    dimension: spec_fidelity
+    description: All REQ-XXX items from behavioral-spec.md have corresponding test cases
+    weight: 0.3
+    passThreshold: Every requirement ID appears in at least one test file
+  - id: CRIT-002
+    dimension: edge_case_coverage
+    description: Edge cases from spec are tested
+    weight: 0.25
+    passThreshold: Every critical edge case in the spec has an explicit test case
 ---
-
-## Grading Criteria
-
-### CRIT-001
-- **Dimension**: spec_fidelity
-- **Description**: All REQ-XXX items from behavioral-spec.md have corresponding test cases
-- **Weight**: 0.3
-- **Pass Threshold**: Every requirement ID appears in at least one test file
-
-### CRIT-002
-- **Dimension**: edge_case_coverage
-- **Description**: Edge cases from spec are tested
-- **Weight**: 0.25
-- **Pass Threshold**: At least 80% of edge cases in spec have explicit test cases
 ```
 
 The strict Phase 3 gate requires this contract to exist, contain `CRIT-XXX` entries, and be human-approved (`status: approved`).

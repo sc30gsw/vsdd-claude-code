@@ -4,7 +4,8 @@
   "description": "Verified Spec-Driven Development workflow plugin for Claude Code",
   "main": "scripts/lib/vsdd-state.js",
   "bin": {
-    "vsdd": "./install.sh"
+    "vsdd": "./install.sh",
+    "vsdd-claude-code": "./install.sh"
   },
   "files": [
     ".claude-plugin/",

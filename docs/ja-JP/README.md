@@ -121,14 +121,25 @@ PreToolUseフックがフェーズ外の `Write`/`Edit` および、リダイレ
 ### インストール
 
 ```bash
+# リポジトリを clone
+git clone https://github.com/sc30gsw/vsdd-claude-code.git
+cd vsdd-claude-code
+
 # standardプロファイルでインストール
 bash install.sh --profile standard
 
 # TypeScript言語プロファイルを追加する場合
 bash install.sh --profile standard --language typescript
+```
 
-# インストール内容を確認するだけ（ファイルは書き込まれない）
-bash install.sh --profile standard --dry-run
+代替として package manager 経由でも実行できる。
+
+```bash
+npx vsdd-claude-code --profile standard
+pnpm dlx vsdd-claude-code --profile standard
+yarn dlx vsdd-claude-code --profile standard
+bunx vsdd-claude-code --profile standard
+npx vsdd-claude-code --profile standard --dry-run
 ```
 
 ### フィーチャーパイプラインの開始
@@ -210,6 +221,23 @@ init -> 1a -> 1b -> 1c -> 2a -> 2b -> 2c -> 3 -> 4 -> [1a|2a|2b|2c|5] -> 5 -> 6 
 
 ### インストールプロファイル
 
+```bash
+# minimal: rules と commands のみ
+bash install.sh --profile minimal
+
+# standard: agents と skills を含むフルワークフロー（推奨）
+bash install.sh --profile standard
+
+# strict: standard に strict hook profile を組み合わせる高保証向け
+bash install.sh --profile strict
+```
+
+代替:
+
+```bash
+npx vsdd-claude-code --profile standard
+```
+
 | プロファイル | 内容 | 適用シーン |
 |------------|------|----------|
 | minimal | rules + commands のみ | 試用、軽量な利用 |
@@ -226,6 +254,12 @@ bash install.sh --profile standard --language python
 bash install.sh --profile standard --language typescript
 bash install.sh --profile standard --language go
 bash install.sh --profile standard --language cpp
+```
+
+代替:
+
+```bash
+npx vsdd-claude-code --profile standard --language typescript
 ```
 
 各言語プロファイルには検証ツールの設定、テストコマンド、カバレッジコマンドがプリセットされている。

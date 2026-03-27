@@ -11,27 +11,28 @@ Run after `/vsdd-tdd` completes Phase 2a with red phase evidence. Requires activ
 ## How
 
 ### Phase 2b (Green)
-1. **Read failing tests**: understand what each test requires
-2. **Invoke vsdd-builder agent** to implement:
+1. **Transition to 2b**
+2. **Read failing tests**: understand what each test requires
+3. **Invoke vsdd-builder agent** to implement:
    - Minimum code to make each failing test pass
    - Follow spec requirements exactly - no extra features
    - Stay within the purity boundary defined in Phase 1b
-3. **Create implementation beads**: one per implemented function, linked to test-case beads
-4. **Run tests** and verify ALL pass:
+4. **Create implementation beads**: one per implemented function, linked to test-case beads
+5. **Run tests** and verify ALL pass:
    ```bash
    npm test 2>&1 | tee .vsdd/features/<name>/evidence/sprint-N-green-phase.log
    grep -q "passing\|PASSED\|ok" sprint-N-green-phase.log
    ```
-5. **Transition to 2b**
 
 ### Phase 2c (Refactor)
-6. **Invoke vsdd-builder agent** to refactor:
+6. **Transition to 2c**
+7. **Invoke vsdd-builder agent** to refactor:
    - Eliminate code duplication
    - Improve naming clarity
    - Extract functions with clear responsibilities
    - Do NOT add features, change behavior, or modify spec
-7. **Verify tests still pass** after each refactor step
-8. **Transition to 2c**
+8. **Verify tests still pass** after each refactor step
+9. **Refresh green evidence** after the final refactor run so Phase 3 sees post-refactor test results
 
 ## Examples
 
