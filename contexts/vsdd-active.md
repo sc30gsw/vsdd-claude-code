@@ -34,7 +34,7 @@ When VSDD is active:
 
 ## State Files
 
-- Active feature: `.vsdd/active-feature.txt`
+- Active feature: `.vsdd/index.json` → `activeFeature` (mirrored to `.vsdd/active-feature.txt`)
 - Pipeline state: `.vsdd/features/<name>/state.json`
 - Feature index: `.vsdd/index.json`
 - Audit log: `.vsdd/history.jsonl`

@@ -98,7 +98,7 @@ sprintNumber: N
 feature: feature-name
 scope: "What this sprint covers"
 negotiationRound: 0
-status: draft
+status: approved
 ---
 
 ## Grading Criteria
@@ -115,6 +115,8 @@ status: draft
 - **Weight**: 0.25
 - **Pass Threshold**: At least 80% of edge cases in spec have explicit test cases
 ```
+
+The strict Phase 3 gate requires this contract to exist, contain `CRIT-XXX` entries, and be human-approved (`status: approved`).
 
 ## Anti-Slop Bias
 

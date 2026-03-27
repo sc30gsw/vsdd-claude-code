@@ -16,14 +16,15 @@ Run after spec review gate (Phase 1c) passes. Requires active feature at phase `
    - Additional tests for each edge case in spec
    - Tests for error conditions and boundary values
 3. **Create test-case beads**: one per test function, linked to corresponding REQ-XXX bead
-4. **Run tests** and verify they FAIL:
+4. **Transition to 2a**: this starts sprint `N` for the current implementation cycle (`transitionPhase(feature, '2a')`)
+5. **Run tests** and verify they FAIL:
    ```bash
    npm test 2>&1 | tee .vsdd/features/<name>/evidence/sprint-N-red-phase.log
    grep -q "FAIL\|ERROR\|failed" sprint-N-red-phase.log
    ```
-5. **Verify regression baseline**: run existing tests separately to confirm they still pass
-6. **Transition to 2a**: record red phase evidence in state
-7. **Display summary**: N tests generated, all failing as expected
+6. **Verify regression baseline**: run existing tests separately to confirm they still pass
+7. **Record red phase evidence** in the active sprint
+8. **Display summary**: sprint number, N tests generated, all failing as expected
 
 ## CRITICAL: Red Phase Validation
 If ANY new test passes before implementation, STOP. The test is invalid (it's testing the wrong thing or the implementation already exists). Fix the test first.

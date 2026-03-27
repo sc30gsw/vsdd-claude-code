@@ -10,8 +10,12 @@ Run after `/vsdd-impl` completes Phases 2b and 2c. Requires active feature at ph
 
 ## How
 
-1. **Increment sprint count** if strict mode
-2. **Write review manifest** to `reviews/sprint-N/input/manifest.json`:
+1. **Resolve sprint number** from `state.json.sprintCount` (created when Phase 2a starts)
+2. **In strict mode, validate contract gate** before review:
+   - `contracts/sprint-N.md` must exist
+   - frontmatter must include `status: approved`
+   - the contract must define at least one `CRIT-XXX` criterion
+3. **Write review manifest** to `reviews/sprint-N/input/manifest.json`:
    ```json
    {
      "featureName": "...",
@@ -25,14 +29,14 @@ Run after `/vsdd-impl` completes Phases 2b and 2c. Requires active feature at ph
      "reviewDimensions": ["spec_fidelity", "edge_case_coverage", "implementation_correctness", "structural_integrity", "verification_readiness"]
    }
    ```
-3. **Create output directories**: `reviews/sprint-N/output/findings/`
-4. **Spawn FRESH vsdd-adversary agent**: this MUST be a new agent with no Builder context
-5. **Collect outputs** after adversary completes:
+4. **Create output directories**: `reviews/sprint-N/output/findings/`
+5. **Spawn FRESH vsdd-adversary agent**: this MUST be a new agent with no Builder context
+6. **Collect outputs** after adversary completes:
    - `reviews/sprint-N/output/verdict.json`
    - `reviews/sprint-N/output/findings/FIND-NNN.json` (one per finding)
-6. **Record gate**: `recordGate(feature, '3', overallVerdict, 'adversary')`
-7. **If PASS**: transition to Phase 5 (strict or lean with required proofs) or Phase 6 (lean with zero required proof obligations), display summary
-8. **If FAIL**: display findings grouped by dimension, proceed to `/vsdd-feedback`
+7. **Record gate**: `recordGate(feature, '3', overallVerdict, 'adversary')`
+8. **If PASS**: transition to Phase 5 (strict or lean with required proofs) or Phase 6 (lean with zero required proof obligations), display summary
+9. **If FAIL**: display findings grouped by dimension, proceed to `/vsdd-feedback`
 
 ## Fresh Context Requirement
 

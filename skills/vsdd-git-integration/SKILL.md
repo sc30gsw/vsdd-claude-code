@@ -47,10 +47,12 @@ vsdd/<feature>/phase-6     # Convergence achieved
 
 Stage all VSDD artifacts atomically:
 ```bash
-git add src/ tests/ .vsdd/features/<name>/ evidence/
+git add -- .vsdd/index.json .vsdd/history.jsonl .vsdd/active-feature.txt .vsdd/features/<name>/ [phase-scoped source/test/spec files]
 git commit -m "vsdd(2b): my-feature - implementation (green phase)"
 git tag vsdd/my-feature/phase-2b
 ```
+
+Only stage files that belong to the active feature and current phase. If unrelated dirty files exist, stop and require a manual review instead of widening the stage set.
 
 ## Auto-Commit Safety Rules
 

@@ -181,6 +181,9 @@ const GATE_PREREQUISITES = {
     if (!/passing|passed|ok\b/i.test(content)) {
       return { ok: false, reason: `Green phase log (sprint-${sprint}-green-phase.log) does not contain a passing marker. Ensure all tests pass before entering phase 3.` };
     }
+    if (state.mode === 'strict') {
+      return validateApprovedSprintContract(state.featureName, sprint);
+    }
     return { ok: true };
   },
   '5': (state) => {
@@ -203,6 +206,9 @@ const GATE_PREREQUISITES = {
     const failedProofs = requiredProofs.filter(p => p.status !== 'proved' && p.status !== 'skipped');
     if (failedProofs.length > 0) {
       return { ok: false, reason: `Required proof obligations not met: ${failedProofs.map(p => p.id).join(', ')}` };
+    }
+    if (state.mode === 'strict' && state.sprintCount > 0) {
+      return validateCriteriaCoverage(state.featureName, state.sprintCount);
     }
     return { ok: true };
   },
@@ -233,6 +239,10 @@ function getIndexPath() {
   return path.join(getVsddRoot(), INDEX_FILE);
 }
 
+function getActiveFeaturePath() {
+  return path.join(getVsddRoot(), ACTIVE_FEATURE_FILE);
+}
+
 function getHistoryPath() {
   return path.join(getVsddRoot(), HISTORY_FILE);
 }
@@ -245,6 +255,98 @@ function atomicWriteJson(filePath, data) {
   const tmp = path.join(dir, `.${path.basename(filePath)}.${crypto.randomBytes(4).toString('hex')}.tmp`);
   fs.writeFileSync(tmp, JSON.stringify(data, null, 2) + '\n', 'utf8');
   fs.renameSync(tmp, filePath);
+}
+
+function atomicWriteText(filePath, content) {
+  const dir = path.dirname(filePath);
+  fs.mkdirSync(dir, { recursive: true });
+  const tmp = path.join(dir, `.${path.basename(filePath)}.${crypto.randomBytes(4).toString('hex')}.tmp`);
+  fs.writeFileSync(tmp, content, 'utf8');
+  fs.renameSync(tmp, filePath);
+}
+
+function syncActiveFeatureFile(featureName) {
+  const activePath = getActiveFeaturePath();
+  if (featureName == null || featureName === '') {
+    if (fs.existsSync(activePath)) {
+      fs.rmSync(activePath, { force: true });
+    }
+    return;
+  }
+  atomicWriteText(activePath, `${featureName}\n`);
+}
+
+function readActiveFeatureFile() {
+  const activePath = getActiveFeaturePath();
+  if (!fs.existsSync(activePath)) {
+    return null;
+  }
+  const value = fs.readFileSync(activePath, 'utf8').trim();
+  return value || null;
+}
+
+function getSprintContractPath(featureName, sprintNumber) {
+  return path.join(getFeaturePath(featureName), 'contracts', `sprint-${sprintNumber}.md`);
+}
+
+function hasSprintCriteria(content) {
+  return /^###\s+CRIT-\d{3,}\b/m.test(content) || /^criteria:\s*\[/m.test(content);
+}
+
+function parseMarkdownFrontmatter(content) {
+  const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+  if (!match) return {};
+
+  const frontmatter = {};
+  for (const rawLine of match[1].split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith('#')) continue;
+    const idx = line.indexOf(':');
+    if (idx === -1) continue;
+    const key = line.slice(0, idx).trim();
+    let value = line.slice(idx + 1).trim();
+    value = value.replace(/^['"]|['"]$/g, '');
+    frontmatter[key] = value;
+  }
+  return frontmatter;
+}
+
+function validateApprovedSprintContract(featureName, sprintNumber) {
+  const contractPath = getSprintContractPath(featureName, sprintNumber);
+  if (!fs.existsSync(contractPath)) {
+    return { ok: false, reason: `Approved sprint contract required: contracts/sprint-${sprintNumber}.md` };
+  }
+
+  const content = fs.readFileSync(contractPath, 'utf8');
+  if (!hasSprintCriteria(content)) {
+    return { ok: false, reason: `Sprint contract sprint-${sprintNumber}.md must define at least one CRIT-XXX criterion` };
+  }
+
+  const frontmatter = parseMarkdownFrontmatter(content);
+  if ((frontmatter.status || '').toLowerCase() !== 'approved') {
+    return { ok: false, reason: `Sprint contract sprint-${sprintNumber}.md must have status: approved before Phase 3` };
+  }
+
+  return { ok: true, contractPath };
+}
+
+function validateCriteriaCoverage(featureName, sprintNumber) {
+  const contractCheck = validateApprovedSprintContract(featureName, sprintNumber);
+  if (!contractCheck.ok) {
+    return contractCheck;
+  }
+
+  const verdictPath = path.join(getFeaturePath(featureName), 'reviews', `sprint-${sprintNumber}`, 'output', 'verdict.json');
+  if (!fs.existsSync(verdictPath)) {
+    return { ok: false, reason: `Review verdict required for sprint ${sprintNumber}: reviews/sprint-${sprintNumber}/output/verdict.json` };
+  }
+
+  const verdict = JSON.parse(fs.readFileSync(verdictPath, 'utf8'));
+  if (!verdict.convergenceSignals || verdict.convergenceSignals.allCriteriaEvaluated !== true) {
+    return { ok: false, reason: `Sprint ${sprintNumber} verdict must set convergenceSignals.allCriteriaEvaluated=true before Phase 6` };
+  }
+
+  return { ok: true, verdictPath };
 }
 
 // ── Validation ──
@@ -333,6 +435,15 @@ function deleteState(featureName) {
   if (fs.existsSync(featurePath)) {
     fs.rmSync(featurePath, { recursive: true, force: true });
   }
+  try {
+    const index = readIndex();
+    if (index.activeFeature === featureName) {
+      index.activeFeature = null;
+      writeIndex(index);
+    }
+  } catch (_e) {
+    syncActiveFeatureFile(null);
+  }
 }
 
 // ── Phase Transitions ──
@@ -356,6 +467,7 @@ function validateTransition(state, targetPhase) {
 function transitionPhase(featureName, targetPhase, reason) {
   const state = readState(featureName);
   const current = state.currentPhase;
+  let startedSprint = false;
 
   // 1. Check transition legality (mode-aware)
   const transResult = validateTransition(state, targetPhase);
@@ -407,6 +519,11 @@ function transitionPhase(featureName, targetPhase, reason) {
     );
   }
 
+  if (targetPhase === '2a' && (current === '1c' || current === '4')) {
+    state.sprintCount += 1;
+    startedSprint = true;
+  }
+
   // 5. Apply transition
   state.currentPhase = targetPhase;
   state.iterations[targetPhase] = iterCount;
@@ -441,6 +558,15 @@ function transitionPhase(featureName, targetPhase, reason) {
     phase: targetPhase,
   });
 
+  if (startedSprint) {
+    appendHistory({
+      event: 'sprint_started',
+      featureName,
+      sprintNumber: state.sprintCount,
+      phase: targetPhase,
+    });
+  }
+
   return state;
 }
 
@@ -449,7 +575,7 @@ function transitionPhase(featureName, targetPhase, reason) {
 function readIndex() {
   const indexPath = getIndexPath();
   if (!fs.existsSync(indexPath)) {
-    const defaultIndex = { version: 1, features: {}, activeFeature: null };
+    const defaultIndex = { version: 1, features: {}, activeFeature: readActiveFeatureFile() };
     atomicWriteJson(indexPath, defaultIndex);
     return defaultIndex;
   }
@@ -462,11 +588,12 @@ function readIndex() {
 function writeIndex(index) {
   validateIndex(index);
   atomicWriteJson(getIndexPath(), index);
+  syncActiveFeatureFile(index.activeFeature);
 }
 
 function getActiveFeature() {
   const index = readIndex();
-  return index.activeFeature;
+  return index.activeFeature || readActiveFeatureFile();
 }
 
 /**
@@ -684,7 +811,9 @@ module.exports = {
   getFeaturePath,
   getStatePath,
   getIndexPath,
+  getActiveFeaturePath,
   getHistoryPath,
+  getSprintContractPath,
 
   // State CRUD
   readState,
@@ -701,6 +830,8 @@ module.exports = {
   getActiveFeature,
   getLanguageForFeature,
   setActiveFeature,
+  readActiveFeatureFile,
+  syncActiveFeatureFile,
 
   // History
   appendHistory,
@@ -716,4 +847,6 @@ module.exports = {
 
   // Sprint management
   startSprint,
+  validateApprovedSprintContract,
+  validateCriteriaCoverage,
 };

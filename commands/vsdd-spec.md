@@ -10,7 +10,7 @@ Run immediately after `/vsdd-init`. Requires active feature at phase `init` or `
 
 ## How
 
-1. **Check active feature**: read `.vsdd/active-feature.txt`
+1. **Check active feature**: read `.vsdd/index.json.activeFeature` (mirrored to `.vsdd/active-feature.txt`)
 2. **Check current phase**: must be `init`, `1a`, or `1b`
 3. **Invoke vsdd-builder agent** for Phase 1a:
    - Write `specs/behavioral-spec.md` with EARS requirements

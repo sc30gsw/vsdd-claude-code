@@ -60,7 +60,7 @@ The `vsdd-gate-check.js` hook runs on `PreToolUse` for `Write`/`Edit`/`MultiEdit
 - **C/C++** -- CBMC (formal verification), AFL++ / libFuzzer (fuzzing), mull (mutation testing)
 
 **Git integration with phase-tagged commits**
-The `/vsdd-commit` command generates conventional commit messages that include phase identifiers, bead traceability summaries, and artifact manifests. Optional auto-commit (disabled by default) tags each completed phase as `vsdd/<feature>/phase-<id>`.
+The `/vsdd-commit` command generates conventional commit messages that include phase identifiers, bead traceability summaries, and artifact manifests. Optional auto-commit (disabled by default) only stages files that belong to the active feature and current phase, and creates `vsdd/<feature>/phase-<id>` tags without overwriting existing tags.
 
 ---
 
@@ -116,7 +116,7 @@ Language verification skills: `vsdd-language-rust`, `vsdd-language-python`, `vsd
 ```
 .vsdd/
   index.json                      # Known features and active pointers
-  active-feature.txt              # Current feature name
+  active-feature.txt              # Mirror of index.json.activeFeature for tool compatibility
   history.jsonl                   # Global append-only audit log
   features/
     <feature-name>/
@@ -170,6 +170,7 @@ bash install.sh --profile standard --language typescript
 
 # Phase 2a: Generate failing tests (Red phase)
 /vsdd-tdd
+# Transitioning to 2a starts sprint 1 for this implementation cycle
 
 # Phase 2b + 2c: Implement to green, then refactor
 /vsdd-impl
@@ -390,6 +391,7 @@ export VSDD_AUTO_COMMIT=true
 ```
 
 Without this flag, auto-commit is a no-op regardless of the hook profile. The manual `/vsdd-commit` command is the default path.
+Even with the flag enabled, auto-commit skips when dirty files fall outside the active feature's current phase scope.
 
 ---
 

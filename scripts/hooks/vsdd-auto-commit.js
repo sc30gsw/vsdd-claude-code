@@ -2,9 +2,71 @@
 
 const { run } = require('./run-with-flags');
 const { getActiveFeature, readState, appendHistory, getVsddRoot } = require('../lib/vsdd-state');
-const { execSync } = require('child_process');
+const { execSync, execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+
+function toPosix(filePath) {
+  return String(filePath || '').replace(/\\/g, '/');
+}
+
+function parsePorcelainPath(line) {
+  const raw = toPosix(line).slice(3).trim();
+  if (!raw) return null;
+  const renamed = raw.split(' -> ');
+  return renamed[renamed.length - 1];
+}
+
+function phaseArtifactHints(state, activeFeature, vsddRelative) {
+  const sprint = state.sprintCount || 1;
+  const featureRoot = toPosix(path.join(vsddRelative, 'features', activeFeature));
+  const hints = new Set([
+    `${featureRoot}/`,
+    `${vsddRelative}/index.json`,
+    `${vsddRelative}/history.jsonl`,
+    `${vsddRelative}/active-feature.txt`,
+  ]);
+
+  const byPhase = {
+    '1a': ['specs/behavioral-spec.md'],
+    '1b': ['specs/verification-architecture.md'],
+    '2a': [
+      `contracts/sprint-${sprint}.md`,
+      `evidence/sprint-${sprint}-red-phase.log`,
+      `evidence/sprint-${sprint}-coverage.json`,
+    ],
+    '2b': [`evidence/sprint-${sprint}-green-phase.log`],
+    '2c': [`evidence/sprint-${sprint}-green-phase.log`],
+    '3': [
+      `contracts/sprint-${sprint}.md`,
+      `reviews/sprint-${sprint}/input/`,
+      `reviews/sprint-${sprint}/output/`,
+    ],
+    '5': ['verification/'],
+    '6': [
+      `reviews/sprint-${sprint}/output/`,
+      'verification/verification-report.md',
+    ],
+    complete: ['verification/verification-report.md'],
+  };
+
+  for (const rel of byPhase[state.currentPhase] || []) {
+    hints.add(`${featureRoot}/${rel}`);
+  }
+
+  for (const bead of state.traceability.beads || []) {
+    if (bead.createdInPhase !== state.currentPhase) continue;
+    if (!bead.artifactPath) continue;
+    hints.add(toPosix(bead.artifactPath));
+  }
+
+  return [...hints];
+}
+
+function matchesHint(filePath, hints) {
+  const normalized = toPosix(filePath);
+  return hints.some(hint => normalized === hint || normalized.startsWith(hint));
+}
 
 run('vsdd-auto-commit', async (payload) => {
   // Auto-commit is disabled by default - must opt in explicitly
@@ -45,17 +107,29 @@ run('vsdd-auto-commit', async (payload) => {
 
     const dirtyFiles = status.trim().split('\n').filter(Boolean);
     const vsddRelative = vsddRoot.replace(process.cwd() + '/', '');
-    const unrelatedDirty = dirtyFiles.filter(line => {
-      const file = line.slice(3);
-      return !file.startsWith(vsddRelative) && !file.match(/^(src|tests?|lib)\//);
-    });
+    const hints = phaseArtifactHints(state, activeFeature, vsddRelative);
+    const parsedDirtyFiles = dirtyFiles.map(parsePorcelainPath).filter(Boolean);
+    const codeScope = /^(src|tests?|lib|app|core)\//;
+    const stageableDirty = parsedDirtyFiles.filter(file => matchesHint(file, hints));
+    const ambiguousCodeDirty = parsedDirtyFiles.filter(file => codeScope.test(file) && !matchesHint(file, hints));
+    const unrelatedDirty = parsedDirtyFiles.filter(file => !codeScope.test(file) && !matchesHint(file, hints));
 
-    if (unrelatedDirty.length > 0) {
-      // Dirty worktree with unrelated changes - emit pending checkpoint, no-op
+    if (ambiguousCodeDirty.length > 0 || unrelatedDirty.length > 0) {
+      // Dirty worktree with files outside the current feature/phase scope - emit pending checkpoint, no-op
       appendHistory({
         event: 'auto_commit_skipped',
         featureName: activeFeature,
-        reason: 'unrelated dirty changes in worktree',
+        reason: 'dirty changes outside current VSDD artifact scope',
+        phase: state.currentPhase,
+      });
+      return { blocked: false };
+    }
+
+    if (stageableDirty.length === 0) {
+      appendHistory({
+        event: 'auto_commit_skipped',
+        featureName: activeFeature,
+        reason: 'no dirty files matched current VSDD artifact scope',
         phase: state.currentPhase,
       });
       return { blocked: false };
@@ -91,14 +165,28 @@ run('vsdd-auto-commit', async (payload) => {
 
     // Git add + commit + tag
     try {
-      execSync(`git add -A ${vsddRelative} src/ tests/ lib/ 2>/dev/null || git add -A ${vsddRelative}`, {
-        cwd: process.cwd(), encoding: 'utf8',
+      execFileSync('git', ['add', '--', ...stageableDirty], {
+        cwd: process.cwd(),
+        encoding: 'utf8',
       });
       execSync(`git commit -m "${commitMsg.replace(/"/g, '\\"')}"`, {
         cwd: process.cwd(), encoding: 'utf8',
       });
       const tag = `vsdd/${activeFeature}/phase-${state.currentPhase}`;
-      execSync(`git tag -f "${tag}"`, { cwd: process.cwd(), encoding: 'utf8' });
+      let tagExists = false;
+      try {
+        execFileSync('git', ['rev-parse', '-q', '--verify', `refs/tags/${tag}`], {
+          cwd: process.cwd(),
+          encoding: 'utf8',
+          stdio: 'pipe',
+        });
+        tagExists = true;
+      } catch (_e) {
+        tagExists = false;
+      }
+      if (!tagExists) {
+        execFileSync('git', ['tag', tag], { cwd: process.cwd(), encoding: 'utf8' });
+      }
 
       // Record the committed phase
       fs.writeFileSync(lastCommitPhaseFile, state.currentPhase, 'utf8');

@@ -33,10 +33,11 @@ Run at any phase completion milestone to preserve the pipeline state in git. Wor
    ```
 4. **Stage atomically**:
    ```bash
-   git add src/ tests/ .vsdd/features/my-feature/ evidence/
+   git add -- .vsdd/index.json .vsdd/history.jsonl .vsdd/active-feature.txt .vsdd/features/my-feature/ [phase-scoped source/test/spec files]
    ```
+   Limit staging to files that belong to the active feature and current phase. If other dirty files exist, stop and ask for a manual commit instead of widening the scope.
 5. **Commit** with generated message
-6. **Create phase tag**: `git tag vsdd/my-feature/phase-2b`
+6. **Create phase tag**: `git tag vsdd/my-feature/phase-2b` (do not overwrite an existing tag)
 7. **Record last-commit-phase** for auto-commit deduplication
 
 ## Auto-Commit vs Manual

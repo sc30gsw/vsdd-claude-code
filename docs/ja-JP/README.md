@@ -87,7 +87,7 @@ PreToolUseフックがフェーズ外の `Write`/`Edit` および、リダイレ
 
 ### フェーズタグ付きGit統合
 
-フェーズ完了時に自動的にコミットを作成し、フェーズ識別子をコミットメッセージに付与する。パイプラインの進行履歴がそのままgitログとして残る。
+`/vsdd-commit` はフェーズ識別子、ビード要約、成果物マニフェストを含むコミットメッセージを生成する。オプションの自動コミットは、アクティブな feature と現在 phase に属するファイルだけをステージし、既存タグを上書きせずに `vsdd/<feature>/phase-<id>` タグを作成する。
 
 ---
 
@@ -140,20 +140,33 @@ bash install.sh --profile standard --dry-run
 # フェーズ1a: 行動仕様の記述
 /vsdd-spec
 
+# フェーズ1c: 仕様レビューゲート
+/vsdd-spec-review
+
 # フェーズ2a: 失敗するテストの生成（Red）
 /vsdd-tdd
+# 2a への遷移時に、この実装サイクル用の sprint 1 が開始される
 
-# フェーズ2b: 実装（Green）
+# フェーズ2b + 2c: 実装して Green にし、その後リファクタ
 /vsdd-impl
 
 # フェーズ3: 敵対的レビュー（新鮮なコンテキストのopusエージェントが審査）
 /vsdd-adversary
 
+# フェーズ4: FAIL 時は指摘をルーティング
+/vsdd-feedback
+
+# フェーズ5: 必要な証明義務があれば形式検証
+/vsdd-harden
+
+# フェーズ6: 4次元収束を確認
+/vsdd-converge
+
 # パイプラインの現在状態を確認
 /vsdd-status
 
 # トレーサビリティチェーンを表示
-/vsdd-trace
+/vsdd-trace REQ-001
 ```
 
 ---
@@ -297,6 +310,8 @@ REQ-001 [spec-requirement] active
 
 strictプロファイルで自動コミットを有効にするには、環境変数 `VSDD_AUTO_COMMIT=true` を設定する。
 
+このフラグを有効にしても、現在の feature / phase に属さない dirty file がある場合、自動コミットはスキップされる。通常運用では手動の `/vsdd-commit` が既定経路である。
+
 ---
 
 ## ランタイム状態ディレクトリ構造
@@ -305,27 +320,37 @@ VSDDは `.vsdd/` ディレクトリ配下にすべてのランタイム状態を
 
 ```
 .vsdd/
+  index.json              # 全フィーチャーのインデックス（activeFeature が canonical）
+  active-feature.txt      # index.json.activeFeature のミラー
+  history.jsonl           # 監査ログ
   features/
     <feature-name>/
       state.json          # パイプライン状態（フェーズ、モード、フラグ）
-      beads/              # Chainlinkビードのストア
-        bead-001.json
-        bead-002.json
       specs/
-        behavioral-spec.md    # フェーズ1aで生成
-        verification-arch.md  # フェーズ1bで生成
-      tests/                  # フェーズ2aで生成
+        behavioral-spec.md        # フェーズ1aで生成
+        verification-architecture.md
+      contracts/
+        sprint-{N}.md
+        sprint-{N}-review.md
       reviews/
-        sprint-1/
+        sprint-{N}/
           input/
             manifest.json     # orchestratorがadversaryに渡すマニフェスト
           output/
             findings/
-              finding-001.json
+              FIND-NNN.json
             verdict.json      # adversaryが出力したPASS/FAILバイナリ判定
+      evidence/
+        sprint-{N}-red-phase.log
+        sprint-{N}-green-phase.log
+        sprint-{N}-coverage.json
       verification/
         proof-harnesses/      # フェーズ5で生成
-  index.json              # 全フィーチャーのインデックス
+        fuzz-results/
+        mutation-results/
+        verification-report.md
+      escalations/
+        escalation-{timestamp}.md
 ```
 
 ---
