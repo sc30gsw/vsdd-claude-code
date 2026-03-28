@@ -205,6 +205,7 @@ npx vsdd-claude-code --profile standard --dry-run
 
 # Strict mode only: adversary reviews the sprint contract before phase 3
 /vsdd-contract-review
+# After PASS, changing anything except `status:` requires rerunning contract review
 
 # Phase 3: Adversarial review -- fresh opus agent, binary verdict
 /vsdd-adversary
@@ -286,9 +287,9 @@ Gate prerequisites:
 | 2a | Lean: spec review PASS. Strict: adversary PASS plus explicit human approval |
 | 2b | Red phase evidence exists, was recorded after entering 2a, and proves both `new-feature-tests: FAIL` and `regression-baseline: PASS` |
 | 2c | Green phase evidence exists, was recorded after entering 2b, and proves both `target-feature-tests: PASS` and `regression-baseline: PASS` |
-| 3 | Tests pass post-refactor, with green evidence recorded after the latest implementation/refactor phase and carrying both target/regression PASS markers. Strict mode also requires `contracts/sprint-{N}.md` with `status: approved`, at least one `CRIT-XXX`, and `reviews/contracts/sprint-{N}/output/verdict.json` with `overallVerdict: PASS` |
+| 3 | Tests pass post-refactor, with green evidence recorded after the latest implementation/refactor phase and carrying both target/regression PASS markers. Strict mode also requires `contracts/sprint-{N}.md` with `status: approved`, at least one `CRIT-XXX`, and `reviews/contracts/sprint-{N}/output/verdict.json` with `overallVerdict: PASS`, matching `reviewContext.contractPath`, matching `reviewContext.contractDigest`, and `iteration = negotiationRound + 1` |
 | 5 | Adversary verdict PASS |
-| 6 | Verification report exists and all required proof obligations pass |
+| 6 | Verification report exists and all required proof obligations pass. Strict mode also requires `convergenceSignals.allCriteriaEvaluated = true` plus an exact `convergenceSignals.evaluatedCriteria` match against the approved contract's `CRIT-XXX` set |
 
 Evidence logs use explicit top-of-file markers so hooks can distinguish "new tests failed" from "baseline still green" and "target tests passed" from "regression suite passed".
 
@@ -299,7 +300,7 @@ Evidence logs use explicit top-of-file markers so hooks can distinguish "new tes
 | Capability | strict | lean |
 |---|---|---|
 | Sprint contracts | Required per sprint | Required for risky work only |
-| Sprint contract review | Required before Phase 3 | Optional when a sprint contract exists |
+| Sprint contract review | Required before Phase 3; verdict is bound to the approved contract snapshot | Optional when a sprint contract exists |
 | Adversary review rounds | Multiple | Single |
 | Human approval at spec gate | Required | Not required |
 | Proof obligations | Required obligations are enforced | Selective; often zero are marked required |

@@ -283,6 +283,16 @@ function validateGradingSemantics(value, errors) {
       errors.push(`${prefix}.findings must include at least one finding when verdict is FAIL`);
     }
   });
+
+  const reviewContext = value.reviewContext;
+  if (reviewContext && reviewContext.reviewType === 'contract') {
+    if (!reviewContext.contractPath) {
+      errors.push('$.reviewContext.contractPath is required when reviewType is contract');
+    }
+    if (!reviewContext.contractDigest) {
+      errors.push('$.reviewContext.contractDigest is required when reviewType is contract');
+    }
+  }
 }
 
 function validateFindingSemantics(value, errors) {

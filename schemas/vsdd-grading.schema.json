@@ -39,6 +39,15 @@
     "overallVerdict": { "type": "string", "enum": ["PASS", "FAIL"] },
     "timestamp": { "type": "string" },
     "iteration": { "type": "integer", "minimum": 1 },
+    "reviewContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "reviewType": { "type": "string", "enum": ["spec", "contract", "implementation", "verification"] },
+        "contractPath": { "type": "string", "minLength": 1 },
+        "contractDigest": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    },
     "convergenceSignals": {
       "type": "object",
       "additionalProperties": false,
@@ -46,7 +55,12 @@
         "findingCount": { "type": "integer", "minimum": 0 },
         "previousFindingCount": { "type": "integer", "minimum": 0 },
         "allCriteriaEvaluated": { "type": "boolean" },
-        "duplicateFindings": { "type": "array", "items": { "type": "string" } }
+        "duplicateFindings": { "type": "array", "items": { "type": "string" } },
+        "evaluatedCriteria": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^CRIT-\\d{3,}$" }
+        }
       }
     }
   }

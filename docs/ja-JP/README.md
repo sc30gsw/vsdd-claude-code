@@ -163,6 +163,7 @@ npx vsdd-claude-code --profile standard --dry-run
 
 # strict モードのみ: sprint contract を adversary がレビュー
 /vsdd-contract-review
+# PASS 後に status 以外を変更した場合は再レビューが必要
 
 # フェーズ3: 敵対的レビュー（新鮮なコンテキストのopusエージェントが審査）
 /vsdd-adversary
@@ -197,6 +198,11 @@ init -> 1a -> 1b -> 1c -> 2a -> 2b -> 2c -> 3 -> 4 -> [1a|2a|2b|2c|5] -> 5 -> 6 
 
 フェーズ4（フィードバック統合）では、adversaryの指摘内容に応じて適切なフェーズへルーティングされる。
 
+strict モードでは追加で以下を強制する。
+
+- フェーズ3前: `contracts/sprint-{N}.md` は `status: approved` で、contract review verdict の `reviewContext.contractPath` と `reviewContext.contractDigest` が現在の契約に一致している必要がある
+- フェーズ6前: `convergenceSignals.allCriteriaEvaluated = true` に加えて、`convergenceSignals.evaluatedCriteria` が承認済み contract の `CRIT-XXX` 集合と完全一致している必要がある
+
 | 指摘の種類 | ルーティング先 |
 |-----------|--------------|
 | 仕様の曖昧さ | フェーズ1a |
@@ -215,7 +221,7 @@ init -> 1a -> 1b -> 1c -> 2a -> 2b -> 2c -> 3 -> 4 -> [1a|2a|2b|2c|5] -> 5 -> 6 
 |------|------------|----------|
 | 対象用途 | 高保証作業、安全要件のある実装 | プロダクト開発、試作、通常のフィーチャー開発 |
 | スプリント契約 | 全スプリントで必須 | リスクの高い作業のみ |
-| スプリント契約レビュー | フェーズ3前に必須 | 契約を使う場合のみ任意 |
+| スプリント契約レビュー | フェーズ3前に必須。判定は承認済み契約スナップショットに束縛される | 契約を使う場合のみ任意 |
 | adversaryレビュー | 複数ラウンド | 1ラウンド |
 | 仕様レビュー時の人手承認 | 必須 | 不要 |
 | 証明義務 | required な義務を強制 | 選択的。required が 0 件でもよい |

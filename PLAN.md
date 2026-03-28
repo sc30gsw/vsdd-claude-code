@@ -178,7 +178,7 @@ A fresh `vsdd-adversary` agent is spawned that reads ONLY from disk. The adversa
 
 **Format**: Markdown with YAML frontmatter containing criteria IDs, dimensions, weights, and pass thresholds.
 
-**Flow**: Builder writes -> `/vsdd-contract-review` spawns the Adversary against `reviews/contracts/sprint-{N}/` -> negotiation (max 2 rounds) -> human approval before adversarial review for that sprint. Runtime enforcement requires `status: approved`, at least one `CRIT-XXX` criterion, and a contract-review PASS verdict before strict-mode Phase 3.
+**Flow**: Builder writes -> `/vsdd-contract-review` spawns the Adversary against `reviews/contracts/sprint-{N}/` -> negotiation (max 2 rounds, mechanically enforced) -> human approval before adversarial review for that sprint. Runtime enforcement requires `status: approved`, at least one `CRIT-XXX` criterion, and a contract-review PASS verdict whose `reviewContext.contractPath` and `reviewContext.contractDigest` still match the approved contract before strict-mode Phase 3. After PASS, only the contract `status` field may change without rerunning review.
 
 ### 3. Concrete Grading (Binary PASS/FAIL per Dimension)
 
@@ -459,9 +459,9 @@ Gate prerequisites:
 | 2a | Lean: adversary PASS on spec review. Strict: adversary PASS plus explicit human approval. Entering 2a starts sprint `N` for the implementation cycle |
 | 2b | Red phase evidence (new feature tests fail while regression baseline remains green) |
 | 2c | Green phase evidence (target feature tests and regression suite pass) |
-| 3 | Tests pass post-refactor; in strict mode `contracts/sprint-{N}.md` exists with `status: approved`, contains at least one `CRIT-XXX`, and `reviews/contracts/sprint-{N}/output/verdict.json` has `overallVerdict: PASS` |
+| 3 | Tests pass post-refactor; in strict mode `contracts/sprint-{N}.md` exists with `status: approved`, contains at least one `CRIT-XXX`, and `reviews/contracts/sprint-{N}/output/verdict.json` has `overallVerdict: PASS`, matching `reviewContext.contractPath`, matching `reviewContext.contractDigest`, and `iteration = negotiationRound + 1` |
 | 5 | Adversary verdict PASS |
-| 6 | Verification report exists, all required proof obligations pass, and strict-mode verdict sets `convergenceSignals.allCriteriaEvaluated = true` |
+| 6 | Verification report exists, all required proof obligations pass, and strict-mode verdict sets `convergenceSignals.allCriteriaEvaluated = true` with `convergenceSignals.evaluatedCriteria` exactly matching the approved contract's `CRIT-XXX` set |
 
 ### Feedback Routing Table (Phase 4)
 
@@ -481,7 +481,7 @@ Gate prerequisites:
 Four-dimensional convergence signals:
 1. **Finding diminishment**: Monotonically decreasing findings count across iterations
 2. **Finding specificity**: Adversary findings must cite real files/lines (hallucination detection)
-3. **Grading criteria coverage**: All contract criteria evaluated; enforced via `verdict.json.convergenceSignals.allCriteriaEvaluated = true`
+3. **Grading criteria coverage**: All contract criteria evaluated exactly once; enforced via `verdict.json.convergenceSignals.allCriteriaEvaluated = true` plus an exact `convergenceSignals.evaluatedCriteria` set match against the approved contract
 4. **Duplicate detection**: No regurgitation of previously-addressed findings
 
 ---

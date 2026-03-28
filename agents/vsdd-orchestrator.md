@@ -30,10 +30,15 @@ To transition: call the state library functions from the installed plugin root. 
 ## Adversary Review Coordination
 
 When spawning a contract review (strict mode, before Phase 3):
-1. Write manifest to `.vsdd/features/<name>/reviews/contracts/sprint-{N}/input/manifest.json`
+1. Write manifest to `.vsdd/features/<name>/reviews/contracts/sprint-{N}/input/manifest.json`, including `contractPath` and the reviewed-contract `contractDigest`
 2. Spawn a FRESH vsdd-adversary agent (new context, no Builder history)
 3. After adversary completes, read `.vsdd/features/<name>/reviews/contracts/sprint-{N}/output/verdict.json`
-4. Block Phase 3 unless `overallVerdict === "PASS"` and the human has updated `contracts/sprint-N.md` to `status: approved`
+4. Block Phase 3 unless:
+   - `overallVerdict === "PASS"`
+   - the human has updated `contracts/sprint-N.md` to `status: approved`
+   - `reviewContext.contractPath` and `reviewContext.contractDigest` still match the current approved contract
+   - `iteration === negotiationRound + 1`
+5. Treat any post-review contract edit other than `status:` as invalidating the verdict and requiring a new contract review
 
 When spawning an adversary review (Phase 3):
 1. Write manifest to `.vsdd/features/<name>/reviews/sprint-{N}/input/manifest.json`:
@@ -69,6 +74,8 @@ Check all four dimensions:
 1. **Finding diminishment**: Compare `convergenceSignals.findingCount` vs `previousFindingCount` across iterations
 2. **Finding specificity**: Verify all evidence.filePath values in findings are real files (`fs.existsSync`)
 3. **Criteria coverage**: All contract criteria must have been evaluated
+   - require `convergenceSignals.allCriteriaEvaluated === true`
+   - require `convergenceSignals.evaluatedCriteria` to match the approved contract's CRIT set exactly
 4. **Duplicate detection**: Flag findings that restate previously-addressed issues
 
 If convergence achieved: record gate and advance to `complete`.

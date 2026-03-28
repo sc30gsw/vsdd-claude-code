@@ -16,17 +16,19 @@ Run after `/vsdd-impl` completes Phase 2c and after the builder updates `contrac
    - should normally be in `draft` or `under-review` while negotiating
    - must contain at least one `CRIT-XXX`
 3. **Write review manifest** to `reviews/contracts/sprint-N/input/manifest.json`:
+   - compute `contractDigest` from the reviewed contract snapshot with line endings normalized and the `status:` frontmatter line ignored
    ```json
    {
      "reviewType": "contract",
      "featureName": "...",
      "sprintNumber": 1,
-     "contractPath": "contracts/sprint-1.md",
-     "artifactsToReview": {
-       "spec": ["specs/behavioral-spec.md", "specs/verification-architecture.md"],
-       "tests": ["tests/..."],
-       "source": ["src/..."]
-     },
+      "contractPath": "contracts/sprint-1.md",
+      "contractDigest": "<sha256-of-reviewed-contract-with-status-normalized>",
+      "artifactsToReview": {
+        "spec": ["specs/behavioral-spec.md", "specs/verification-architecture.md"],
+        "tests": ["tests/..."],
+        "source": ["src/..."]
+      },
      "reviewDimensions": ["spec_fidelity", "edge_case_coverage", "implementation_correctness", "structural_integrity", "verification_readiness"]
    }
    ```
@@ -35,8 +37,15 @@ Run after `/vsdd-impl` completes Phase 2c and after the builder updates `contrac
 6. **Collect outputs** after adversary completes:
    - `reviews/contracts/sprint-N/output/verdict.json`
    - `reviews/contracts/sprint-N/output/findings/FIND-NNN.json`
+   - contract-review verdicts must set:
+     - `reviewContext.reviewType = "contract"`
+     - `reviewContext.contractPath = "contracts/sprint-N.md"`
+     - `reviewContext.contractDigest = manifest.contractDigest`
+     - `iteration = negotiationRound + 1`
 7. **Interpret verdict**:
-   - `PASS`: the human updates `contracts/sprint-N.md` to `status: approved`
+   - `PASS`: the human may update `contracts/sprint-N.md` to `status: approved`
+     - after PASS, only the `status` field may change without rerunning review
+     - any substantive contract edit changes the digest and requires a new contract review
    - `FAIL`: revise the contract, increment `negotiationRound`, and rerun
 8. **Negotiation limit**: maximum 2 rounds before human escalation
 
@@ -44,9 +53,13 @@ Run after `/vsdd-impl` completes Phase 2c and after the builder updates `contrac
 
 Strict-mode Phase 3 requires both:
 - `contracts/sprint-N.md` with `status: approved`
-- `reviews/contracts/sprint-N/output/verdict.json` with `overallVerdict: "PASS"`
+- `reviews/contracts/sprint-N/output/verdict.json` with:
+  - `overallVerdict: "PASS"`
+  - matching `reviewContext.contractPath`
+  - matching `reviewContext.contractDigest`
+  - `iteration = negotiationRound + 1`
 
-This prevents self-approved sprint contracts from bypassing the adversarial gate.
+This prevents self-approved or post-review-edited sprint contracts from bypassing the adversarial gate.
 
 ## Examples
 

@@ -321,6 +321,29 @@ function getSprintContractReviewPath(featureName, sprintNumber) {
   );
 }
 
+function normalizeSprintContractForReview(content) {
+  const normalizedContent = String(content || '').replace(/\r\n/g, '\n');
+  const frontmatterMatch = normalizedContent.match(/^---\n([\s\S]*?)\n---\n?/);
+  if (!frontmatterMatch) {
+    return normalizedContent;
+  }
+
+  const frontmatterBody = frontmatterMatch[1]
+    .split('\n')
+    .filter((line) => !/^\s*status:\s*/.test(line))
+    .join('\n');
+  const rest = normalizedContent.slice(frontmatterMatch[0].length);
+  return `---\n${frontmatterBody}\n---\n${rest}`;
+}
+
+function computeContentDigest(content) {
+  return crypto.createHash('sha256').update(String(content || ''), 'utf8').digest('hex');
+}
+
+function computeSprintContractReviewDigest(content) {
+  return computeContentDigest(normalizeSprintContractForReview(content));
+}
+
 function hasSprintCriteria(content) {
   return extractContractCriteriaIds(content).length > 0;
 }
@@ -451,7 +474,14 @@ function validateApprovedSprintContract(featureName, sprintNumber) {
     return { ok: false, reason: `Sprint contract sprint-${sprintNumber}.md must define at least one CRIT-XXX criterion` };
   }
 
-  return { ok: true, contractPath, frontmatter: frontmatterObject };
+  return {
+    ok: true,
+    contractPath,
+    content,
+    frontmatter: frontmatterObject,
+    criteriaIds: extractContractCriteriaIds(content),
+    reviewDigest: computeSprintContractReviewDigest(content),
+  };
 }
 
 function validateSprintContractReview(featureName, sprintNumber) {
@@ -471,6 +501,46 @@ function validateSprintContractReview(featureName, sprintNumber) {
   try {
     const verdict = JSON.parse(fs.readFileSync(verdictPath, 'utf8'));
     assertValidDocument('grading', verdict, `contract review verdict sprint-${sprintNumber}`);
+    const reviewContext = verdict.reviewContext || {};
+    const expectedIteration = ((contractCheck.frontmatter && contractCheck.frontmatter.negotiationRound) || 0) + 1;
+    const expectedContractPath = `contracts/sprint-${sprintNumber}.md`;
+
+    if (reviewContext.reviewType !== 'contract') {
+      return {
+        ok: false,
+        reason: `Contract review verdict for sprint ${sprintNumber} must declare reviewContext.reviewType="contract"`,
+      };
+    }
+    if (reviewContext.contractPath !== expectedContractPath) {
+      return {
+        ok: false,
+        reason: `Contract review verdict for sprint ${sprintNumber} must reference ${expectedContractPath}`,
+      };
+    }
+    if (reviewContext.contractDigest !== contractCheck.reviewDigest) {
+      return {
+        ok: false,
+        reason: `Contract review verdict for sprint ${sprintNumber} does not match the currently approved sprint contract content`,
+      };
+    }
+    if (verdict.iteration !== expectedIteration) {
+      return {
+        ok: false,
+        reason: `Contract review verdict iteration (${verdict.iteration || 'missing'}) must equal negotiationRound + 1 (${expectedIteration}) for sprint ${sprintNumber}`,
+      };
+    }
+    if (verdict.iteration > 2) {
+      writeEscalation(featureName, {
+        phase: 'contract-review',
+        iteration: verdict.iteration,
+        limit: 2,
+        message: `Contract review negotiation limit exceeded for sprint ${sprintNumber}. Human review required before Phase 3.`,
+      });
+      return {
+        ok: false,
+        reason: `Contract review negotiation limit exceeded for sprint ${sprintNumber} (${verdict.iteration}/2)`,
+      };
+    }
     if (verdict.overallVerdict !== 'PASS') {
       return {
         ok: false,
@@ -557,6 +627,30 @@ function validateCriteriaCoverage(featureName, sprintNumber) {
   }
   if (!verdict.convergenceSignals || verdict.convergenceSignals.allCriteriaEvaluated !== true) {
     return { ok: false, reason: `Sprint ${sprintNumber} verdict must set convergenceSignals.allCriteriaEvaluated=true before Phase 6` };
+  }
+
+  const evaluatedCriteria = Array.isArray(verdict.convergenceSignals.evaluatedCriteria)
+    ? verdict.convergenceSignals.evaluatedCriteria
+    : [];
+  if (evaluatedCriteria.length === 0) {
+    return { ok: false, reason: `Sprint ${sprintNumber} verdict must enumerate convergenceSignals.evaluatedCriteria before Phase 6` };
+  }
+
+  const expectedCriteria = contractCheck.criteriaIds || [];
+  const missingCriteria = expectedCriteria.filter((criterionId) => !evaluatedCriteria.includes(criterionId));
+  if (missingCriteria.length > 0) {
+    return {
+      ok: false,
+      reason: `Sprint ${sprintNumber} verdict is missing evaluated criteria: ${missingCriteria.join(', ')}`,
+    };
+  }
+
+  const unexpectedCriteria = evaluatedCriteria.filter((criterionId) => !expectedCriteria.includes(criterionId));
+  if (unexpectedCriteria.length > 0) {
+    return {
+      ok: false,
+      reason: `Sprint ${sprintNumber} verdict lists criteria not present in the approved contract: ${unexpectedCriteria.join(', ')}`,
+    };
   }
 
   return { ok: true, verdictPath };
@@ -1184,6 +1278,7 @@ module.exports = {
   getHistoryPath,
   getSprintContractPath,
   getSprintContractReviewPath,
+  computeSprintContractReviewDigest,
 
   // State CRUD
   readState,

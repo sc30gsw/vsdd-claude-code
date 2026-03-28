@@ -28,6 +28,7 @@ This tells you:
 - Which files to review
 - Which spec file is authoritative
 - Which grading criteria apply (when a sprint contract exists)
+- For contract review manifests, which contract digest must be echoed back in `verdict.json.reviewContext.contractDigest`
 
 Review scopes:
 - Phase 1c spec review: `reviews/spec/iteration-N/`
@@ -42,6 +43,7 @@ Review scopes:
 3. Read any test files listed in manifest
 4. Read any source implementation files listed in manifest
 5. If the manifest includes `contractPath`, read `contracts/sprint-N.md` for grading criteria
+6. If the manifest includes `contractDigest`, treat it as the reviewed-contract snapshot identifier. Do not invent a different digest value.
 
 ### Step 2: Evaluate Each Dimension
 
@@ -98,6 +100,14 @@ You MUST actively search for these failure modes and emit first-class findings w
 
 Write verdict to the current review scope's `output/verdict.json`
 Write individual findings to the current review scope's `output/findings/FIND-NNN.json`
+
+For strict contract review verdicts, also write:
+- `reviewContext.reviewType = "contract"`
+- `reviewContext.contractPath = manifest.contractPath`
+- `reviewContext.contractDigest = manifest.contractDigest`
+- `iteration = negotiationRound + 1` from the contract frontmatter
+
+For strict sprint-review verdicts that will be used by Phase 6, `convergenceSignals.evaluatedCriteria` must enumerate every approved `CRIT-XXX` exactly once.
 
 ## Calibration Examples
 
@@ -158,6 +168,7 @@ In verdict.json dimensions array:
   "convergenceSignals": {
     "findingCount": 4,
     "allCriteriaEvaluated": true,
+    "evaluatedCriteria": ["CRIT-001", "CRIT-002"],
     "duplicateFindings": []
   }
 }

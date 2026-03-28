@@ -11,7 +11,7 @@ VSDD enforces structured quality gates through 6 phases, 4 roles, and 8 principl
 ### Strict Mode
 Full VSDD ceremony for high-assurance work:
 - Sprint contracts required per sprint
-- Contract review PASS required before Phase 3
+- Contract review PASS required before Phase 3, and the verdict must still match the approved contract snapshot
 - Multiple adversary review rounds
 - Proof obligations enforced
 - All 6 phases traversed
@@ -67,6 +67,7 @@ Exit only when four-dimensional convergence is achieved:
 2. Tests provide adequate coverage
 3. Implementation passes all tests
 4. All required proofs pass
+5. In strict mode, `convergenceSignals.evaluatedCriteria` exactly matches the approved contract's `CRIT-XXX` set
 
 ## 4 Roles
 

@@ -21,6 +21,7 @@ const {
   writeState,
   getLanguageForFeature,
   getActiveFeaturePath,
+  computeSprintContractReviewDigest,
 } = vsdd;
 
 const gateHookPath = path.join(__dirname, 'hooks', 'vsdd-gate-check.js');
@@ -71,8 +72,15 @@ function runGateHook(root, payload) {
   });
 }
 
-function createPassingVerdict(feature, sprintNumber, iteration, evidenceLocation, convergenceSignals) {
-  return {
+function createPassingVerdict(
+  feature,
+  sprintNumber,
+  iteration,
+  evidenceLocation,
+  convergenceSignals,
+  reviewContext
+) {
+  const verdict = {
     sprintNumber,
     feature,
     overallVerdict: 'PASS',
@@ -92,6 +100,39 @@ function createPassingVerdict(feature, sprintNumber, iteration, evidenceLocation
     })),
     convergenceSignals,
   };
+
+  if (reviewContext) {
+    verdict.reviewContext = reviewContext;
+  }
+
+  return verdict;
+}
+
+function createStrictConvergenceSignals(criteriaIds, overrides = {}) {
+  return {
+    findingCount: 0,
+    previousFindingCount: 1,
+    allCriteriaEvaluated: true,
+    evaluatedCriteria: criteriaIds,
+    duplicateFindings: [],
+    ...overrides,
+  };
+}
+
+function createContractReviewContext(root, feature, sprintNumber = 1) {
+  const contractRelativePath = `contracts/sprint-${sprintNumber}.md`;
+  const contractAbsolutePath = path.join(
+    root,
+    `.vsdd/features/${feature}`,
+    contractRelativePath
+  );
+  const contractContent = fs.readFileSync(contractAbsolutePath, 'utf8');
+
+  return {
+    reviewType: 'contract',
+    contractPath: contractRelativePath,
+    contractDigest: computeSprintContractReviewDigest(contractContent),
+  };
 }
 
 function writePassingReviewVerdict(root, feature, reviewScope, evidenceLocation, options = {}) {
@@ -104,13 +145,21 @@ function writePassingReviewVerdict(root, feature, reviewScope, evidenceLocation,
       allCriteriaEvaluated: true,
       duplicateFindings: [],
     },
+    reviewContext,
   } = options;
 
   writeFile(
     root,
     `.vsdd/features/${feature}/reviews/${reviewScope}/output/verdict.json`,
     JSON.stringify(
-      createPassingVerdict(feature, sprintNumber, iteration, evidenceLocation, convergenceSignals),
+      createPassingVerdict(
+        feature,
+        sprintNumber,
+        iteration,
+        evidenceLocation,
+        convergenceSignals,
+        reviewContext
+      ),
       null,
       2
     ) + '\n'
@@ -404,7 +453,10 @@ function writePassingReviewVerdict(root, feature, reviewScope, evidenceLocation,
     root,
     feat,
     'contracts/sprint-1',
-    `.vsdd/features/${feat}/contracts/sprint-1.md`
+    `.vsdd/features/${feat}/contracts/sprint-1.md`,
+    {
+      reviewContext: createContractReviewContext(root, feat),
+    }
   );
   transitionPhase(feat, '3');
   recordGate(feat, '3', 'PASS', 'adversary');
@@ -415,11 +467,7 @@ function writePassingReviewVerdict(root, feature, reviewScope, evidenceLocation,
     'sprint-1',
     `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
     {
-      convergenceSignals: {
-        findingCount: 0,
-        allCriteriaEvaluated: true,
-        duplicateFindings: [],
-      },
+      convergenceSignals: createStrictConvergenceSignals(['CRIT-001']),
     }
   );
   writeFile(root, `.vsdd/features/${feat}/verification/verification-report.md`, '# Report\n');
@@ -538,7 +586,10 @@ function writePassingReviewVerdict(root, feature, reviewScope, evidenceLocation,
     root,
     feat,
     'contracts/sprint-1',
-    `.vsdd/features/${feat}/contracts/sprint-1.md`
+    `.vsdd/features/${feat}/contracts/sprint-1.md`,
+    {
+      reviewContext: createContractReviewContext(root, feat),
+    }
   );
   transitionPhase(feat, '3');
   recordGate(feat, '3', 'PASS', 'adversary');
@@ -550,12 +601,9 @@ function writePassingReviewVerdict(root, feature, reviewScope, evidenceLocation,
     `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
     {
       iteration: 2,
-      convergenceSignals: {
-        findingCount: 0,
-        previousFindingCount: 1,
-        allCriteriaEvaluated: true,
+      convergenceSignals: createStrictConvergenceSignals(['CRIT-001'], {
         duplicateFindings: ['FIND-001'],
-      },
+      }),
     }
   );
   writeFile(root, `.vsdd/features/${feat}/verification/verification-report.md`, '# Report\n');
@@ -623,7 +671,10 @@ function writePassingReviewVerdict(root, feature, reviewScope, evidenceLocation,
     root,
     feat,
     'contracts/sprint-1',
-    `.vsdd/features/${feat}/contracts/sprint-1.md`
+    `.vsdd/features/${feat}/contracts/sprint-1.md`,
+    {
+      reviewContext: createContractReviewContext(root, feat),
+    }
   );
   transitionPhase(feat, '3');
   recordGate(feat, '3', 'PASS', 'adversary');
@@ -635,12 +686,7 @@ function writePassingReviewVerdict(root, feature, reviewScope, evidenceLocation,
     `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
     {
       iteration: 2,
-      convergenceSignals: {
-        findingCount: 0,
-        previousFindingCount: 1,
-        allCriteriaEvaluated: true,
-        duplicateFindings: [],
-      },
+      convergenceSignals: createStrictConvergenceSignals(['CRIT-001']),
     }
   );
   writeFile(root, `.vsdd/features/${feat}/verification/verification-report.md`, '# Report\n');
@@ -720,12 +766,263 @@ function writePassingReviewVerdict(root, feature, reviewScope, evidenceLocation,
     root,
     feat,
     'contracts/sprint-1',
-    `.vsdd/features/${feat}/contracts/sprint-1.md`
+    `.vsdd/features/${feat}/contracts/sprint-1.md`,
+    {
+      reviewContext: createContractReviewContext(root, feat),
+    }
   );
   transitionPhase(feat, '3');
 
   const state = readState(feat);
   assert(state.currentPhase === '3', 'strict feature should enter phase 3 after contract review PASS');
+}
+
+// ── Strict: contract review verdict must match the currently approved contract content ──
+{
+  const root = tmpDir();
+  process.chdir(root);
+  const feat = 'stale-contract-review-feature';
+  initFeature(feat, 'strict');
+
+  transitionPhase(feat, '1a');
+  writeFile(root, `.vsdd/features/${feat}/specs/behavioral-spec.md`, '# B\n');
+  transitionPhase(feat, '1b');
+  writeFile(root, `.vsdd/features/${feat}/specs/verification-architecture.md`, '# V\n');
+  transitionPhase(feat, '1c');
+  recordGate(feat, '1c', 'PASS', 'adversary');
+  recordGate(feat, '1c', 'PASS', 'human', { approvedBasedOn: 'adversary' });
+  transitionPhase(feat, '2a');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
+    'new-feature-tests: FAIL\nregression-baseline: PASS\n'
+  );
+  transitionPhase(feat, '2b');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    'target-feature-tests: PASS\nregression-baseline: PASS\n'
+  );
+  transitionPhase(feat, '2c');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    'target-feature-tests: PASS\nregression-baseline: PASS\nafter-refactor: PASS\n'
+  );
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/contracts/sprint-1.md`,
+    [
+      '---',
+      'sprintNumber: 1',
+      `feature: ${feat}`,
+      'status: approved',
+      'criteria:',
+      '  - id: CRIT-001',
+      '    dimension: spec_fidelity',
+      '    description: Contract and reviewed artifacts stay aligned',
+      '    weight: 0.30',
+      '    passThreshold: Each REQ-XXX maps to at least one reviewed artifact',
+      '---',
+      '',
+      '# Contract',
+      '',
+    ].join('\n')
+  );
+
+  writePassingReviewVerdict(
+    root,
+    feat,
+    'contracts/sprint-1',
+    `.vsdd/features/${feat}/contracts/sprint-1.md`,
+    {
+      reviewContext: createContractReviewContext(root, feat),
+    }
+  );
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/contracts/sprint-1.md`,
+    [
+      '---',
+      'sprintNumber: 1',
+      `feature: ${feat}`,
+      'status: approved',
+      'criteria:',
+      '  - id: CRIT-001',
+      '    dimension: spec_fidelity',
+      '    description: Contract and reviewed artifacts stay aligned',
+      '    weight: 0.30',
+      '    passThreshold: Each REQ-XXX maps to at least one reviewed artifact and one proof artifact',
+      '---',
+      '',
+      '# Contract',
+      '',
+    ].join('\n')
+  );
+
+  assertThrows(
+    () => transitionPhase(feat, '3'),
+    'does not match the currently approved sprint contract content'
+  );
+}
+
+// ── Strict: criteria coverage must match the approved contract exactly before phase 6 ──
+{
+  const root = tmpDir();
+  process.chdir(root);
+  const feat = 'criteria-coverage-feature';
+  initFeature(feat, 'strict');
+
+  transitionPhase(feat, '1a');
+  writeFile(root, `.vsdd/features/${feat}/specs/behavioral-spec.md`, '# B\n');
+  transitionPhase(feat, '1b');
+  writeFile(root, `.vsdd/features/${feat}/specs/verification-architecture.md`, '# V\n');
+  transitionPhase(feat, '1c');
+  recordGate(feat, '1c', 'PASS', 'adversary');
+  recordGate(feat, '1c', 'PASS', 'human', { approvedBasedOn: 'adversary' });
+  transitionPhase(feat, '2a');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
+    'new-feature-tests: FAIL\nregression-baseline: PASS\n'
+  );
+  transitionPhase(feat, '2b');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    'target-feature-tests: PASS\nregression-baseline: PASS\n'
+  );
+  transitionPhase(feat, '2c');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    'target-feature-tests: PASS\nregression-baseline: PASS\nafter-refactor: PASS\n'
+  );
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/contracts/sprint-1.md`,
+    [
+      '---',
+      'sprintNumber: 1',
+      `feature: ${feat}`,
+      'status: approved',
+      'criteria:',
+      '  - id: CRIT-001',
+      '    dimension: spec_fidelity',
+      '    description: Requirements are reviewed against artifacts',
+      '    weight: 0.30',
+      '    passThreshold: Every REQ-XXX is evidence-backed',
+      '  - id: CRIT-002',
+      '    dimension: verification_readiness',
+      '    description: Proof obligations remain reviewable',
+      '    weight: 0.30',
+      '    passThreshold: Every required PROP-XXX is checked against proof artifacts',
+      '---',
+      '',
+      '# Contract',
+      '',
+    ].join('\n')
+  );
+  writePassingReviewVerdict(
+    root,
+    feat,
+    'contracts/sprint-1',
+    `.vsdd/features/${feat}/contracts/sprint-1.md`,
+    {
+      reviewContext: createContractReviewContext(root, feat),
+    }
+  );
+  transitionPhase(feat, '3');
+  recordGate(feat, '3', 'PASS', 'adversary');
+  transitionPhase(feat, '5');
+  writePassingReviewVerdict(
+    root,
+    feat,
+    'sprint-1',
+    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    {
+      convergenceSignals: createStrictConvergenceSignals(['CRIT-001']),
+    }
+  );
+  writeFile(root, `.vsdd/features/${feat}/verification/verification-report.md`, '# Report\n');
+
+  assertThrows(
+    () => transitionPhase(feat, '6'),
+    'missing evaluated criteria: CRIT-002'
+  );
+}
+
+// ── Strict: contract review negotiation is capped at two rounds ──
+{
+  const root = tmpDir();
+  process.chdir(root);
+  const feat = 'contract-negotiation-limit-feature';
+  initFeature(feat, 'strict');
+
+  transitionPhase(feat, '1a');
+  writeFile(root, `.vsdd/features/${feat}/specs/behavioral-spec.md`, '# B\n');
+  transitionPhase(feat, '1b');
+  writeFile(root, `.vsdd/features/${feat}/specs/verification-architecture.md`, '# V\n');
+  transitionPhase(feat, '1c');
+  recordGate(feat, '1c', 'PASS', 'adversary');
+  recordGate(feat, '1c', 'PASS', 'human', { approvedBasedOn: 'adversary' });
+  transitionPhase(feat, '2a');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
+    'new-feature-tests: FAIL\nregression-baseline: PASS\n'
+  );
+  transitionPhase(feat, '2b');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    'target-feature-tests: PASS\nregression-baseline: PASS\n'
+  );
+  transitionPhase(feat, '2c');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    'target-feature-tests: PASS\nregression-baseline: PASS\nafter-refactor: PASS\n'
+  );
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/contracts/sprint-1.md`,
+    [
+      '---',
+      'sprintNumber: 1',
+      `feature: ${feat}`,
+      'status: approved',
+      'negotiationRound: 2',
+      'criteria:',
+      '  - id: CRIT-001',
+      '    dimension: spec_fidelity',
+      '    description: Requirements remain concrete after negotiation',
+      '    weight: 0.30',
+      '    passThreshold: Every REQ-XXX is still reviewable from disk artifacts',
+      '---',
+      '',
+      '# Contract',
+      '',
+    ].join('\n')
+  );
+  writePassingReviewVerdict(
+    root,
+    feat,
+    'contracts/sprint-1',
+    `.vsdd/features/${feat}/contracts/sprint-1.md`,
+    {
+      iteration: 3,
+      reviewContext: createContractReviewContext(root, feat),
+    }
+  );
+
+  assertThrows(
+    () => transitionPhase(feat, '3'),
+    'negotiation limit exceeded'
+  );
+  const escalationDir = path.join(root, `.vsdd/features/${feat}/escalations`);
+  assert(fs.existsSync(escalationDir), 'contract review escalation should be written after exceeding negotiation limit');
+  assert(fs.readdirSync(escalationDir).length > 0, 'contract review escalation directory should contain an escalation record');
 }
 
 // eslint-disable-next-line no-console

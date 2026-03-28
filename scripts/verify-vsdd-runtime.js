@@ -7,7 +7,12 @@ const path = require('path');
 
 const { validateDocument } = require('./lib/vsdd-schema');
 const { resolveInstallPlan } = require('./install/resolve-install-plan');
-const { initFeature, transitionPhase, recordGate } = require('./lib/vsdd-state');
+const {
+  initFeature,
+  transitionPhase,
+  recordGate,
+  computeSprintContractReviewDigest,
+} = require('./lib/vsdd-state');
 const CANONICAL_DIMENSIONS = [
   'spec_fidelity',
   'edge_case_coverage',
@@ -49,8 +54,19 @@ function tmpDir() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'vsdd-runtime-verify-'));
 }
 
-function createPassingVerdict(feature, evidenceLocation) {
-  return {
+function createPassingVerdict(feature, evidenceLocation, options = {}) {
+  const {
+    iteration = 1,
+    convergenceSignals = {
+      findingCount: 0,
+      previousFindingCount: 1,
+      allCriteriaEvaluated: true,
+      duplicateFindings: [],
+    },
+    reviewContext,
+  } = options;
+
+  const verdict = {
     sprintNumber: 1,
     feature,
     dimensions: CANONICAL_DIMENSIONS.map((name) => ({
@@ -67,13 +83,15 @@ function createPassingVerdict(feature, evidenceLocation) {
     })),
     overallVerdict: 'PASS',
     timestamp: new Date().toISOString(),
-    convergenceSignals: {
-      findingCount: 0,
-      previousFindingCount: 1,
-      allCriteriaEvaluated: true,
-      duplicateFindings: [],
-    },
+    iteration,
+    convergenceSignals,
   };
+
+  if (reviewContext) {
+    verdict.reviewContext = reviewContext;
+  }
+
+  return verdict;
 }
 
 // ── Schema validation: valid and invalid finding/grading payloads ──
@@ -121,6 +139,17 @@ function createPassingVerdict(feature, evidenceLocation) {
 
   const validVerdict = createPassingVerdict('runtime-check', 'src/parser.ts');
   assert(validateDocument('grading', validVerdict).valid, 'valid grading verdict should pass schema validation');
+  const validContractReviewVerdict = createPassingVerdict('runtime-check', 'contracts/sprint-1.md', {
+    reviewContext: {
+      reviewType: 'contract',
+      contractPath: 'contracts/sprint-1.md',
+      contractDigest: 'a'.repeat(64),
+    },
+  });
+  assert(
+    validateDocument('grading', validContractReviewVerdict).valid,
+    'contract review verdict with reviewContext should pass schema validation'
+  );
 
   const invalidVerdict = {
     ...validVerdict,
@@ -142,6 +171,16 @@ function createPassingVerdict(feature, evidenceLocation) {
       overallVerdict: 'FAIL',
     }).valid,
     'overall verdict must match per-dimension verdicts'
+  );
+  assert(
+    !validateDocument('grading', {
+      ...validContractReviewVerdict,
+      reviewContext: {
+        reviewType: 'contract',
+        contractPath: 'contracts/sprint-1.md',
+      },
+    }).valid,
+    'contract review verdict must include contractDigest'
   );
 }
 
@@ -234,11 +273,33 @@ assertThrows(
       '',
     ].join('\n')
   );
+  const contractContent = fs.readFileSync(
+    path.join(root, `.vsdd/features/${feat}/contracts/sprint-1.md`),
+    'utf8'
+  );
+  const reviewContext = {
+    reviewType: 'contract',
+    contractPath: 'contracts/sprint-1.md',
+    contractDigest: computeSprintContractReviewDigest(contractContent),
+  };
 
   assertThrows(
     () => transitionPhase(feat, '3'),
     'Contract review PASS required'
   );
+
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/reviews/contracts/sprint-1/output/verdict.json`,
+    JSON.stringify(
+      createPassingVerdict(feat, `.vsdd/features/${feat}/contracts/sprint-1.md`, {
+        reviewContext,
+      }),
+      null,
+      2
+    ) + '\n'
+  );
+  transitionPhase(feat, '3');
 }
 
 // ── Install plan resolution follows manifests and dependencies ──

@@ -19,7 +19,9 @@ Run after Phase 5 (formal hardening) completes. Requires active feature at phase
      ls "$path" 2>/dev/null || echo "HALLUCINATED: $path"
    done
    ```
-3. **Check criteria coverage**: verify `reviews/sprint-N/output/verdict.json` sets `convergenceSignals.allCriteriaEvaluated = true` for all CRIT-XXX from the approved contract
+3. **Check criteria coverage**: verify `reviews/sprint-N/output/verdict.json` sets `convergenceSignals.allCriteriaEvaluated = true` and that `convergenceSignals.evaluatedCriteria` matches the approved contract's `CRIT-XXX` set exactly
+   - every contract criterion must be listed
+   - no extra criterion IDs may appear
 4. **Check duplicate detection**: `convergenceSignals.duplicateFindings` must be empty
 5. **Check open finding beads**: no `adversary-finding` bead may remain in `open` status
 6. **All 4 dimensions converged?**
