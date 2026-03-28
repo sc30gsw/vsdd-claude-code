@@ -174,31 +174,39 @@ Language verification skills: `vsdd-language-rust`, `vsdd-language-python`, `vsd
 
 ## Quick Start
 
-This is a **Claude Code plugin**. Installing it places agents, commands, skills, hooks, and runtime scripts into `~/.claude/plugins/vsdd-claude-code/`, where Claude Code discovers them automatically on next launch.
+### Step 1: Install the Plugin
 
-> **Note:** This plugin is not yet listed in the Claude Code plugin marketplace. Use the installation script or package manager below.
+**Option 1: Claude Code Plugin System (Recommended)**
 
 ```bash
-# Clone the repository
+# Register as a marketplace source (once)
+/plugin marketplace add sc30gsw/vsdd-claude-code
+
+# Install the plugin
+/plugin install vsdd@sc30gsw-vsdd-claude-code
+```
+
+Skills are available as `/vsdd:init`, `/vsdd:spec`, `/vsdd:adversary`, etc.
+
+**Option 2: Install Script**
+
+```bash
 git clone https://github.com/sc30gsw/vsdd-claude-code.git
 cd vsdd-claude-code
-
-# Install the plugin (standard profile)
 bash install.sh --profile standard
 
 # Optional: add a language profile
 bash install.sh --profile standard --language typescript
 ```
 
-Alternative package-manager entrypoints:
+**Option 3: Package Manager**
 
 ```bash
 npx vsdd-claude-code --profile standard
 pnpm dlx vsdd-claude-code --profile standard
-bunx vsdd-claude-code --profile standard
 ```
 
-**Restart Claude Code** (or reload the window) after installation so the new agents, commands, and skills are picked up. Confirm with `/vsdd-status`.
+**Restart Claude Code** (or reload the window) after install. Confirm with `/vsdd-status` (install script) or `/vsdd:status` (plugin system).
 
 ```
 # Open a project in Claude Code, then:
