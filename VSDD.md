@@ -42,6 +42,7 @@ It combines four constraints into one workflow:
 - `verification/verification-report.md`
 - `verification/security-report.md`
 - `verification/purity-audit.md`
+- at least one captured artifact under `verification/security-results/`
 
 ## Completion Rule
 
@@ -51,7 +52,8 @@ A feature is complete only when:
 - current convergence finding count is zero
 - no duplicate findings remain
 - no `adversary-finding` bead remains open
-- all required proof obligations are satisfied
+- every persisted adversary finding has a matching `adversary-finding` bead
+- all required proof obligations are proved
 - formal hardening artifacts (`verification-report.md`, `security-report.md`, `purity-audit.md`) exist
 - in strict mode, `convergenceSignals.evaluatedCriteria` exactly matches the approved contract's `CRIT-XXX` set
 

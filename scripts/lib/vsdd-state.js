@@ -223,7 +223,7 @@ const GATE_PREREQUISITES = {
     if (!artifactCheck.ok) {
       return artifactCheck;
     }
-    const failedProofs = requiredProofs.filter(p => p.status !== 'proved' && p.status !== 'skipped');
+    const failedProofs = requiredProofs.filter(p => p.status !== 'proved');
     if (failedProofs.length > 0) {
       return { ok: false, reason: `Required proof obligations not met: ${failedProofs.map(p => p.id).join(', ')}` };
     }
@@ -677,19 +677,53 @@ function validateCriteriaCoverage(featureName, sprintNumber) {
   return { ok: true, verdictPath };
 }
 
+function validateMarkdownArtifactSections(filePath, label, patterns) {
+  const content = fs.readFileSync(filePath, 'utf8');
+  if (!content.trim()) {
+    return { ok: false, reason: `${label} must not be empty` };
+  }
+
+  for (const pattern of patterns) {
+    if (!pattern.test(content)) {
+      return {
+        ok: false,
+        reason: `${label} is missing required content that matches ${pattern.toString()}`,
+      };
+    }
+  }
+
+  return { ok: true };
+}
+
 function validateFormalHardeningArtifacts(featurePath) {
   const requiredArtifacts = [
     {
       relativePath: path.join('verification', 'verification-report.md'),
       label: 'verification-report.md',
+      patterns: [
+        /^# Verification Report\b/m,
+        /^## Proof Obligations\b/m,
+        /^## Summary\b/m,
+      ],
     },
     {
       relativePath: path.join('verification', 'security-report.md'),
       label: 'security-report.md',
+      patterns: [
+        /^# Security Hardening Report\b/m,
+        /^## Tooling\b/m,
+        /^## Summary\b/m,
+      ],
     },
     {
       relativePath: path.join('verification', 'purity-audit.md'),
       label: 'purity-audit.md',
+      patterns: [
+        /^# Purity Boundary Audit\b/m,
+        /^## Declared Boundaries\b/m,
+        /^## Observed Boundaries\b/m,
+        /^## Summary\b/m,
+      ],
     },
   ];
 
@@ -701,6 +735,35 @@ function validateFormalHardeningArtifacts(featurePath) {
         reason: `${artifact.label} required for phase 6`,
       };
     }
+
+    const contentCheck = validateMarkdownArtifactSections(
+      artifactPath,
+      artifact.label,
+      artifact.patterns || []
+    );
+    if (!contentCheck.ok) {
+      return contentCheck;
+    }
+  }
+
+  const securityResultsPath = path.join(featurePath, 'verification', 'security-results');
+  if (!fs.existsSync(securityResultsPath)) {
+    return {
+      ok: false,
+      reason: 'verification/security-results/ required for phase 6',
+    };
+  }
+
+  const securityResultEntries = fs.readdirSync(securityResultsPath)
+    .filter((entry) => {
+      const entryPath = path.join(securityResultsPath, entry);
+      return fs.statSync(entryPath).isFile();
+    });
+  if (securityResultEntries.length === 0) {
+    return {
+      ok: false,
+      reason: 'verification/security-results/ must contain at least one captured output artifact for phase 6',
+    };
   }
 
   return { ok: true };
@@ -812,6 +875,46 @@ function validateFindingSpecificity(featureName, sprintNumber) {
   return { ok: true };
 }
 
+function validateFindingBeadCoverage(featureName, sprintNumber, state) {
+  const effectiveState = state || readState(featureName);
+  const adversaryBeads = (effectiveState.traceability && effectiveState.traceability.beads
+    ? effectiveState.traceability.beads
+    : []
+  ).filter((bead) => bead.type === 'adversary-finding');
+
+  for (const findingPath of getFindingFiles(featureName, sprintNumber)) {
+    let finding;
+    try {
+      finding = JSON.parse(fs.readFileSync(findingPath, 'utf8'));
+      assertValidDocument('finding', finding, path.relative(process.cwd(), findingPath));
+    } catch (error) {
+      return {
+        ok: false,
+        reason: `Finding bead coverage check failed: ${path.relative(process.cwd(), findingPath)} is invalid (${error.message})`,
+      };
+    }
+
+    const bead = adversaryBeads.find((candidate) => candidate.externalId === finding.findingId);
+    if (!bead) {
+      return {
+        ok: false,
+        reason: `Finding bead coverage check failed: no adversary-finding bead exists for ${finding.findingId}`,
+      };
+    }
+
+    const expectedPath = path.resolve(process.cwd(), findingPath).replace(/\\/g, '/');
+    const beadPath = path.resolve(process.cwd(), bead.artifactPath).replace(/\\/g, '/');
+    if (beadPath !== expectedPath) {
+      return {
+        ok: false,
+        reason: `Finding bead coverage check failed: bead ${bead.beadId} for ${finding.findingId} points to ${bead.artifactPath}, expected ${path.relative(process.cwd(), findingPath)}`,
+      };
+    }
+  }
+
+  return { ok: true };
+}
+
 function validateConvergenceForCompletion(featureName, state) {
   if (!state.sprintCount || state.sprintCount < 1) {
     return { ok: false, reason: 'Cannot complete a feature with no sprint history' };
@@ -824,7 +927,7 @@ function validateConvergenceForCompletion(featureName, state) {
 
   const failedProofs = (state.proofObligations || [])
     .filter((proof) => proof.required)
-    .filter((proof) => proof.status !== 'proved' && proof.status !== 'skipped');
+    .filter((proof) => proof.status !== 'proved');
   if (failedProofs.length > 0) {
     return {
       ok: false,
@@ -871,6 +974,11 @@ function validateConvergenceForCompletion(featureName, state) {
 
   if (Array.isArray(convergenceSignals.duplicateFindings) && convergenceSignals.duplicateFindings.length > 0) {
     return { ok: false, reason: 'Completion is blocked while duplicate findings remain in convergenceSignals.duplicateFindings' };
+  }
+
+  const findingBeadCoverage = validateFindingBeadCoverage(featureName, state.sprintCount, state);
+  if (!findingBeadCoverage.ok) {
+    return findingBeadCoverage;
   }
 
   const openFindingBeads = state.traceability.beads.filter(
@@ -1427,4 +1535,5 @@ module.exports = {
   validateSprintContractReview,
   validateCriteriaCoverage,
   validateFormalHardeningArtifacts,
+  validateFindingBeadCoverage,
 };

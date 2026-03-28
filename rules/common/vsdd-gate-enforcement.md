@@ -15,7 +15,7 @@ The VSDD pipeline enforces strict phase ordering. No phase can be entered withou
 | 2c (Refactor) | Green phase evidence: all tests (target + regression) pass |
 | 3 (Adversarial Review) | Tests pass post-refactor; strict mode also requires approved sprint contract + matching contract-review PASS |
 | 5 (Formal Hardening) | Adversary verdict PASS on implementation |
-| 6 (Convergence Check) | `verification-report.md`, `security-report.md`, and `purity-audit.md` exist, and all required proof obligations pass |
+| 6 (Convergence Check) | `verification-report.md`, `security-report.md`, and `purity-audit.md` exist with required sections, `verification/security-results/` is non-empty, and all required proof obligations are `proved` |
 
 ## Write Restrictions by Phase
 

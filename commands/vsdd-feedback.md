@@ -23,6 +23,7 @@ Run after `/vsdd-adversary` returns a FAIL verdict. Normally starts from phase `
    ```
 5. **Route to EARLIEST affected phase** (route to 1a before 1b before 2a before 2b before 2c before 5)
 6. **Create adversary-finding beads** for each finding
+   - completion will later fail if any persisted finding lacks a matching `adversary-finding` bead
 7. **Advance through explicit feedback routing**:
    - if current phase is `3`, transition `3 -> 4`
    - from phase `4`, transition to the selected target phase

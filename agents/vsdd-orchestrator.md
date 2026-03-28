@@ -82,6 +82,8 @@ Check all four dimensions:
    - require `convergenceSignals.evaluatedCriteria` to match the approved contract's CRIT set exactly
 4. **Duplicate detection**: Flag findings that restate previously-addressed issues
 5. **Formal hardening artifacts**: require `verification-report.md`, `security-report.md`, and `purity-audit.md` before completion
+6. **Execution evidence**: require at least one captured file under `verification/security-results/`
+7. **Finding traceability coverage**: every persisted `FIND-NNN` artifact must have a matching `adversary-finding` bead
 
 If convergence achieved: record gate and advance to `complete`.
 If not: record failure signals and route back to Phase 3 (max 2 attempts).

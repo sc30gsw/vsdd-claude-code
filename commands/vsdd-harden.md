@@ -26,11 +26,18 @@ Run after adversarial review PASS (Phase 3 gate passed). Requires active feature
    - Capture results to `verification/fuzz-results/` or `verification/mutation-results/`
    - Update obligation status in state.json
 7. **Write verification-report.md** with proof results and any graceful degradation
-8. **Transition to Phase 6** only when:
-   - all required obligations pass
+   - required sections: `## Proof Obligations`, `## Summary`
+   - required obligations must end as `proved`; a `required` obligation left as `skipped` blocks Phase 6
+8. **Write security/purity artifacts with required structure**
+   - `verification/security-report.md` must include `## Tooling` and `## Summary`
+   - `verification/purity-audit.md` must include `## Declared Boundaries`, `## Observed Boundaries`, and `## Summary`
+   - `verification/security-results/` must contain at least one captured output file, even if the tools were not applicable
+9. **Transition to Phase 6** only when:
+   - all required obligations are `proved`
    - `verification/verification-report.md` exists
    - `verification/security-report.md` exists
    - `verification/purity-audit.md` exists
+   - `verification/security-results/` contains at least one captured output artifact
 
 ## Language profile resolution
 

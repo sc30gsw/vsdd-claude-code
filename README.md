@@ -48,6 +48,7 @@ The adversary (`vsdd-adversary`) runs on the Opus model and is always spawned as
 
 **Chainlink bead traceability system**
 Every requirement, test, implementation block, adversary finding, and formal proof is assigned a bead identifier and linked in a directed graph. Any line of code can be traced back to its originating requirement. The full chain is preserved in an append-only `history.jsonl` audit log.
+Completion is blocked if any persisted adversary finding lacks a matching `adversary-finding` bead.
 
 **Gate enforcement via Claude Code hooks**
 The `vsdd-gate-check.js` hook runs on `PreToolUse` for `Write`/`Edit`/`MultiEdit` and for `Bash` when the command targets phase-restricted paths. It blocks direct writes, shell redirects, in-place edits, and common path-based mutation commands such as `cp` into restricted areas. Gate strictness is controlled by the `VSDD_HOOK_PROFILE` environment variable.
@@ -153,7 +154,7 @@ Language verification skills: `vsdd-language-rust`, `vsdd-language-python`, `vsd
         proof-harnesses/
         fuzz-results/
         mutation-results/
-        security-results/
+        security-results/       # Raw security-tool output; must contain at least one artifact
         verification-report.md
         security-report.md
         purity-audit.md
@@ -294,7 +295,7 @@ Gate prerequisites:
 | 2c | Green phase evidence exists, was recorded after entering 2b, and proves both `target-feature-tests: PASS` and `regression-baseline: PASS` |
 | 3 | Tests pass post-refactor, with green evidence recorded after the latest implementation/refactor phase and carrying both target/regression PASS markers. Strict mode also requires `contracts/sprint-{N}.md` with `status: approved`, at least one `CRIT-XXX`, and `reviews/contracts/sprint-{N}/output/verdict.json` with `overallVerdict: PASS`, matching `reviewContext.contractPath`, matching `reviewContext.contractDigest`, and `iteration = negotiationRound + 1` |
 | 5 | Adversary verdict PASS |
-| 6 | `verification-report.md`, `security-report.md`, and `purity-audit.md` exist and all required proof obligations pass. Strict mode also requires `convergenceSignals.allCriteriaEvaluated = true` plus an exact `convergenceSignals.evaluatedCriteria` match against the approved contract's `CRIT-XXX` set |
+| 6 | `verification-report.md`, `security-report.md`, and `purity-audit.md` exist with the required sections, `verification/security-results/` contains at least one captured output artifact, and all required proof obligations are `proved` (not `skipped`). Strict mode also requires `convergenceSignals.allCriteriaEvaluated = true` plus an exact `convergenceSignals.evaluatedCriteria` match against the approved contract's `CRIT-XXX` set |
 
 For review iterations beyond the first, convergence also requires `convergenceSignals.findingCount < convergenceSignals.previousFindingCount` before completion.
 
@@ -392,7 +393,7 @@ Language profiles configure the verifier agent with the correct toolset. Rust/Py
 
 7. **Entropy Resistance** -- Adversarial context is reset on every review pass. The adversary cannot be primed by the builder's reasoning, even inadvertently.
 
-8. **Four-Dimensional Convergence** -- The pipeline is complete only when specs survive adversarial review, tests provide adequate coverage, implementation passes all tests, and all required proofs pass. All four conditions must hold simultaneously.
+8. **Four-Dimensional Convergence** -- The pipeline is complete only when specs survive adversarial review, tests provide adequate coverage, implementation passes all tests, and all required proofs are proved. All four conditions must hold simultaneously.
 
 ---
 

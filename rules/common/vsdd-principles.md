@@ -67,9 +67,10 @@ Context resets on every adversarial pass. The Adversary is spawned as a fresh ag
 
 ## 8. Four-Dimensional Convergence
 
-"Done" means specs, tests, implementation, AND all required proofs independently survive adversarial review. Phase 6 convergence requires:
+"Done" means specs, tests, implementation, AND all required proofs are proved under adversarial scrutiny. Phase 6 convergence requires:
 
 1. Finding diminishment: Monotonically decreasing findings count across iterations
 2. Finding specificity: All findings cite real files and line numbers (hallucination detection)
 3. Grading criteria coverage: All contract criteria evaluated
 4. Duplicate detection: No regurgitation of previously-addressed findings
+5. Formal hardening evidence: required reports exist with the mandated sections, `security-results/` contains execution evidence, and every persisted finding has a matching `adversary-finding` bead

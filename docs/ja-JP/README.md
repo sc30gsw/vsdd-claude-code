@@ -66,6 +66,7 @@ adversaryエージェントは以下の5次元でPASS/FAILを判定する。
 ### Chainlinkビードトレーサビリティシステム
 
 すべてのコード行を仕様要件まで追跡できる。すべての成果物（仕様・テスト・実装・指摘・証明）がビードとして記録され、REQ-XXX から PROOF-XXX まで双方向リンクで結ばれる。
+persisted な adversary finding に対応する `adversary-finding` ビードが存在しない場合、完了できない。
 
 詳細は[トレーサビリティチェーン](#トレーサビリティチェーン)を参照。
 
@@ -201,7 +202,7 @@ init -> 1a -> 1b -> 1c -> 2a -> 2b -> 2c -> 3 -> 4 -> [1a|1b|2a|2b|2c|5] -> 5 ->
 strict モードでは追加で以下を強制する。
 
 - フェーズ3前: `contracts/sprint-{N}.md` は `status: approved` で、contract review verdict の `reviewContext.contractPath` と `reviewContext.contractDigest` が現在の契約に一致している必要がある
-- フェーズ6前: `verification-report.md` / `security-report.md` / `purity-audit.md` が存在し、strict では `convergenceSignals.allCriteriaEvaluated = true` に加えて `convergenceSignals.evaluatedCriteria` が承認済み contract の `CRIT-XXX` 集合と完全一致している必要がある
+- フェーズ6前: `verification-report.md` / `security-report.md` / `purity-audit.md` が必要セクション付きで存在し、`verification/security-results/` に少なくとも1つの実行痕跡ファイルがあり、required な proof obligation はすべて `proved` である必要がある。strict ではさらに `convergenceSignals.allCriteriaEvaluated = true` に加えて `convergenceSignals.evaluatedCriteria` が承認済み contract の `CRIT-XXX` 集合と完全一致している必要がある
 - 収束ループが 2 回目以降なら、完了前に `convergenceSignals.findingCount < convergenceSignals.previousFindingCount` も必要になる
 
 | 指摘の種類 | ルーティング先 |
@@ -418,7 +419,7 @@ VSDDは `.vsdd/` ディレクトリ配下にすべてのランタイム状態を
         proof-harnesses/      # フェーズ5で生成
         fuzz-results/
         mutation-results/
-        security-results/
+        security-results/     # security tool の生出力。少なくとも1ファイル必要
         verification-report.md
         security-report.md
         purity-audit.md

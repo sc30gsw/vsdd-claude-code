@@ -141,7 +141,7 @@ vsdd-claude-code/
         proof-harnesses/              # Kani/CBMC/Dafny harnesses
         fuzz-results/
         mutation-results/
-        security-results/
+        security-results/             # Raw security-tool output; must contain at least one artifact
         verification-report.md
         security-report.md
         purity-audit.md
@@ -464,7 +464,7 @@ Gate prerequisites:
 | 2c | Green phase evidence (target feature tests and regression suite pass) |
 | 3 | Tests pass post-refactor; in strict mode `contracts/sprint-{N}.md` exists with `status: approved`, contains at least one `CRIT-XXX`, and `reviews/contracts/sprint-{N}/output/verdict.json` has `overallVerdict: PASS`, matching `reviewContext.contractPath`, matching `reviewContext.contractDigest`, and `iteration = negotiationRound + 1` |
 | 5 | Adversary verdict PASS |
-| 6 | `verification-report.md`, `security-report.md`, and `purity-audit.md` exist; all required proof obligations pass; and strict-mode verdict sets `convergenceSignals.allCriteriaEvaluated = true` with `convergenceSignals.evaluatedCriteria` exactly matching the approved contract's `CRIT-XXX` set |
+| 6 | `verification-report.md`, `security-report.md`, and `purity-audit.md` exist with the required sections; `verification/security-results/` contains at least one captured output artifact; all required proof obligations are `proved`; and strict-mode verdict sets `convergenceSignals.allCriteriaEvaluated = true` with `convergenceSignals.evaluatedCriteria` exactly matching the approved contract's `CRIT-XXX` set |
 
 ### Feedback Routing Table (Phase 4)
 
@@ -667,7 +667,7 @@ This table distinguishes between patterns Anthropic currently keeps in the updat
 | Forced Negativity | Adversary agent prompt: zero tolerance, no "overall looks good" |
 | Linear Accountability | Chainlink beads traceability system (`vsdd-bead.schema.json`) |
 | Entropy Resistance | Fresh agent spawn per adversarial review (VSDD term for harness "context resets") |
-| Four-Dimensional Convergence | Phase 6 checks spec + tests + implementation + required proofs |
+| Four-Dimensional Convergence | Phase 6 checks spec + tests + implementation + required proofs proved |
 
 ### VSDD-Specific Extensions (new in this design)
 

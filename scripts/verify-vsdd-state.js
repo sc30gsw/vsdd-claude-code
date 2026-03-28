@@ -49,17 +49,62 @@ function writeFormalHardeningArtifacts(absRoot, featureName, overrides = {}) {
   writeFile(
     absRoot,
     `.vsdd/features/${featureName}/verification/verification-report.md`,
-    overrides.verificationReport || '# Verification Report\n'
+    overrides.verificationReport || [
+      '# Verification Report',
+      '',
+      '## Proof Obligations',
+      '',
+      '| ID | Tier | Required | Status | Tool | Artifact |',
+      '|----|------|----------|--------|------|----------|',
+      '| PROP-001 | 1 | true | proved | harness-check | verification/proof-harnesses/example.txt |',
+      '',
+      '## Summary',
+      '',
+      '- Required obligations: 1',
+      '- Proved: 1',
+      '- Failed: 0',
+    ].join('\n') + '\n'
   );
   writeFile(
     absRoot,
     `.vsdd/features/${featureName}/verification/security-report.md`,
-    overrides.securityReport || '# Security Hardening Report\n'
+    overrides.securityReport || [
+      '# Security Hardening Report',
+      '',
+      '## Tooling',
+      '',
+      '- Semgrep: not_applicable',
+      '- Wycheproof: not_applicable',
+      '',
+      '## Summary',
+      '',
+      '- Overall status: PASS',
+    ].join('\n') + '\n'
   );
   writeFile(
     absRoot,
     `.vsdd/features/${featureName}/verification/purity-audit.md`,
-    overrides.purityAudit || '# Purity Boundary Audit\n'
+    overrides.purityAudit || [
+      '# Purity Boundary Audit',
+      '',
+      '## Declared Boundaries',
+      '',
+      '- Pure core: parser core',
+      '- Effectful shell: CLI adapter',
+      '',
+      '## Observed Boundaries',
+      '',
+      '- No drift detected between declared and observed boundaries.',
+      '',
+      '## Summary',
+      '',
+      '- Overall status: PASS',
+    ].join('\n') + '\n'
+  );
+  writeFile(
+    absRoot,
+    `.vsdd/features/${featureName}/verification/security-results/tooling.log`,
+    overrides.securityResults || 'semgrep: not_applicable\nwycheproof: not_applicable\n'
   );
 }
 
@@ -310,7 +355,19 @@ function writePassingReviewVerdict(root, feature, reviewScope, evidenceLocation,
   );
   transitionPhase(feat, '5');
   writeFormalHardeningArtifacts(root, feat, {
-    verificationReport: '# Verification Report\n\nNo required proof obligations.\n',
+    verificationReport: [
+      '# Verification Report',
+      '',
+      '## Proof Obligations',
+      '',
+      'No required proof obligations.',
+      '',
+      '## Summary',
+      '',
+      '- Required obligations: 0',
+      '- Proved: 0',
+      '- Failed: 0',
+    ].join('\n') + '\n',
   });
   transitionPhase(feat, '6');
   transitionPhase(feat, 'complete');
@@ -673,18 +730,130 @@ function writePassingReviewVerdict(root, feature, reviewScope, evidenceLocation,
   recordGate(feat, '3', 'PASS', 'adversary');
   transitionPhase(feat, '5');
 
-  writeFile(root, `.vsdd/features/${feat}/verification/verification-report.md`, '# Verification Report\n');
-  writeFile(root, `.vsdd/features/${feat}/verification/purity-audit.md`, '# Purity Boundary Audit\n');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/verification/verification-report.md`,
+    '# Verification Report\n\n## Proof Obligations\n\n| ID | Tier | Required | Status | Tool | Artifact |\n|----|------|----------|--------|------|----------|\n\n## Summary\n\n- Required obligations: 0\n'
+  );
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/verification/purity-audit.md`,
+    '# Purity Boundary Audit\n\n## Declared Boundaries\n\n- Pure core: parser core\n\n## Observed Boundaries\n\n- No drift detected.\n\n## Summary\n\n- Overall status: PASS\n'
+  );
   assertThrows(
     () => transitionPhase(feat, '6'),
     'security-report.md required for phase 6'
   );
 
-  writeFile(root, `.vsdd/features/${feat}/verification/security-report.md`, '# Security Hardening Report\n');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/verification/security-report.md`,
+    '# Security Hardening Report\n\n## Tooling\n\n- Semgrep: not_applicable\n\n## Summary\n\n- Overall status: PASS\n'
+  );
+  assertThrows(
+    () => transitionPhase(feat, '6'),
+    'security-results/ must contain at least one captured output artifact'
+  );
+
+  writeFile(root, `.vsdd/features/${feat}/verification/security-results/tooling.log`, 'semgrep: not_applicable\n');
   fs.rmSync(path.join(root, `.vsdd/features/${feat}/verification/purity-audit.md`), { force: true });
   assertThrows(
     () => transitionPhase(feat, '6'),
     'purity-audit.md required for phase 6'
+  );
+}
+
+// ── Phase 6 rejects malformed hardening reports even when files exist ──
+{
+  const root = tmpDir();
+  process.chdir(root);
+  const feat = 'malformed-hardening-report-feature';
+  initFeature(feat, 'lean');
+
+  transitionPhase(feat, '1a');
+  writeFile(root, `.vsdd/features/${feat}/specs/behavioral-spec.md`, '# Behavioral\n');
+  transitionPhase(feat, '1b');
+  writeFile(root, `.vsdd/features/${feat}/specs/verification-architecture.md`, '# Verification\n');
+  transitionPhase(feat, '1c');
+  recordGate(feat, '1c', 'PASS', 'adversary');
+  transitionPhase(feat, '2a');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
+    'new-feature-tests: FAIL\nregression-baseline: PASS\n'
+  );
+  transitionPhase(feat, '2b');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    'target-feature-tests: PASS\nregression-baseline: PASS\n'
+  );
+  transitionPhase(feat, '2c');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    'target-feature-tests: PASS\nregression-baseline: PASS\nafter-refactor: PASS\n'
+  );
+  transitionPhase(feat, '3');
+  recordGate(feat, '3', 'PASS', 'adversary');
+  transitionPhase(feat, '5');
+
+  writeFile(root, `.vsdd/features/${feat}/verification/verification-report.md`, '# Verification Report\n');
+  writeFile(root, `.vsdd/features/${feat}/verification/security-report.md`, '# Security Hardening Report\n\n## Tooling\n');
+  writeFile(root, `.vsdd/features/${feat}/verification/purity-audit.md`, '# Purity Boundary Audit\n');
+  writeFile(root, `.vsdd/features/${feat}/verification/security-results/tooling.log`, 'semgrep: not_applicable\n');
+
+  assertThrows(
+    () => transitionPhase(feat, '6'),
+    'verification-report.md is missing required content'
+  );
+}
+
+// ── Required proof obligations must be proved; skipped blocks phase 6 ──
+{
+  const root = tmpDir();
+  process.chdir(root);
+  const feat = 'required-proof-skipped-feature';
+  initFeature(feat, 'lean');
+
+  transitionPhase(feat, '1a');
+  writeFile(root, `.vsdd/features/${feat}/specs/behavioral-spec.md`, '# Behavioral\n');
+  transitionPhase(feat, '1b');
+  writeFile(root, `.vsdd/features/${feat}/specs/verification-architecture.md`, '# Verification\n');
+  transitionPhase(feat, '1c');
+  recordGate(feat, '1c', 'PASS', 'adversary');
+  transitionPhase(feat, '2a');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
+    'new-feature-tests: FAIL\nregression-baseline: PASS\n'
+  );
+  transitionPhase(feat, '2b');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    'target-feature-tests: PASS\nregression-baseline: PASS\n'
+  );
+  transitionPhase(feat, '2c');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    'target-feature-tests: PASS\nregression-baseline: PASS\nafter-refactor: PASS\n'
+  );
+  transitionPhase(feat, '3');
+  recordGate(feat, '3', 'PASS', 'adversary');
+  transitionPhase(feat, '5');
+  writeFormalHardeningArtifacts(root, feat);
+
+  const skippedProofState = readState(feat);
+  skippedProofState.proofObligations = [
+    { id: 'PROP-001', tier: 1, required: true, status: 'skipped' },
+  ];
+  writeState(feat, skippedProofState);
+
+  assertThrows(
+    () => transitionPhase(feat, '6'),
+    'Required proof obligations not met: PROP-001'
   );
 }
 
@@ -859,6 +1028,80 @@ function writePassingReviewVerdict(root, feature, reviewScope, evidenceLocation,
   assertThrows(
     () => transitionPhase(feat, 'complete'),
     'Open adversary findings'
+  );
+}
+
+// ── Convergence: every persisted finding must have a matching adversary-finding bead ──
+{
+  const root = tmpDir();
+  process.chdir(root);
+  const feat = 'missing-finding-bead-feature';
+  initFeature(feat, 'lean');
+
+  transitionPhase(feat, '1a');
+  writeFile(root, `.vsdd/features/${feat}/specs/behavioral-spec.md`, '# B\n');
+  transitionPhase(feat, '1b');
+  writeFile(root, `.vsdd/features/${feat}/specs/verification-architecture.md`, '# V\n');
+  transitionPhase(feat, '1c');
+  recordGate(feat, '1c', 'PASS', 'adversary');
+  transitionPhase(feat, '2a');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
+    'new-feature-tests: FAIL\nregression-baseline: PASS\n'
+  );
+  transitionPhase(feat, '2b');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    'target-feature-tests: PASS\nregression-baseline: PASS\n'
+  );
+  transitionPhase(feat, '2c');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    'target-feature-tests: PASS\nregression-baseline: PASS\nafter-refactor: PASS\n'
+  );
+  transitionPhase(feat, '3');
+  recordGate(feat, '3', 'PASS', 'adversary');
+  transitionPhase(feat, '5');
+  writePassingReviewVerdict(
+    root,
+    feat,
+    'sprint-1',
+    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    {
+      iteration: 2,
+      convergenceSignals: {
+        findingCount: 0,
+        previousFindingCount: 1,
+        allCriteriaEvaluated: true,
+        duplicateFindings: [],
+      },
+    }
+  );
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/reviews/sprint-1/output/findings/FIND-001.json`,
+    JSON.stringify({
+      findingId: 'FIND-001',
+      dimension: 'edge_case_coverage',
+      category: 'test_quality',
+      severity: 'medium',
+      description: 'The current test suite asserts implementation details instead of behavior in the parser regression path.',
+      evidence: {
+        filePath: `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+        lineRange: '1-2',
+      },
+      routeToPhase: '2a',
+    }, null, 2) + '\n'
+  );
+  writeFormalHardeningArtifacts(root, feat);
+  transitionPhase(feat, '6');
+
+  assertThrows(
+    () => transitionPhase(feat, 'complete'),
+    'no adversary-finding bead exists for FIND-001'
   );
 }
 

@@ -29,8 +29,11 @@ Run after Phase 5 (formal hardening) completes. Requires active feature at phase
    - `verification/verification-report.md` exists
    - `verification/security-report.md` exists
    - `verification/purity-audit.md` exists
-   - all required proof obligations are `proved` or explicitly `skipped`
-7. **All 4 dimensions converged?**
+   - `verification/security-results/` contains at least one captured output artifact
+   - all required proof obligations are `proved` (required obligations may not finish as `skipped`)
+7. **Check finding traceability coverage**:
+   - every persisted `reviews/sprint-N/output/findings/FIND-NNN.json` must have a matching `adversary-finding` bead
+8. **All 4 dimensions converged?**
    - YES: record gate PASS, transition to `complete`, display success summary
    - NO: record failure details, check iteration limit (max 2)
      - Under limit: route back to Phase 3 for re-review

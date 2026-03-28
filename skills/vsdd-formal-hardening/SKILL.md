@@ -79,10 +79,12 @@ Always produce:
 1. `verification-report.md`
 2. `security-report.md`
 3. `purity-audit.md`
+4. At least one captured file under `verification/security-results/`
 
 If required tool is unavailable:
 1. Document the degradation in `verification-report.md`
 2. Degrade to lower tier
-3. Update proof obligation status to "skipped" with explanation
+3. Only leave an obligation as `skipped` when it is **not required**
 4. Still run security hardening / purity audit and write their artifacts
-5. Pipeline DOES NOT block if obligation is not required
+5. Required obligations that remain `skipped` block Phase 6
+6. Pipeline DOES NOT block if obligation is not required
