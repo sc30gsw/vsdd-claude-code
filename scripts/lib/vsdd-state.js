@@ -817,6 +817,28 @@ function validateConvergenceForCompletion(featureName, state) {
     return { ok: false, reason: 'Cannot complete a feature with no sprint history' };
   }
 
+  const hardeningArtifacts = validateFormalHardeningArtifacts(getFeaturePath(featureName));
+  if (!hardeningArtifacts.ok) {
+    return hardeningArtifacts;
+  }
+
+  const failedProofs = (state.proofObligations || [])
+    .filter((proof) => proof.required)
+    .filter((proof) => proof.status !== 'proved' && proof.status !== 'skipped');
+  if (failedProofs.length > 0) {
+    return {
+      ok: false,
+      reason: `Required proof obligations not met: ${failedProofs.map((proof) => proof.id).join(', ')}`,
+    };
+  }
+
+  if (state.mode === 'strict' && state.sprintCount > 0) {
+    const criteriaCoverage = validateCriteriaCoverage(featureName, state.sprintCount);
+    if (!criteriaCoverage.ok) {
+      return criteriaCoverage;
+    }
+  }
+
   const verdictResult = readSprintVerdict(featureName, state.sprintCount);
   if (!verdictResult.ok) {
     return verdictResult;
