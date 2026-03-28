@@ -9,7 +9,7 @@
   "plugins": [
     {
       "name": "vsdd",
-      "source": ".",
+      "source": "./",
       "description": "Verified Spec-Driven Development — adversarial quality gates for AI-assisted development",
       "author": {
         "name": "sc30gsw"
