@@ -174,6 +174,10 @@ Language verification skills: `vsdd-language-rust`, `vsdd-language-python`, `vsd
 
 ## Quick Start
 
+This is a **Claude Code plugin**. Installing it places agents, commands, skills, hooks, and runtime scripts into `~/.claude/plugins/vsdd-claude-code/`, where Claude Code discovers them automatically on next launch.
+
+> **Note:** This plugin is not yet listed in the Claude Code plugin marketplace. Use the installation script or package manager below.
+
 ```bash
 # Clone the repository
 git clone https://github.com/sc30gsw/vsdd-claude-code.git
@@ -186,15 +190,15 @@ bash install.sh --profile standard
 bash install.sh --profile standard --language typescript
 ```
 
-Alternative package-manager entrypoints also work:
+Alternative package-manager entrypoints:
 
 ```bash
 npx vsdd-claude-code --profile standard
 pnpm dlx vsdd-claude-code --profile standard
-yarn dlx vsdd-claude-code --profile standard
 bunx vsdd-claude-code --profile standard
-npx vsdd-claude-code --profile standard --dry-run
 ```
+
+**Restart Claude Code** (or reload the window) after installation so the new agents, commands, and skills are picked up. Confirm with `/vsdd-status`.
 
 ```
 # Open a project in Claude Code, then:
@@ -343,6 +347,38 @@ Select mode at initialization:
 
 ## Installation
 
+This is a Claude Code plugin. Installing it copies agents, commands, skills, hooks, and runtime scripts into `~/.claude/plugins/vsdd-claude-code/`, where Claude Code discovers them automatically on next launch.
+
+> **Note:** This plugin is not yet listed in the Claude Code plugin marketplace. Use the installation methods below until marketplace availability is announced.
+
+### Option 1: Install Script (Recommended)
+
+```bash
+git clone https://github.com/sc30gsw/vsdd-claude-code.git
+cd vsdd-claude-code
+bash install.sh --profile standard
+```
+
+### Option 2: Package Manager
+
+```bash
+npx vsdd-claude-code --profile standard
+pnpm dlx vsdd-claude-code --profile standard
+bunx vsdd-claude-code --profile standard
+```
+
+After installation, **restart Claude Code** (or reload the window) so the new agents, commands, and skills are picked up.
+
+### Verify Installation
+
+Once Claude Code reloads, confirm the plugin is active:
+
+```
+/vsdd-status
+```
+
+If the command is recognized, installation was successful.
+
 ### Install Profiles
 
 ```bash
@@ -355,12 +391,6 @@ bash install.sh --profile standard
 # Strict: installs the same file set as standard for high-assurance workflows;
 # pair it with /vsdd-init --mode strict and VSDD_HOOK_PROFILE=strict when you want strict runtime behavior
 bash install.sh --profile strict
-```
-
-Alternative package-manager entrypoint:
-
-```bash
-npx vsdd-claude-code --profile standard
 ```
 
 ### Language Profiles

@@ -129,6 +129,12 @@ canonical VSDD が定義するのは Human Architect、Builder、Tracker（Chain
 
 ### インストール
 
+これは **Claude Codeプラグイン** だ。インストールすると、エージェント・コマンド・スキル・フック・ランタイムスクリプトが `~/.claude/plugins/vsdd-claude-code/` にコピーされ、Claude Codeが次回起動時に自動検出する。
+
+> **注意:** このプラグインはまだClaude Codeプラグインマーケットプレイスには未登録だ。マーケットプレイスへの登録が完了するまでは、以下の方法でインストールしてほしい。
+
+**方法1: インストールスクリプト（推奨）**
+
 ```bash
 # リポジトリを clone
 git clone https://github.com/sc30gsw/vsdd-claude-code.git
@@ -141,15 +147,25 @@ bash install.sh --profile standard
 bash install.sh --profile standard --language typescript
 ```
 
-代替として package manager 経由でも実行できる。
+**方法2: パッケージマネージャー**
 
 ```bash
 npx vsdd-claude-code --profile standard
 pnpm dlx vsdd-claude-code --profile standard
-yarn dlx vsdd-claude-code --profile standard
 bunx vsdd-claude-code --profile standard
-npx vsdd-claude-code --profile standard --dry-run
 ```
+
+インストール後は **Claude Codeを再起動**（またはウィンドウをリロード）してプラグインを有効化する。
+
+**インストール確認**
+
+Claude Codeが再起動したら、以下のコマンドが認識されることを確認する。
+
+```
+/vsdd-status
+```
+
+コマンドが認識されればインストール成功だ。
 
 ### フィーチャーパイプラインの開始
 
