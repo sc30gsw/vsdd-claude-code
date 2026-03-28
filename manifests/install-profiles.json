@@ -22,7 +22,7 @@
       "verificationToolset": {
         "formalVerification": ["kani", "cbmc"],
         "propertyTesting": ["proptest"],
-        "fuzzing": ["cargo-fuzz", "afl"],
+        "fuzzing": ["cargo-fuzz"],
         "mutationTesting": ["cargo-mutants"],
         "staticAnalysis": ["clippy", "semgrep"]
       }
@@ -32,7 +32,7 @@
       "verificationToolset": {
         "formalVerification": [],
         "propertyTesting": ["hypothesis"],
-        "fuzzing": ["python-afl", "atheris"],
+        "fuzzing": [],
         "mutationTesting": ["mutmut"],
         "staticAnalysis": ["mypy", "ruff", "semgrep"]
       }
@@ -42,8 +42,8 @@
       "verificationToolset": {
         "formalVerification": [],
         "propertyTesting": ["fast-check"],
-        "fuzzing": ["jsfuzz"],
-        "mutationTesting": ["stryker"],
+        "fuzzing": [],
+        "mutationTesting": ["@stryker-mutator/core"],
         "staticAnalysis": ["typescript", "eslint", "semgrep"]
       }
     },
@@ -53,7 +53,7 @@
         "formalVerification": [],
         "propertyTesting": ["rapid"],
         "fuzzing": ["go-fuzz"],
-        "mutationTesting": ["go-mutesting"],
+        "mutationTesting": [],
         "staticAnalysis": ["staticcheck", "vet"]
       }
     },
@@ -62,8 +62,8 @@
       "verificationToolset": {
         "formalVerification": ["cbmc"],
         "propertyTesting": [],
-        "fuzzing": ["afl++", "libfuzzer"],
-        "mutationTesting": ["mull"],
+        "fuzzing": ["libfuzzer"],
+        "mutationTesting": [],
         "staticAnalysis": ["clang-tidy", "cppcheck"]
       }
     }

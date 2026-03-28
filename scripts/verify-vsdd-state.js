@@ -231,6 +231,45 @@ function writePassingReviewVerdict(root, feature, reviewScope, evidenceLocation,
   );
 }
 
+function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation, options = {}) {
+  const {
+    sprintNumber = 1,
+    iteration = 1,
+    findingIds = ['FIND-001'],
+    reviewContext,
+  } = options;
+
+  const verdict = {
+    sprintNumber,
+    feature,
+    overallVerdict: 'FAIL',
+    timestamp: new Date().toISOString(),
+    iteration,
+    dimensions: CANONICAL_DIMENSIONS.map((name, index) => ({
+      name,
+      verdict: index === 0 ? 'FAIL' : 'PASS',
+      findings: index === 0 ? findingIds : [],
+      evidence: [
+        {
+          type: 'file',
+          location: evidenceLocation,
+          description: `Reviewed evidence for ${name}`,
+        },
+      ],
+    })),
+  };
+
+  if (reviewContext) {
+    verdict.reviewContext = reviewContext;
+  }
+
+  writeFile(
+    root,
+    `.vsdd/features/${feature}/reviews/${reviewScope}/output/verdict.json`,
+    JSON.stringify(verdict, null, 2) + '\n'
+  );
+}
+
 // ── Bash gate: block path-based writes even without redirection ──
 {
   const root = tmpDir();
@@ -641,6 +680,29 @@ function writePassingReviewVerdict(root, feature, reviewScope, evidenceLocation,
     'target-feature-tests: PASS\nregression-baseline: PASS\nafter-refactor: PASS\n'
   );
   transitionPhase(feat, '3');
+  writeFailingReviewVerdict(
+    root,
+    feat,
+    'sprint-1',
+    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`
+  );
+  recordGate(feat, '3', 'FAIL', 'adversary');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/reviews/sprint-1/output/findings/FIND-001.json`,
+    JSON.stringify({
+      findingId: 'FIND-001',
+      dimension: 'verification_readiness',
+      category: 'verification_tool_mismatch',
+      severity: 'high',
+      description: 'The verification architecture no longer matches the implementation shape, so the feedback loop must return to Phase 1b.',
+      evidence: {
+        filePath: `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+        lineRange: '1-3',
+      },
+      routeToPhase: '1b',
+    }, null, 2) + '\n'
+  );
   routeFeedback(feat, '1b');
 
   const state = readState(feat);
@@ -693,6 +755,199 @@ function writePassingReviewVerdict(root, feature, reviewScope, evidenceLocation,
     () => transitionPhase(feat, '3'),
     'Iteration limit exceeded for phase 3 (4/3)'
   );
+}
+
+// ── Feedback routing: earliest route is enforced, and phase 5 is allowed only when all findings target phase 5 ──
+{
+  const root = tmpDir();
+  process.chdir(root);
+  const feat = 'feedback-route-phase5-feature';
+  initFeature(feat, 'lean');
+
+  transitionPhase(feat, '1a');
+  writeFile(root, `.vsdd/features/${feat}/specs/behavioral-spec.md`, '# Behavioral\n');
+  transitionPhase(feat, '1b');
+  writeFile(root, `.vsdd/features/${feat}/specs/verification-architecture.md`, '# Verification\n');
+  transitionPhase(feat, '1c');
+  recordGate(feat, '1c', 'PASS', 'adversary');
+  transitionPhase(feat, '2a');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
+    'new-feature-tests: FAIL\nregression-baseline: PASS\n'
+  );
+  transitionPhase(feat, '2b');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    'target-feature-tests: PASS\nregression-baseline: PASS\n'
+  );
+  transitionPhase(feat, '2c');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    'target-feature-tests: PASS\nregression-baseline: PASS\nafter-refactor: PASS\n'
+  );
+  transitionPhase(feat, '3');
+  writeFailingReviewVerdict(
+    root,
+    feat,
+    'sprint-1',
+    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`
+  );
+  recordGate(feat, '3', 'FAIL', 'adversary');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/reviews/sprint-1/output/findings/FIND-001.json`,
+    JSON.stringify({
+      findingId: 'FIND-001',
+      dimension: 'verification_readiness',
+      category: 'proof_gap',
+      severity: 'high',
+      description: 'A required proof harness is missing for the parser invariant, so the current hardening plan cannot establish the claimed safety property.',
+      evidence: {
+        filePath: `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+        lineRange: '1-3',
+      },
+      routeToPhase: '5',
+    }, null, 2) + '\n'
+  );
+
+  routeFeedback(feat, '5');
+
+  const phase5State = readState(feat);
+  assert(phase5State.currentPhase === '5', 'feedback routing should allow phase 4 -> 5 when all current findings target phase 5');
+  assert(
+    phase5State.phaseHistory.some((entry) => entry.from === '4' && entry.to === '5'),
+    'feedback routing should record the explicit 4 -> 5 transition'
+  );
+}
+
+// ── Feedback routing: runtime blocks skipping an earlier routed phase ──
+{
+  const root = tmpDir();
+  process.chdir(root);
+  const feat = 'feedback-earliest-route-feature';
+  initFeature(feat, 'lean');
+
+  transitionPhase(feat, '1a');
+  writeFile(root, `.vsdd/features/${feat}/specs/behavioral-spec.md`, '# Behavioral\n');
+  transitionPhase(feat, '1b');
+  writeFile(root, `.vsdd/features/${feat}/specs/verification-architecture.md`, '# Verification\n');
+  transitionPhase(feat, '1c');
+  recordGate(feat, '1c', 'PASS', 'adversary');
+  transitionPhase(feat, '2a');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
+    'new-feature-tests: FAIL\nregression-baseline: PASS\n'
+  );
+  transitionPhase(feat, '2b');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    'target-feature-tests: PASS\nregression-baseline: PASS\n'
+  );
+  transitionPhase(feat, '2c');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    'target-feature-tests: PASS\nregression-baseline: PASS\nafter-refactor: PASS\n'
+  );
+  transitionPhase(feat, '3');
+  writeFailingReviewVerdict(
+    root,
+    feat,
+    'sprint-1',
+    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`
+  );
+  recordGate(feat, '3', 'FAIL', 'adversary');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/reviews/sprint-1/output/findings/FIND-001.json`,
+    JSON.stringify({
+      findingId: 'FIND-001',
+      dimension: 'verification_readiness',
+      category: 'verification_tool_mismatch',
+      severity: 'high',
+      description: 'The selected verification tool cannot prove the property currently claimed by the verification architecture, so the routing must return to Phase 1b.',
+      evidence: {
+        filePath: `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+        lineRange: '1-3',
+      },
+      routeToPhase: '1b',
+    }, null, 2) + '\n'
+  );
+
+  assertThrows(
+    () => routeFeedback(feat, '5'),
+    'Earliest feedback route is phase 1b'
+  );
+  assert(readState(feat).currentPhase === '3', 'routeFeedback should not partially move into phase 4 when the target phase is invalid');
+}
+
+// ── Feedback routing: direct phase 4 exits also respect the earliest route ──
+{
+  const root = tmpDir();
+  process.chdir(root);
+  const feat = 'feedback-direct-transition-feature';
+  initFeature(feat, 'lean');
+
+  transitionPhase(feat, '1a');
+  writeFile(root, `.vsdd/features/${feat}/specs/behavioral-spec.md`, '# Behavioral\n');
+  transitionPhase(feat, '1b');
+  writeFile(root, `.vsdd/features/${feat}/specs/verification-architecture.md`, '# Verification\n');
+  transitionPhase(feat, '1c');
+  recordGate(feat, '1c', 'PASS', 'adversary');
+  transitionPhase(feat, '2a');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
+    'new-feature-tests: FAIL\nregression-baseline: PASS\n'
+  );
+  transitionPhase(feat, '2b');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    'target-feature-tests: PASS\nregression-baseline: PASS\n'
+  );
+  transitionPhase(feat, '2c');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    'target-feature-tests: PASS\nregression-baseline: PASS\nafter-refactor: PASS\n'
+  );
+  transitionPhase(feat, '3');
+  writeFailingReviewVerdict(
+    root,
+    feat,
+    'sprint-1',
+    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`
+  );
+  recordGate(feat, '3', 'FAIL', 'adversary');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/reviews/sprint-1/output/findings/FIND-001.json`,
+    JSON.stringify({
+      findingId: 'FIND-001',
+      dimension: 'verification_readiness',
+      category: 'verification_tool_mismatch',
+      severity: 'high',
+      description: 'The verification architecture itself is wrong, so feedback must return to Phase 1b before any later phase can proceed.',
+      evidence: {
+        filePath: `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+        lineRange: '1-3',
+      },
+      routeToPhase: '1b',
+    }, null, 2) + '\n'
+  );
+
+  transitionPhase(feat, '4');
+  assertThrows(
+    () => transitionPhase(feat, '2a'),
+    'Earliest feedback route is phase 1b'
+  );
+  assert(readState(feat).currentPhase === '4', 'failed phase 4 exit should leave the feature in phase 4');
 }
 
 // ── Phase 6 requires verification, security, and purity artifacts ──
@@ -760,6 +1015,57 @@ function writePassingReviewVerdict(root, feature, reviewScope, evidenceLocation,
   assertThrows(
     () => transitionPhase(feat, '6'),
     'purity-audit.md required for phase 6'
+  );
+}
+
+// ── Phase 6 requires hardening artifacts generated after entering phase 5 ──
+{
+  const root = tmpDir();
+  process.chdir(root);
+  const feat = 'stale-hardening-artifacts-feature';
+  initFeature(feat, 'lean');
+
+  transitionPhase(feat, '1a');
+  writeFile(root, `.vsdd/features/${feat}/specs/behavioral-spec.md`, '# Behavioral\n');
+  transitionPhase(feat, '1b');
+  writeFile(root, `.vsdd/features/${feat}/specs/verification-architecture.md`, '# Verification\n');
+  transitionPhase(feat, '1c');
+  recordGate(feat, '1c', 'PASS', 'adversary');
+  transitionPhase(feat, '2a');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
+    'new-feature-tests: FAIL\nregression-baseline: PASS\n'
+  );
+  transitionPhase(feat, '2b');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    'target-feature-tests: PASS\nregression-baseline: PASS\n'
+  );
+  transitionPhase(feat, '2c');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    'target-feature-tests: PASS\nregression-baseline: PASS\nafter-refactor: PASS\n'
+  );
+  transitionPhase(feat, '3');
+  recordGate(feat, '3', 'PASS', 'adversary');
+  writeFormalHardeningArtifacts(root, feat);
+  const staleTimestamp = new Date('2000-01-01T00:00:00.000Z');
+  for (const artifactPath of [
+    `.vsdd/features/${feat}/verification/verification-report.md`,
+    `.vsdd/features/${feat}/verification/security-report.md`,
+    `.vsdd/features/${feat}/verification/purity-audit.md`,
+    `.vsdd/features/${feat}/verification/security-results/tooling.log`,
+  ]) {
+    fs.utimesSync(path.join(root, artifactPath), staleTimestamp, staleTimestamp);
+  }
+  transitionPhase(feat, '5');
+
+  assertThrows(
+    () => transitionPhase(feat, '6'),
+    'verification-report.md must be recorded after entering phase 5'
   );
 }
 
@@ -1102,6 +1408,86 @@ function writePassingReviewVerdict(root, feature, reviewScope, evidenceLocation,
   assertThrows(
     () => transitionPhase(feat, 'complete'),
     'no adversary-finding bead exists for FIND-001'
+  );
+}
+
+// ── Convergence: finding specificity scans persisted findings across all sprint directories ──
+{
+  const root = tmpDir();
+  process.chdir(root);
+  const feat = 'persisted-finding-specificity-feature';
+  initFeature(feat, 'lean');
+
+  transitionPhase(feat, '1a');
+  writeFile(root, `.vsdd/features/${feat}/specs/behavioral-spec.md`, '# B\n');
+  transitionPhase(feat, '1b');
+  writeFile(root, `.vsdd/features/${feat}/specs/verification-architecture.md`, '# V\n');
+  transitionPhase(feat, '1c');
+  recordGate(feat, '1c', 'PASS', 'adversary');
+  transitionPhase(feat, '2a');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
+    'new-feature-tests: FAIL\nregression-baseline: PASS\n'
+  );
+  transitionPhase(feat, '2b');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    'target-feature-tests: PASS\nregression-baseline: PASS\n'
+  );
+  transitionPhase(feat, '2c');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    'target-feature-tests: PASS\nregression-baseline: PASS\nafter-refactor: PASS\n'
+  );
+  transitionPhase(feat, '3');
+  recordGate(feat, '3', 'PASS', 'adversary');
+  transitionPhase(feat, '5');
+  writePassingReviewVerdict(
+    root,
+    feat,
+    'sprint-1',
+    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    {
+      iteration: 2,
+      convergenceSignals: {
+        findingCount: 0,
+        previousFindingCount: 1,
+        allCriteriaEvaluated: true,
+        duplicateFindings: [],
+      },
+    }
+  );
+  writeFormalHardeningArtifacts(root, feat);
+  transitionPhase(feat, '6');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/reviews/sprint-2/output/findings/FIND-777.json`,
+    JSON.stringify({
+      findingId: 'FIND-777',
+      dimension: 'edge_case_coverage',
+      category: 'test_quality',
+      severity: 'medium',
+      description: 'A persisted adversary finding from an earlier review cycle still cites a hallucinated location, so convergence must remain blocked until the evidence is corrected.',
+      evidence: {
+        filePath: `.vsdd/features/${feat}/src/nonexistent.js`,
+        lineRange: '1-2',
+      },
+      routeToPhase: '2a',
+    }, null, 2) + '\n'
+  );
+  traceability.createBead(feat, {
+    type: 'adversary-finding',
+    artifactPath: `.vsdd/features/${feat}/reviews/sprint-2/output/findings/FIND-777.json`,
+    status: 'resolved',
+    externalId: 'FIND-777',
+  });
+
+  assertThrows(
+    () => transitionPhase(feat, 'complete'),
+    'evidence.filePath is missing or does not exist'
   );
 }
 

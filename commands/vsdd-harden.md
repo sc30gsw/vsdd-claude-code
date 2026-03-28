@@ -6,7 +6,7 @@ description: Run Phase 5 (formal hardening) for the active VSDD feature. Invokes
 Runs formal hardening (Phase 5). Invokes the vsdd-verifier agent to execute language-appropriate verification tools against the proof obligations defined in Phase 1b, run security hardening checks, and audit the purity boundary. Produces `verification-report.md`, `security-report.md`, and `purity-audit.md`.
 
 ## When
-Run after adversarial review PASS (Phase 3 gate passed). Requires active feature at phase `5`.
+Run once the feature is already at phase `5`. This happens either after adversarial review PASS (`3 -> 5`) or after Phase 4 explicitly routes the current sprint's findings to Phase `5` (`3 -> 4 -> 5`) for proof-gap / invariant-only hardening work.
 
 ## How
 
@@ -34,10 +34,10 @@ Run after adversarial review PASS (Phase 3 gate passed). Requires active feature
    - `verification/security-results/` must contain at least one captured output file, even if the tools were not applicable
 9. **Transition to Phase 6** only when:
    - all required obligations are `proved`
-   - `verification/verification-report.md` exists
-   - `verification/security-report.md` exists
-   - `verification/purity-audit.md` exists
-   - `verification/security-results/` contains at least one captured output artifact
+   - `verification/verification-report.md` exists and was written after entering Phase 5
+   - `verification/security-report.md` exists and was written after entering Phase 5
+   - `verification/purity-audit.md` exists and was written after entering Phase 5
+   - `verification/security-results/` contains at least one captured output artifact written after entering Phase 5
 
 ## Language profile resolution
 

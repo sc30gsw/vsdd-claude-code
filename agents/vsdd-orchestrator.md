@@ -70,20 +70,21 @@ Route adversary findings based on `category`:
 
 Always route to the EARLIEST affected phase.
 Phase 4 is explicit in the state machine: use `routeFeedback(featureName, targetPhase, reason)` so the pipeline records `3 -> 4 -> target`, rather than jumping directly out of Phase 3.
+`routeFeedback()` must reject any target that skips an earlier `routeToPhase` from the current sprint's findings, and it must only run against a latest sprint verdict of `FAIL`.
 
 ## Convergence Detection (Phase 6)
 
 Check all four dimensions:
 1. **Finding diminishment**: Compare `convergenceSignals.findingCount` vs `previousFindingCount` across iterations
    - for iterations beyond the first, require `findingCount < previousFindingCount`
-2. **Finding specificity**: Verify all evidence.filePath values in findings are real files (`fs.existsSync`)
+2. **Finding specificity**: Verify all evidence.filePath values in persisted findings across `reviews/sprint-*/output/findings/` are real files (`fs.existsSync`)
 3. **Criteria coverage**: All contract criteria must have been evaluated
    - require `convergenceSignals.allCriteriaEvaluated === true`
    - require `convergenceSignals.evaluatedCriteria` to match the approved contract's CRIT set exactly
 4. **Duplicate detection**: Flag findings that restate previously-addressed issues
-5. **Formal hardening artifacts**: require `verification-report.md`, `security-report.md`, and `purity-audit.md` before completion
+5. **Formal hardening artifacts**: require `verification-report.md`, `security-report.md`, and `purity-audit.md` before completion, and require them to have been generated after entering Phase 5
 6. **Execution evidence**: require at least one captured file under `verification/security-results/`
-7. **Finding traceability coverage**: every persisted `FIND-NNN` artifact must have a matching `adversary-finding` bead
+7. **Finding traceability coverage**: every persisted `FIND-NNN` artifact across `reviews/sprint-*/output/findings/` must have a matching `adversary-finding` bead
 
 If convergence achieved: record gate and advance to `complete`.
 If not: record failure signals and route back to Phase 3 (max 2 attempts).

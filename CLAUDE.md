@@ -66,16 +66,17 @@ Verification tier execution:
 - Tier 3: Strong formal proof for safety-critical invariants
 - Always produce security hardening and purity-boundary audit artifacts alongside proof results
 - Required proof obligations must finish as `proved`; `skipped` is only acceptable for non-required obligations
+- Formal hardening artifacts must be generated after entering Phase 5
 
 ### Phase 6: Convergence
-Exit only when four-dimensional convergence is achieved:
+Exit only when all convergence conditions are satisfied:
 1. Specs survive adversarial review
 2. Tests provide adequate coverage
 3. Implementation passes all tests
 4. All required proofs are proved
 5. Formal hardening artifacts exist (`verification-report.md`, `security-report.md`, `purity-audit.md`)
-6. `verification/security-results/` contains at least one captured execution artifact
-7. Every persisted adversary finding has a matching `adversary-finding` bead
+6. `verification/security-results/` contains at least one captured execution artifact from the current Phase 5 pass
+7. Every persisted `reviews/sprint-*/output/findings/FIND-NNN.json` has a matching `adversary-finding` bead
 8. In strict mode, `convergenceSignals.evaluatedCriteria` exactly matches the approved contract's `CRIT-XXX` set
 9. On later review iterations, `convergenceSignals.findingCount` is lower than `previousFindingCount`
 

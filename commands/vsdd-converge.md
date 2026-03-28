@@ -26,13 +26,13 @@ Run after Phase 5 (formal hardening) completes. Requires active feature at phase
 4. **Check duplicate detection**: `convergenceSignals.duplicateFindings` must be empty
 5. **Check open finding beads**: no `adversary-finding` bead may remain in `open` status
 6. **Check formal hardening artifacts**:
-   - `verification/verification-report.md` exists
-   - `verification/security-report.md` exists
-   - `verification/purity-audit.md` exists
-   - `verification/security-results/` contains at least one captured output artifact
+   - `verification/verification-report.md` exists and was written after entering Phase 5
+   - `verification/security-report.md` exists and was written after entering Phase 5
+   - `verification/purity-audit.md` exists and was written after entering Phase 5
+   - `verification/security-results/` contains at least one captured output artifact written after entering Phase 5
    - all required proof obligations are `proved` (required obligations may not finish as `skipped`)
 7. **Check finding traceability coverage**:
-   - every persisted `reviews/sprint-N/output/findings/FIND-NNN.json` must have a matching `adversary-finding` bead
+   - every persisted `reviews/sprint-*/output/findings/FIND-NNN.json` must have a matching `adversary-finding` bead
 8. **All 4 dimensions converged?**
    - YES: record gate PASS, transition to `complete`, display success summary
    - NO: record failure details, check iteration limit (max 2)

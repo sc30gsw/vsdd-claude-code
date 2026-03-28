@@ -76,15 +76,15 @@ PreToolUseフックがフェーズ外の `Write`/`Edit` および、リダイレ
 
 ### 言語プロファイル
 
-言語固有の検証ツールチェーンをプリセットで提供する。
+言語固有の検証ツールヒントをプリセットで提供する。以下は現在バンドルされている runtime ヒントに対応する。
 
-| 言語 | Tier 1（プロパティテスト） | Tier 2（軽量形式手法） |
-|------|--------------------------|----------------------|
-| Rust | proptest, cargo-fuzz | Kani |
-| Python | hypothesis, mutmut | - |
-| TypeScript | fast-check | - |
-| Go | go-fuzz | - |
-| C++ | libFuzzer | CBMC |
+| 言語 | 現在バンドルされる主なヒント |
+|------|----------------------------|
+| Rust | `proptest` / `cargo-fuzz` / `cargo-mutants`、Tier 2 検証として `kani`、Tier 3 フォールバックとして `cbmc` |
+| Python | `hypothesis` / `mutmut` |
+| TypeScript | `fast-check` / `@stryker-mutator/core` |
+| Go | `rapid` / `go-fuzz` |
+| C/C++ | `libFuzzer` / `CBMC` |
 
 ### フェーズタグ付きGit統合
 
@@ -197,12 +197,12 @@ init -> 1a -> 1b -> 1c -> 2a -> 2b -> 2c -> 3 -> 4 -> [1a|1b|2a|2b|2c|5] -> 5 ->
                                                                      収束ループ（最大2回）
 ```
 
-フェーズ4（フィードバック統合）では、adversaryの指摘内容に応じて適切なフェーズへルーティングされる。runtime 上も `3 -> 4 -> 対象フェーズ` を明示的に記録する。
+フェーズ4（フィードバック統合）では、adversaryの指摘内容に応じて適切なフェーズへルーティングされる。runtime 上も `3 -> 4 -> 対象フェーズ` を明示的に記録し、現在の sprint の persisted finding が要求する最も早い `routeToPhase` を飛ばすルーティングは拒否する。
 
 strict モードでは追加で以下を強制する。
 
 - フェーズ3前: `contracts/sprint-{N}.md` は `status: approved` で、contract review verdict の `reviewContext.contractPath` と `reviewContext.contractDigest` が現在の契約に一致している必要がある
-- フェーズ6前: `verification-report.md` / `security-report.md` / `purity-audit.md` が必要セクション付きで存在し、`verification/security-results/` に少なくとも1つの実行痕跡ファイルがあり、required な proof obligation はすべて `proved` である必要がある。strict ではさらに `convergenceSignals.allCriteriaEvaluated = true` に加えて `convergenceSignals.evaluatedCriteria` が承認済み contract の `CRIT-XXX` 集合と完全一致している必要がある
+- フェーズ6前: `verification-report.md` / `security-report.md` / `purity-audit.md` が必要セクション付きで存在し、いずれもフェーズ5突入後に生成されており、`verification/security-results/` にもフェーズ5突入後の実行痕跡ファイルが少なくとも1つあり、required な proof obligation はすべて `proved` である必要がある。strict ではさらに `convergenceSignals.allCriteriaEvaluated = true` に加えて `convergenceSignals.evaluatedCriteria` が承認済み contract の `CRIT-XXX` 集合と完全一致している必要がある
 - 収束ループが 2 回目以降なら、完了前に `convergenceSignals.findingCount < convergenceSignals.previousFindingCount` も必要になる
 
 | 指摘の種類 | ルーティング先 |
@@ -230,9 +230,10 @@ strict モードでは追加で以下を強制する。
 | 仕様レビュー時の人手承認 | 必須 | 不要 |
 | 証明義務 | required な義務を強制 | 選択的。required が 0 件でもよい |
 | 形式的強化成果物 | `verification-report.md` / `security-report.md` / `purity-audit.md` | `verification-report.md` / `security-report.md` / `purity-audit.md` |
-| ゲート強制 | strictフックプロファイル | 緩和された設定 |
 | イテレーション速度 | 低速（高保証） | 高速 |
 | 推奨フロー | 全6フェーズを完全に実行 | 全6フェーズを維持しつつ運用を軽量化 |
+
+`--mode`、install profile、`VSDD_HOOK_PROFILE` は別軸の設定である。`/vsdd-init --mode strict` を使ってもフックプロファイルは自動で `strict` に切り替わらず、逆に `install.sh --profile strict` を実行しても feature の `state.json.mode` は変更されない。
 
 ---
 
@@ -247,7 +248,8 @@ bash install.sh --profile minimal
 # standard: contexts / agents / skills / hooks を含むフルワークフロー（推奨）
 bash install.sh --profile standard
 
-# strict: standard に strict hook profile を組み合わせる高保証向け
+# strict: standard と同じファイル群を高保証運用向けに導入する。
+# strict な runtime 挙動にしたい場合は /vsdd-init --mode strict と VSDD_HOOK_PROFILE=strict を併用する
 bash install.sh --profile strict
 ```
 
@@ -260,8 +262,8 @@ npx vsdd-claude-code --profile standard
 | プロファイル | 内容 | 適用シーン |
 |------------|------|----------|
 | minimal | docs + manifests + schemas + rules + commands + core runtime | 試用、軽量な利用 |
-| standard | + agents, skills, contexts, hooks, scripts（既定 `VSDD_HOOK_PROFILE=standard`） | 通常の開発作業 |
-| strict | standard と同じファイル構成。`VSDD_HOOK_PROFILE=strict` で厳しいフックマップ（自動コミットフック有効化など） | 高保証作業、チーム開発 |
+| standard | + agents, skills, contexts, hooks, scripts（未指定時の hook profile は `standard`） | 通常の開発作業 |
+| strict | standard と同じファイル構成。必要なら `VSDD_HOOK_PROFILE=strict` を明示して厳しいフックマップを使う | 高保証作業、チーム開発 |
 
 ### 言語プロファイル
 
@@ -282,6 +284,8 @@ npx vsdd-claude-code --profile standard --language typescript
 ```
 
 各言語プロファイルには検証ツールの設定、テストコマンド、カバレッジコマンドがプリセットされている。Rust/Python/TypeScript は専用スキルも追加され、Go/C++ は manifest ベースのツールプロファイルとして動作する。
+
+runtime が参照する正規のツールヒントは `manifests/language-profiles.json` にあり、この README では現在バンドルされている内容だけを要約している。
 
 ---
 
@@ -359,10 +363,12 @@ REQ-001 [spec-requirement] active
 | フック | minimal | standard | strict |
 |--------|---------|----------|--------|
 | ゲート強制（PreToolUse: Write/Edit/Bash） | OFF | ON | ON |
-| セッション開始コンテキスト（SessionStart） | OFF | ON | ON |
-| セッション永続化（Stop） | OFF | ON | ON |
+| セッション開始コンテキスト（SessionStart） | ON | ON | ON |
+| セッション永続化（Stop） | ON | ON | ON |
 | コンパクト前チェックポイント（PreCompact） | OFF | ON | ON |
 | 自動コミット（PostToolUse） | OFF | OFF | ON（要設定） |
+
+feature の mode と hook profile は独立している。`VSDD_HOOK_PROFILE=minimal` を使うと、ゲート強制を切りつつセッション系フックだけを維持できる。
 
 strictプロファイルで自動コミットを有効にするには、環境変数 `VSDD_AUTO_COMMIT=true` を設定する。
 

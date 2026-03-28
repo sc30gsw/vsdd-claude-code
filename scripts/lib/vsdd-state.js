@@ -40,6 +40,7 @@ const GREEN_EVIDENCE_PATTERNS = [
     description: 'regression baseline pass marker',
   },
 ];
+const FEEDBACK_ROUTE_ORDER = Object.freeze(['1a', '1b', '2a', '2b', '2c', '5']);
 
 // ── Strict mode: full linear ceremony (PLAN.md) ──
 const STRICT_TRANSITION_MAP = {
@@ -209,16 +210,20 @@ const GATE_PREREQUISITES = {
     }
     return { ok: true };
   },
+  '4': (state) => validateFeedbackRoutingTarget(state.featureName, state.sprintCount),
   '5': (state) => {
     const gate = state.gates['3'];
     if (!gate) return { ok: false, reason: 'Adversary review gate (phase 3) must be completed before phase 5' };
-    if (gate.verdict !== 'PASS') {
-      return { ok: false, reason: 'Adversary verdict must be PASS to enter phase 5' };
+    if (gate.verdict === 'PASS') {
+      return { ok: true };
     }
-    return { ok: true };
+    if (state.currentPhase === '4' && gate.verdict === 'FAIL') {
+      return validateFeedbackRoutingTarget(state.featureName, state.sprintCount, '5');
+    }
+    return { ok: false, reason: 'Adversary verdict must be PASS to enter phase 5 unless the active feedback route for the current sprint targets phase 5' };
   },
   '6': (state, featurePath) => {
-    const artifactCheck = validateFormalHardeningArtifacts(featurePath);
+    const artifactCheck = validateFormalHardeningArtifacts(featurePath, state);
     const requiredProofs = (state.proofObligations || []).filter(p => p.required);
     if (!artifactCheck.ok) {
       return artifactCheck;
@@ -695,7 +700,7 @@ function validateMarkdownArtifactSections(filePath, label, patterns) {
   return { ok: true };
 }
 
-function validateFormalHardeningArtifacts(featurePath) {
+function validateFormalHardeningArtifacts(featurePath, state) {
   const requiredArtifacts = [
     {
       relativePath: path.join('verification', 'verification-report.md'),
@@ -726,6 +731,10 @@ function validateFormalHardeningArtifacts(featurePath) {
       ],
     },
   ];
+  const phase5Timestamp = state ? getLatestPhaseTimestamp(state, '5') : null;
+  if (state && phase5Timestamp == null) {
+    return { ok: false, reason: 'Formal hardening artifacts require a recorded transition into phase 5' };
+  }
 
   for (const artifact of requiredArtifacts) {
     const artifactPath = path.join(featurePath, artifact.relativePath);
@@ -744,6 +753,16 @@ function validateFormalHardeningArtifacts(featurePath) {
     if (!contentCheck.ok) {
       return contentCheck;
     }
+
+    if (phase5Timestamp != null) {
+      const stats = fs.statSync(artifactPath);
+      if (stats.mtimeMs < phase5Timestamp) {
+        return {
+          ok: false,
+          reason: `${artifact.label} must be recorded after entering phase 5`,
+        };
+      }
+    }
   }
 
   const securityResultsPath = path.join(featurePath, 'verification', 'security-results');
@@ -755,15 +774,22 @@ function validateFormalHardeningArtifacts(featurePath) {
   }
 
   const securityResultEntries = fs.readdirSync(securityResultsPath)
-    .filter((entry) => {
-      const entryPath = path.join(securityResultsPath, entry);
-      return fs.statSync(entryPath).isFile();
-    });
+    .map((entry) => path.join(securityResultsPath, entry))
+    .filter((entryPath) => fs.statSync(entryPath).isFile());
   if (securityResultEntries.length === 0) {
     return {
       ok: false,
       reason: 'verification/security-results/ must contain at least one captured output artifact for phase 6',
     };
+  }
+  if (phase5Timestamp != null) {
+    const freshSecurityResultExists = securityResultEntries.some((entryPath) => fs.statSync(entryPath).mtimeMs >= phase5Timestamp);
+    if (!freshSecurityResultExists) {
+      return {
+        ok: false,
+        reason: 'verification/security-results/ must contain at least one captured output artifact recorded after entering phase 5',
+      };
+    }
   }
 
   return { ok: true };
@@ -805,6 +831,87 @@ function getFindingFiles(featureName, sprintNumber) {
     .map((name) => path.join(findingsDir, name));
 }
 
+function getAllFindingFiles(featureName) {
+  const reviewsDir = path.join(getFeaturePath(featureName), 'reviews');
+  if (!fs.existsSync(reviewsDir)) {
+    return [];
+  }
+
+  return fs.readdirSync(reviewsDir)
+    .filter((name) => /^sprint-\d+$/.test(name))
+    .sort((left, right) => {
+      const leftNumber = Number.parseInt(left.replace('sprint-', ''), 10);
+      const rightNumber = Number.parseInt(right.replace('sprint-', ''), 10);
+      return leftNumber - rightNumber;
+    })
+    .flatMap((sprintDir) => {
+      const findingsDir = path.join(reviewsDir, sprintDir, 'output', 'findings');
+      if (!fs.existsSync(findingsDir)) {
+        return [];
+      }
+
+      return fs.readdirSync(findingsDir)
+        .filter((name) => name.endsWith('.json'))
+        .sort()
+        .map((name) => path.join(findingsDir, name));
+    });
+}
+
+function readFindingDocument(findingPath) {
+  const finding = JSON.parse(fs.readFileSync(findingPath, 'utf8'));
+  assertValidDocument('finding', finding, path.relative(process.cwd(), findingPath));
+  return finding;
+}
+
+function validateFeedbackRoutingTarget(featureName, sprintNumber, targetPhase) {
+  if (!Number.isInteger(sprintNumber) || sprintNumber < 1) {
+    return { ok: false, reason: 'Feedback routing requires an active sprint review verdict' };
+  }
+
+  const verdictResult = readSprintVerdict(featureName, sprintNumber);
+  if (!verdictResult.ok) {
+    return verdictResult;
+  }
+  if (verdictResult.verdict.overallVerdict !== 'FAIL') {
+    return { ok: false, reason: `Feedback routing requires the latest sprint verdict to be FAIL, got ${verdictResult.verdict.overallVerdict}` };
+  }
+
+  const findingPaths = getFindingFiles(featureName, sprintNumber);
+  if (findingPaths.length === 0) {
+    return { ok: false, reason: `Feedback routing requires at least one finding for sprint ${sprintNumber}` };
+  }
+
+  const findings = [];
+  for (const findingPath of findingPaths) {
+    try {
+      findings.push({ findingPath, finding: readFindingDocument(findingPath) });
+    } catch (error) {
+      return {
+        ok: false,
+        reason: `Feedback routing requires valid finding JSON: ${path.relative(process.cwd(), findingPath)} (${error.message})`,
+      };
+    }
+  }
+
+  const routes = findings.map(({ finding }) => finding.routeToPhase);
+  const earliestRoute = FEEDBACK_ROUTE_ORDER.find((phase) => routes.includes(phase));
+  if (!earliestRoute) {
+    return { ok: false, reason: `Feedback routing could not resolve an earliest route for sprint ${sprintNumber}` };
+  }
+
+  if (targetPhase && targetPhase !== earliestRoute) {
+    const conflictingFindings = findings
+      .filter(({ finding }) => finding.routeToPhase === earliestRoute)
+      .map(({ finding }) => finding.findingId);
+    return {
+      ok: false,
+      reason: `Earliest feedback route is phase ${earliestRoute}; cannot route to ${targetPhase} while findings ${conflictingFindings.join(', ')} remain open for ${earliestRoute}`,
+    };
+  }
+
+  return { ok: true, earliestRoute, findingCount: findings.length };
+}
+
 function resolveEvidenceFilePath(evidencePath) {
   if (!evidencePath || typeof evidencePath !== 'string') {
     return null;
@@ -830,12 +937,11 @@ function parseLineRange(lineRange) {
   return { start, end };
 }
 
-function validateFindingSpecificity(featureName, sprintNumber) {
-  for (const findingPath of getFindingFiles(featureName, sprintNumber)) {
+function validateFindingSpecificity(featureName) {
+  for (const findingPath of getAllFindingFiles(featureName)) {
     let finding;
     try {
-      finding = JSON.parse(fs.readFileSync(findingPath, 'utf8'));
-      assertValidDocument('finding', finding, path.relative(process.cwd(), findingPath));
+      finding = readFindingDocument(findingPath);
     } catch (error) {
       return {
         ok: false,
@@ -882,11 +988,10 @@ function validateFindingBeadCoverage(featureName, sprintNumber, state) {
     : []
   ).filter((bead) => bead.type === 'adversary-finding');
 
-  for (const findingPath of getFindingFiles(featureName, sprintNumber)) {
+  for (const findingPath of getAllFindingFiles(featureName)) {
     let finding;
     try {
-      finding = JSON.parse(fs.readFileSync(findingPath, 'utf8'));
-      assertValidDocument('finding', finding, path.relative(process.cwd(), findingPath));
+      finding = readFindingDocument(findingPath);
     } catch (error) {
       return {
         ok: false,
@@ -920,7 +1025,7 @@ function validateConvergenceForCompletion(featureName, state) {
     return { ok: false, reason: 'Cannot complete a feature with no sprint history' };
   }
 
-  const hardeningArtifacts = validateFormalHardeningArtifacts(getFeaturePath(featureName));
+  const hardeningArtifacts = validateFormalHardeningArtifacts(getFeaturePath(featureName), state);
   if (!hardeningArtifacts.ok) {
     return hardeningArtifacts;
   }
@@ -991,7 +1096,7 @@ function validateConvergenceForCompletion(featureName, state) {
     };
   }
 
-  return validateFindingSpecificity(featureName, state.sprintCount);
+  return validateFindingSpecificity(featureName);
 }
 
 // ── Validation ──
@@ -1129,6 +1234,12 @@ function transitionPhase(featureName, targetPhase, reason) {
       throw new Error('Adversary gate (phase 3) must be PASS before entering phase 5');
     }
   }
+  if (current === '4' && targetPhase !== '4') {
+    const routingCheck = validateFeedbackRoutingTarget(featureName, state.sprintCount, targetPhase);
+    if (!routingCheck.ok) {
+      throw new Error(`Feedback routing check failed: ${routingCheck.reason}`);
+    }
+  }
 
   // 2. Check gate prerequisites
   const prereq = GATE_PREREQUISITES[targetPhase];
@@ -1210,6 +1321,10 @@ function routeFeedback(featureName, targetPhase, reason) {
   const state = readState(featureName);
   if (state.currentPhase !== '3' && state.currentPhase !== '4') {
     throw new Error(`Feedback routing requires phase 3 or 4, current phase is ${state.currentPhase}`);
+  }
+  const routingCheck = validateFeedbackRoutingTarget(featureName, state.sprintCount, targetPhase);
+  if (!routingCheck.ok) {
+    throw new Error(`Feedback routing check failed: ${routingCheck.reason}`);
   }
 
   if (state.currentPhase === '3') {
@@ -1534,6 +1649,8 @@ module.exports = {
   validateApprovedSprintContract,
   validateSprintContractReview,
   validateCriteriaCoverage,
+  validateFeedbackRoutingTarget,
   validateFormalHardeningArtifacts,
+  getAllFindingFiles,
   validateFindingBeadCoverage,
 };

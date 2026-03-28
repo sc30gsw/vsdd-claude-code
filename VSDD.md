@@ -42,7 +42,7 @@ It combines four constraints into one workflow:
 - `verification/verification-report.md`
 - `verification/security-report.md`
 - `verification/purity-audit.md`
-- at least one captured artifact under `verification/security-results/`
+- at least one captured artifact under `verification/security-results/`, recorded after entering Phase 5
 
 ## Completion Rule
 
@@ -53,7 +53,7 @@ A feature is complete only when:
 - no duplicate findings remain
 - no `adversary-finding` bead remains open
 - every persisted adversary finding has a matching `adversary-finding` bead
-- all required proof obligations are proved
+- all required proof obligations are proved, and persisted findings across `reviews/sprint-*/output/findings/` retain bead coverage
 - formal hardening artifacts (`verification-report.md`, `security-report.md`, `purity-audit.md`) exist
 - in strict mode, `convergenceSignals.evaluatedCriteria` exactly matches the approved contract's `CRIT-XXX` set
 

@@ -54,11 +54,11 @@ Completion is blocked if any persisted adversary finding lacks a matching `adver
 The `vsdd-gate-check.js` hook runs on `PreToolUse` for `Write`/`Edit`/`MultiEdit` and for `Bash` when the command targets phase-restricted paths. It blocks direct writes, shell redirects, in-place edits, and common path-based mutation commands such as `cp` into restricted areas. Gate strictness is controlled by the `VSDD_HOOK_PROFILE` environment variable.
 
 **Language verification profiles**
-- **Rust** -- Kani (formal verification), proptest (property testing), cargo-fuzz / AFL++ (fuzzing), cargo-mutants (mutation testing)
-- **Python** -- hypothesis (property testing), python-afl (fuzzing), mutmut (mutation testing)
-- **TypeScript** -- fast-check (property testing), jsfuzz (fuzzing), Stryker (mutation testing)
-- **Go** -- rapid (property testing), go-fuzz (fuzzing), go-mutesting (mutation testing)
-- **C/C++** -- CBMC (formal verification), AFL++ / libFuzzer (fuzzing), mull (mutation testing)
+- **Rust** -- `proptest`, `cargo-fuzz`, `cargo-mutants`, with `kani` as the bundled Tier 2 verifier and `cbmc` as a Tier 3 fallback hint
+- **Python** -- `hypothesis` and `mutmut`
+- **TypeScript** -- `fast-check` and `@stryker-mutator/core`
+- **Go** -- `rapid` and `go-fuzz`
+- **C/C++** -- `libFuzzer` and `CBMC`
 
 **Git integration with phase-tagged commits**
 The `/vsdd-commit` command generates conventional commit messages that include phase identifiers, bead traceability summaries, and artifact manifests. Optional auto-commit (disabled by default) only stages files that belong to the active feature and current phase, and creates `vsdd/<feature>/phase-<id>` tags without overwriting existing tags.
@@ -294,13 +294,14 @@ Gate prerequisites:
 | 2b | Red phase evidence exists, was recorded after entering 2a, and proves both `new-feature-tests: FAIL` and `regression-baseline: PASS` |
 | 2c | Green phase evidence exists, was recorded after entering 2b, and proves both `target-feature-tests: PASS` and `regression-baseline: PASS` |
 | 3 | Tests pass post-refactor, with green evidence recorded after the latest implementation/refactor phase and carrying both target/regression PASS markers. Strict mode also requires `contracts/sprint-{N}.md` with `status: approved`, at least one `CRIT-XXX`, and `reviews/contracts/sprint-{N}/output/verdict.json` with `overallVerdict: PASS`, matching `reviewContext.contractPath`, matching `reviewContext.contractDigest`, and `iteration = negotiationRound + 1` |
-| 5 | Adversary verdict PASS |
-| 6 | `verification-report.md`, `security-report.md`, and `purity-audit.md` exist with the required sections, `verification/security-results/` contains at least one captured output artifact, and all required proof obligations are `proved` (not `skipped`). Strict mode also requires `convergenceSignals.allCriteriaEvaluated = true` plus an exact `convergenceSignals.evaluatedCriteria` match against the approved contract's `CRIT-XXX` set |
+| 5 | Adversary verdict PASS, or an explicit Phase 4 feedback route whose current sprint findings all route to Phase 5 |
+| 6 | `verification-report.md`, `security-report.md`, and `purity-audit.md` exist with the required sections and were recorded after entering Phase 5, `verification/security-results/` contains at least one captured output artifact recorded after entering Phase 5, all required proof obligations are `proved` (not `skipped`), and every persisted adversary finding under `reviews/sprint-*/output/findings/` has a matching `adversary-finding` bead. Strict mode also requires `convergenceSignals.allCriteriaEvaluated = true` plus an exact `convergenceSignals.evaluatedCriteria` match against the approved contract's `CRIT-XXX` set |
 
 For review iterations beyond the first, convergence also requires `convergenceSignals.findingCount < convergenceSignals.previousFindingCount` before completion.
 
 Evidence logs use explicit top-of-file markers so hooks can distinguish "new tests failed" from "baseline still green" and "target tests passed" from "regression suite passed".
 Feedback routing is explicit in runtime state: the orchestrator records `3 -> 4 -> target` rather than jumping directly out of Phase 3.
+Runtime also rejects feedback routing that skips an earlier `routeToPhase` from the current sprint's findings.
 
 ---
 
@@ -315,7 +316,6 @@ Feedback routing is explicit in runtime state: the orchestrator records `3 -> 4 
 | Proof obligations | Required obligations are enforced | Selective; often zero are marked required |
 | Formal hardening artifacts | `verification-report.md`, `security-report.md`, `purity-audit.md` | `verification-report.md`, `security-report.md`, `purity-audit.md` |
 | Phases traversed | All 6 | All 6 |
-| Gate enforcement hook profile | strict | standard |
 | Iteration limit (adversary) | 5 | 3 |
 | Human escalation threshold | Hit iteration limit | Hit iteration limit |
 | Suitable for | Safety-critical, financial, security | Product work, prototypes, internal tooling |
@@ -326,6 +326,8 @@ Select mode at initialization:
 /vsdd-init <feature-name> --mode strict
 /vsdd-init <feature-name> --mode lean
 ```
+
+`--mode`, install profile, and `VSDD_HOOK_PROFILE` are separate knobs. A feature started in `--mode strict` does not automatically switch the hook profile to `strict`, and `install.sh --profile strict` does not rewrite `.vsdd/.../state.json`.
 
 ---
 
@@ -340,7 +342,8 @@ bash install.sh --profile minimal
 # Standard: full workflow with contexts, agents, skills, and hooks (recommended)
 bash install.sh --profile standard
 
-# Strict: same hook bundle as standard; set VSDD_HOOK_PROFILE=strict for the strict hook map (e.g. auto-commit hook enabled)
+# Strict: installs the same file set as standard for high-assurance workflows;
+# pair it with /vsdd-init --mode strict and VSDD_HOOK_PROFILE=strict when you want strict runtime behavior
 bash install.sh --profile strict
 ```
 
@@ -361,6 +364,8 @@ bash install.sh --profile standard --language cpp
 ```
 
 Language profiles configure the verifier agent with the correct toolset. Rust/Python/TypeScript also install dedicated language skills; Go/C++ use the manifest-backed tool profile without an extra skill bundle.
+
+The canonical runtime tool hints live in `manifests/language-profiles.json`; this README mirrors only the currently bundled hints.
 
 ### Profile Contents
 
@@ -435,10 +440,12 @@ These semantics apply when the hook bundle is installed. The `minimal` install p
 | Hook | Event | minimal | standard | strict |
 |---|---|---|---|---|
 | Gate enforcement | PreToolUse (Write/Edit/Bash heuristics) | OFF | ON | ON |
-| Session persistence | SessionStart | OFF | ON | ON |
-| State persist on exit | Stop | OFF | ON | ON |
+| Session persistence | SessionStart | ON | ON | ON |
+| State persist on exit | Stop | ON | ON | ON |
 | Pre-compact checkpoint | PreCompact | OFF | ON | ON |
 | Auto-commit on phase completion | PostToolUse (Bash) | OFF | OFF | ON |
+
+Hook profile activation is orthogonal to feature mode. Use `VSDD_HOOK_PROFILE=minimal` when you want session lifecycle hooks without gate enforcement.
 
 Auto-commit requires an explicit opt-in even in strict mode:
 

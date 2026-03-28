@@ -73,4 +73,4 @@ Context resets on every adversarial pass. The Adversary is spawned as a fresh ag
 2. Finding specificity: All findings cite real files and line numbers (hallucination detection)
 3. Grading criteria coverage: All contract criteria evaluated
 4. Duplicate detection: No regurgitation of previously-addressed findings
-5. Formal hardening evidence: required reports exist with the mandated sections, `security-results/` contains execution evidence, and every persisted finding has a matching `adversary-finding` bead
+5. Formal hardening evidence: required reports exist with the mandated sections, were generated after entering Phase 5, `security-results/` contains execution evidence from the current hardening pass, and every persisted finding has a matching `adversary-finding` bead

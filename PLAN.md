@@ -161,6 +161,12 @@ vsdd-claude-code/
 - `strict`: sprint contracts, repeated adversary passes, proof obligations, stronger hooks
 - `lean`: full 6-phase VSDD flow with lighter approvals, selective proof obligations, and fewer mandatory sprint contracts
 
+**Runtime Knobs**:
+- Feature `mode` (`strict` / `lean`) is recorded in `.vsdd/features/<feature>/state.json` and governs gate semantics.
+- Install profile (`minimal` / `standard` / `strict`) governs which files are copied into the plugin.
+- `VSDD_HOOK_PROFILE` (`minimal` / `standard` / `strict`) governs which hooks are active at runtime.
+- These are related but independent axes. A strict feature does **not** implicitly flip the hook profile to `strict`.
+
 **Spec Policy**: Phase 1 outputs are "good enough to start, precise enough to test." Any material discovery during implementation updates the spec, traceability graph, and proof obligation registry rather than being treated as process failure.
 
 ### 1. Adversary Fresh Context (Entropy Resistance)
@@ -240,35 +246,42 @@ A fresh `vsdd-adversary` agent is spawned that reads ONLY from disk. The adversa
 
 ### 8. Language Profiles with Verification Toolset Auto-Selection [HIGH PRIORITY]
 
-**Decision**: Add language-specific profiles to `manifests/install-profiles.json`. Each profile auto-selects the verification toolset for `verification/`.
+**Decision**: Add language-specific profiles to the installer, with the **canonical verifier tool hints** living in `manifests/language-profiles.json`. `manifests/install-profiles.json` selects modules for installation; `language-profiles.json` is the source of truth for verification commands/tooling exposed to `vsdd-verifier`.
 
-**Profiles**:
+**Bundled Runtime Profiles**:
 
 | Profile | Language | Formal Verification | Test Framework | Property Testing | Fuzzing | Mutation Testing |
 |---------|----------|-------------------|----------------|-----------------|---------|-----------------|
-| `rust` | Rust | Kani, CBMC | cargo test | proptest | cargo-fuzz, AFL++ | cargo-mutants |
-| `python` | Python | (Level 1 manual) | pytest | hypothesis | python-afl | mutmut |
-| `typescript` | TypeScript | (Level 1 manual) | vitest/jest | fast-check | jsfuzz | stryker |
-| `go` | Go | (Level 1 manual) | go test | rapid | go-fuzz | go-mutesting |
-| `cpp` | C/C++ | CBMC | gtest/catch2 | (manual) | AFL++, libFuzzer | mull |
+| `rust` | Rust | Kani (Tier 2), CBMC (Tier 3 fallback) | cargo test | proptest | cargo-fuzz | cargo-mutants |
+| `python` | Python | none bundled | pytest | hypothesis | none bundled | mutmut |
+| `typescript` | TypeScript | none bundled | vitest | fast-check | none bundled | `@stryker-mutator/core` |
+| `go` | Go | none bundled | go test | rapid | go-fuzz | none bundled |
+| `cpp` | C/C++ | CBMC | `cmake --build . && ctest` | none bundled | libFuzzer | none bundled |
 
-**How**: Each language profile in `install-profiles.json` includes a `verificationToolset` field:
+**How**: `install-profiles.json` selects language modules, while `language-profiles.json` exposes the canonical verifier hints:
 ```json
 {
   "rust": {
-    "modules": ["vsdd-rules", "vsdd-commands", "vsdd-agents", "vsdd-skills", "vsdd-hooks"],
+    "language": "Rust",
+    "testRunner": "cargo test",
     "verificationToolset": {
-      "formalVerification": ["kani"],
-      "propertyTesting": ["proptest"],
-      "fuzzing": ["cargo-fuzz", "afl"],
-      "mutationTesting": ["cargo-mutants"],
-      "staticAnalysis": ["clippy", "semgrep"]
+      "tier1": {
+        "propertyTesting": {"tool": "proptest"},
+        "fuzzing": {"tool": "cargo-fuzz"},
+        "mutationTesting": {"tool": "cargo-mutants"}
+      },
+      "tier2": {
+        "formalVerification": {"tool": "kani"}
+      },
+      "tier3": {
+        "formalVerification": {"tool": "cbmc"}
+      }
     }
   }
 }
 ```
 
-**Verifier Agent Integration**: `vsdd-verifier.md` reads the profile's `verificationToolset`, auto-detects which tools are installed, and suggests install commands for missing tools.
+**Verifier Agent Integration**: `vsdd-verifier.md` reads `manifests/language-profiles.json`, auto-detects which tools are installed, and suggests install commands for missing tools.
 
 **New Files**:
 - `manifests/language-profiles.json` -- Language-specific toolset definitions
@@ -463,8 +476,10 @@ Gate prerequisites:
 | 2b | Red phase evidence (new feature tests fail while regression baseline remains green) |
 | 2c | Green phase evidence (target feature tests and regression suite pass) |
 | 3 | Tests pass post-refactor; in strict mode `contracts/sprint-{N}.md` exists with `status: approved`, contains at least one `CRIT-XXX`, and `reviews/contracts/sprint-{N}/output/verdict.json` has `overallVerdict: PASS`, matching `reviewContext.contractPath`, matching `reviewContext.contractDigest`, and `iteration = negotiationRound + 1` |
-| 5 | Adversary verdict PASS |
-| 6 | `verification-report.md`, `security-report.md`, and `purity-audit.md` exist with the required sections; `verification/security-results/` contains at least one captured output artifact; all required proof obligations are `proved`; and strict-mode verdict sets `convergenceSignals.allCriteriaEvaluated = true` with `convergenceSignals.evaluatedCriteria` exactly matching the approved contract's `CRIT-XXX` set |
+| 5 | Adversary verdict PASS, or a Phase 4 feedback route whose current sprint findings all target Phase 5 |
+| 6 | `verification-report.md`, `security-report.md`, and `purity-audit.md` exist with the required sections and were recorded after entering Phase 5; `verification/security-results/` contains at least one captured output artifact recorded after entering Phase 5; all required proof obligations are `proved`; every persisted adversary finding under `reviews/sprint-*/output/findings/` has a matching `adversary-finding` bead; and strict-mode verdict sets `convergenceSignals.allCriteriaEvaluated = true` with `convergenceSignals.evaluatedCriteria` exactly matching the approved contract's `CRIT-XXX` set |
+
+For review iterations beyond the first, convergence also requires `convergenceSignals.findingCount < convergenceSignals.previousFindingCount` before completion.
 
 ### Feedback Routing Table (Phase 4)
 
@@ -549,7 +564,7 @@ Four-dimensional convergence signals:
 43. Create `VSDD.md` (methodology overview)
 44. Create `contexts/vsdd-active.md`
 
-**Total: ~57 files** (`marketplace.json` removed; `vsdd-index.schema.json` added)
+**Total**: The scaffold size will drift as docs, manifests, and language profiles evolve. The directory structure above is normative; the raw file count is not.
 
 ### Parallel Execution Strategy
 
@@ -646,8 +661,8 @@ This table distinguishes between patterns Anthropic currently keeps in the updat
 
 | Harness Pattern | VSDD Implementation |
 |----------------|---------------------|
-| Three-Agent Architecture (Planner/Generator/Evaluator) | vsdd-orchestrator, vsdd-builder, vsdd-adversary |
-| Decomposition Over Monolithic | 12 commands, each doing one phase step |
+| Three-Agent Architecture (Planner/Generator/Evaluator) | vsdd-orchestrator, vsdd-builder, vsdd-adversary, with `vsdd-verifier` added as a dedicated Phase 5 specialist |
+| Decomposition Over Monolithic | 13 commands, each doing one phase step |
 | Separation of Concerns | Adversary cannot see builder context; file-only communication |
 | File-Based Communication | `.vsdd/features/<name>/` artifacts; adversary reads from disk |
 | Historical sprint-contract pattern, intentionally retained here | `sprint-{N}.md` with concrete grading criteria, negotiated before work begins |

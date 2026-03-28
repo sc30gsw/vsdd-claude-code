@@ -22,12 +22,14 @@ Run after `/vsdd-adversary` returns a FAIL verdict. Normally starts from phase `
    2b: [FIND-004, FIND-005]  <- implementation bug
    ```
 5. **Route to EARLIEST affected phase** (route to 1a before 1b before 2a before 2b before 2c before 5)
+   - runtime validates the current sprint's persisted findings and rejects any target that skips an earlier routed phase
 6. **Create adversary-finding beads** for each finding
    - completion will later fail if any persisted finding lacks a matching `adversary-finding` bead
 7. **Advance through explicit feedback routing**:
    - if current phase is `3`, transition `3 -> 4`
    - from phase `4`, transition to the selected target phase
    - use `routeFeedback(featureName, targetPhase, reason)` from `scripts/lib/vsdd-state.js` instead of hand-rolling `transitionPhase()` calls
+   - `routeFeedback()` only proceeds when the latest sprint verdict is `FAIL`
 8. **Display routing summary**: "Routing 5 findings. 2 -> Phase 1a, 3 -> Phase 2b"
 9. **Next action**: prompt user to run appropriate command for the target phase
 
