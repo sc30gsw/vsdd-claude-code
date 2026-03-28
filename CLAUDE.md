@@ -12,7 +12,7 @@ VSDD enforces structured quality gates through 6 phases, 4 roles, and 8 principl
 Full VSDD ceremony for high-assurance work:
 - Sprint contracts required per sprint
 - Contract review PASS required before Phase 3, and the verdict must still match the approved contract snapshot
-- Multiple adversary review rounds
+- Multiple adversary review rounds (Phase 3 capped at 5)
 - Proof obligations enforced
 - All 6 phases traversed
 - Gate enforcement via strict hook profile
@@ -21,7 +21,9 @@ Full VSDD ceremony for high-assurance work:
 Streamlined flow for product work and prototyping:
 - Full 6-phase VSDD flow with lighter approvals and contract requirements
 - Sprint contracts only for risky work
+- Phase 3 review loops are capped lower (3)
 - Phase 5 still runs, but required proof obligations are often zero
+- Phase 5 still must produce `verification-report.md`, `security-report.md`, and `purity-audit.md`
 - Relaxed gate enforcement
 - Faster iteration cycles
 
@@ -62,6 +64,7 @@ Verification tier execution:
 - Tier 1: Property tests / fuzzing / mutation
 - Tier 2: Lightweight formal methods for pure-core logic
 - Tier 3: Strong formal proof for safety-critical invariants
+- Always produce security hardening and purity-boundary audit artifacts alongside proof results
 
 ### Phase 6: Convergence
 Exit only when four-dimensional convergence is achieved:
@@ -69,8 +72,9 @@ Exit only when four-dimensional convergence is achieved:
 2. Tests provide adequate coverage
 3. Implementation passes all tests
 4. All required proofs pass
-5. In strict mode, `convergenceSignals.evaluatedCriteria` exactly matches the approved contract's `CRIT-XXX` set
-6. On later review iterations, `convergenceSignals.findingCount` is lower than `previousFindingCount`
+5. Formal hardening artifacts exist (`verification-report.md`, `security-report.md`, `purity-audit.md`)
+6. In strict mode, `convergenceSignals.evaluatedCriteria` exactly matches the approved contract's `CRIT-XXX` set
+7. On later review iterations, `convergenceSignals.findingCount` is lower than `previousFindingCount`
 
 ## 4 Roles
 

@@ -218,10 +218,10 @@ const GATE_PREREQUISITES = {
     return { ok: true };
   },
   '6': (state, featurePath) => {
-    const reportPath = path.join(featurePath, 'verification', 'verification-report.md');
+    const artifactCheck = validateFormalHardeningArtifacts(featurePath);
     const requiredProofs = (state.proofObligations || []).filter(p => p.required);
-    if (!fs.existsSync(reportPath)) {
-      return { ok: false, reason: 'verification-report.md required for phase 6' };
+    if (!artifactCheck.ok) {
+      return artifactCheck;
     }
     const failedProofs = requiredProofs.filter(p => p.status !== 'proved' && p.status !== 'skipped');
     if (failedProofs.length > 0) {
@@ -236,11 +236,32 @@ const GATE_PREREQUISITES = {
 };
 
 // ── Iteration Limits (safety valve) ──
-const ITERATION_LIMITS = {
-  '1c': 3,
-  '3':  5,
-  '6':  2,
-};
+const ITERATION_LIMITS = Object.freeze({
+  default: Object.freeze({
+    '1c': 3,
+    '6': 2,
+  }),
+  strict: Object.freeze({
+    '3': 5,
+  }),
+  lean: Object.freeze({
+    '3': 3,
+  }),
+});
+
+function getIterationLimit(stateOrMode, phase) {
+  const mode = typeof stateOrMode === 'string'
+    ? stateOrMode
+    : (stateOrMode && stateOrMode.mode) || 'lean';
+
+  if (!phase) {
+    return null;
+  }
+
+  return ITERATION_LIMITS[mode]?.[phase]
+    ?? ITERATION_LIMITS.default[phase]
+    ?? null;
+}
 
 // ── Path Helpers ──
 
@@ -656,6 +677,35 @@ function validateCriteriaCoverage(featureName, sprintNumber) {
   return { ok: true, verdictPath };
 }
 
+function validateFormalHardeningArtifacts(featurePath) {
+  const requiredArtifacts = [
+    {
+      relativePath: path.join('verification', 'verification-report.md'),
+      label: 'verification-report.md',
+    },
+    {
+      relativePath: path.join('verification', 'security-report.md'),
+      label: 'security-report.md',
+    },
+    {
+      relativePath: path.join('verification', 'purity-audit.md'),
+      label: 'purity-audit.md',
+    },
+  ];
+
+  for (const artifact of requiredArtifacts) {
+    const artifactPath = path.join(featurePath, artifact.relativePath);
+    if (!fs.existsSync(artifactPath)) {
+      return {
+        ok: false,
+        reason: `${artifact.label} required for phase 6`,
+      };
+    }
+  }
+
+  return { ok: true };
+}
+
 function getSprintVerdictPath(featureName, sprintNumber) {
   return path.join(getFeaturePath(featureName), 'reviews', `sprint-${sprintNumber}`, 'output', 'verdict.json');
 }
@@ -962,7 +1012,7 @@ function transitionPhase(featureName, targetPhase, reason) {
 
   // 3. Check iteration limits (safety valve)
   const iterCount = (state.iterations[targetPhase] || 0) + 1;
-  const limit = ITERATION_LIMITS[targetPhase];
+  const limit = getIterationLimit(state, targetPhase);
   if (limit && iterCount > limit) {
     writeEscalation(featureName, {
       phase: targetPhase,
@@ -1024,6 +1074,27 @@ function transitionPhase(featureName, targetPhase, reason) {
   }
 
   return state;
+}
+
+function routeFeedback(featureName, targetPhase, reason) {
+  const state = readState(featureName);
+  if (state.currentPhase !== '3' && state.currentPhase !== '4') {
+    throw new Error(`Feedback routing requires phase 3 or 4, current phase is ${state.currentPhase}`);
+  }
+
+  if (state.currentPhase === '3') {
+    transitionPhase(
+      featureName,
+      '4',
+      reason || `Feedback integration: routing adversary findings toward phase ${targetPhase}`
+    );
+  }
+
+  return transitionPhase(
+    featureName,
+    targetPhase,
+    reason || `Feedback routing target selected: phase ${targetPhase}`
+  );
 }
 
 // ── Index CRUD ──
@@ -1160,6 +1231,7 @@ function initFeature(featureName, mode = 'lean', language = null) {
     'verification/proof-harnesses',
     'verification/fuzz-results',
     'verification/mutation-results',
+    'verification/security-results',
     'escalations',
   ];
   for (const dir of dirs) {
@@ -1282,6 +1354,7 @@ module.exports = {
   STRICT_TRANSITION_MAP,
   TRANSITION_MAP,
   ITERATION_LIMITS,
+  getIterationLimit,
   getAllowedTransitions,
 
   // Path helpers
@@ -1303,6 +1376,7 @@ module.exports = {
   // Phase transitions
   validateTransition,
   transitionPhase,
+  routeFeedback,
 
   // Index CRUD
   readIndex,
@@ -1330,4 +1404,5 @@ module.exports = {
   validateApprovedSprintContract,
   validateSprintContractReview,
   validateCriteriaCoverage,
+  validateFormalHardeningArtifacts,
 };

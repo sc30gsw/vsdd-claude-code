@@ -66,12 +66,23 @@ function phaseArtifactHints(state, activeFeature, vsddRelative) {
       `reviews/sprint-${sprint}/input/`,
       `reviews/sprint-${sprint}/output/`,
     ],
-    '5': ['verification/'],
+    '5': [
+      'verification/',
+      'verification/verification-report.md',
+      'verification/security-report.md',
+      'verification/purity-audit.md',
+    ],
     '6': [
       `reviews/sprint-${sprint}/output/`,
       'verification/verification-report.md',
+      'verification/security-report.md',
+      'verification/purity-audit.md',
     ],
-    complete: ['verification/verification-report.md'],
+    complete: [
+      'verification/verification-report.md',
+      'verification/security-report.md',
+      'verification/purity-audit.md',
+    ],
   };
 
   for (const rel of byPhase[state.currentPhase] || []) {

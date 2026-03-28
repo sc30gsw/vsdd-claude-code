@@ -1,6 +1,6 @@
 ---
 name: vsdd-formal-hardening
-description: Use this skill during Phase 5 formal hardening. Provides tool selection, proof harness patterns, and verification result interpretation for Rust (Kani), Python (hypothesis), and TypeScript (fast-check).
+description: Use this skill during Phase 5 formal hardening. Provides tool selection, proof harness patterns, security/purity audit expectations, and verification result interpretation for Rust (Kani), Python (hypothesis), and TypeScript (fast-check).
 origin: VSDD
 ---
 
@@ -75,8 +75,14 @@ test('parse roundtrip', () => {
 
 ## Graceful Degradation
 
+Always produce:
+1. `verification-report.md`
+2. `security-report.md`
+3. `purity-audit.md`
+
 If required tool is unavailable:
-1. Document in verification-report.md
+1. Document the degradation in `verification-report.md`
 2. Degrade to lower tier
 3. Update proof obligation status to "skipped" with explanation
-4. Pipeline DOES NOT block if obligation is not required
+4. Still run security hardening / purity audit and write their artifacts
+5. Pipeline DOES NOT block if obligation is not required

@@ -141,7 +141,10 @@ vsdd-claude-code/
         proof-harnesses/              # Kani/CBMC/Dafny harnesses
         fuzz-results/
         mutation-results/
+        security-results/
         verification-report.md
+        security-report.md
+        purity-audit.md
       escalations/
         escalation-{timestamp}.md     # Human escalation records
 ```
@@ -204,7 +207,7 @@ A fresh `vsdd-adversary` agent is spawned that reads ONLY from disk. The adversa
 
 ### 6. Feedback Loop with Safety Valve
 
-**Decision**: Per-phase iteration limits (spec review: 3, implementation review: 5, convergence: 2). Escalate to human after hitting limit.
+**Decision**: Per-phase iteration limits (spec review: 3, implementation review: strict 5 / lean 3, convergence: 2). Escalate to human after hitting limit.
 
 **Routing**: Each adversary finding has `routeToPhase` field. Orchestrator routes to earliest affected phase, re-runs from there. Verification-architecture defects must be able to return to Phase `1b`, not just `1a` or `5`.
 
@@ -461,7 +464,7 @@ Gate prerequisites:
 | 2c | Green phase evidence (target feature tests and regression suite pass) |
 | 3 | Tests pass post-refactor; in strict mode `contracts/sprint-{N}.md` exists with `status: approved`, contains at least one `CRIT-XXX`, and `reviews/contracts/sprint-{N}/output/verdict.json` has `overallVerdict: PASS`, matching `reviewContext.contractPath`, matching `reviewContext.contractDigest`, and `iteration = negotiationRound + 1` |
 | 5 | Adversary verdict PASS |
-| 6 | Verification report exists, all required proof obligations pass, and strict-mode verdict sets `convergenceSignals.allCriteriaEvaluated = true` with `convergenceSignals.evaluatedCriteria` exactly matching the approved contract's `CRIT-XXX` set |
+| 6 | `verification-report.md`, `security-report.md`, and `purity-audit.md` exist; all required proof obligations pass; and strict-mode verdict sets `convergenceSignals.allCriteriaEvaluated = true` with `convergenceSignals.evaluatedCriteria` exactly matching the approved contract's `CRIT-XXX` set |
 
 ### Feedback Routing Table (Phase 4)
 
@@ -590,7 +593,7 @@ Phase F (install + docs) ---------------+ depends on all above
 7. **Feedback Loop**: Introduce a deliberate spec violation, verify adversary catches it and feedback routes correctly
 8. **Multi-Feature Isolation**: Run two features in parallel and verify `.vsdd/features/<feature>/state.json` isolation
 9. **Commit Guardrails**: Verify auto-commit refuses dirty worktrees and manual `/vsdd-commit` stages artifacts atomically
-10. **Convergence**: Run adversary on correct code, verify it converges within the iteration limit and only required proof obligations gate completion
+10. **Convergence**: Run adversary on correct code, verify it converges within the iteration limit, and confirm proof/security/purity artifacts gate completion
 
 ---
 

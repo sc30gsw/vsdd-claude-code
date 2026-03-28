@@ -69,6 +69,7 @@ Route adversary findings based on `category`:
 - `proof_gap` / `invariant_violation` → Phase 5 by default
 
 Always route to the EARLIEST affected phase.
+Phase 4 is explicit in the state machine: use `routeFeedback(featureName, targetPhase, reason)` so the pipeline records `3 -> 4 -> target`, rather than jumping directly out of Phase 3.
 
 ## Convergence Detection (Phase 6)
 
@@ -80,6 +81,7 @@ Check all four dimensions:
    - require `convergenceSignals.allCriteriaEvaluated === true`
    - require `convergenceSignals.evaluatedCriteria` to match the approved contract's CRIT set exactly
 4. **Duplicate detection**: Flag findings that restate previously-addressed issues
+5. **Formal hardening artifacts**: require `verification-report.md`, `security-report.md`, and `purity-audit.md` before completion
 
 If convergence achieved: record gate and advance to `complete`.
 If not: record failure signals and route back to Phase 3 (max 2 attempts).
@@ -91,10 +93,11 @@ Always use atomic writes via the state library. Never directly mutate state.json
 ```javascript
 const path = require('path');
 const pluginRoot = process.env.CLAUDE_PLUGIN_ROOT || path.join(process.env.HOME, '.claude', 'plugins', 'vsdd-claude-code');
-const { readState, transitionPhase, recordGate } = require(
+const { readState, transitionPhase, routeFeedback, recordGate } = require(
   path.join(pluginRoot, 'scripts/lib/vsdd-state.js')
 );
 const state = readState('my-feature');
 transitionPhase('my-feature', '2a', 'Spec gate passed');
+routeFeedback('my-feature', '1b', 'Verification architecture defect from adversary review');
 recordGate('my-feature', '1c', 'PASS', 'adversary', 'All spec dimensions passed');
 ```

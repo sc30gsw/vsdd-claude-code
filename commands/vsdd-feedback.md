@@ -3,16 +3,18 @@ description: Run Phase 4 (feedback routing) after an adversarial review FAIL. Ro
 ---
 
 ## What
-Runs the feedback integration loop (Phase 4). Reads adversary findings from the latest verdict, routes each to the appropriate phase, and transitions the pipeline back for rework.
+Runs the feedback integration loop (Phase 4). Reads adversary findings from the latest verdict, routes each to the appropriate phase, explicitly enters Phase `4`, and then transitions the pipeline back for rework.
 
 ## When
-Run after `/vsdd-adversary` returns a FAIL verdict. Requires active feature at phase `3`.
+Run after `/vsdd-adversary` returns a FAIL verdict. Normally starts from phase `3`; if routing was already started, phase `4` is also valid.
 
 ## How
 
 1. **Read latest verdict**: `reviews/sprint-N/output/verdict.json`
 2. **Read all findings**: `reviews/sprint-N/output/findings/FIND-NNN.json`
-3. **Check iteration limits**: if phase 3 has exceeded 5 iterations, write escalation and pause
+3. **Check iteration limits**: use mode-aware limits before re-entering adversarial review
+   - `strict`: phase `3` max `5`
+   - `lean`: phase `3` max `3`
 4. **Group findings by routeToPhase**:
    ```
    1a: [FIND-001, FIND-003]  <- spec ambiguity
@@ -21,7 +23,10 @@ Run after `/vsdd-adversary` returns a FAIL verdict. Requires active feature at p
    ```
 5. **Route to EARLIEST affected phase** (route to 1a before 1b before 2a before 2b before 2c before 5)
 6. **Create adversary-finding beads** for each finding
-7. **Transition pipeline** to target phase via `transitionPhase()`
+7. **Advance through explicit feedback routing**:
+   - if current phase is `3`, transition `3 -> 4`
+   - from phase `4`, transition to the selected target phase
+   - use `routeFeedback(featureName, targetPhase, reason)` from `scripts/lib/vsdd-state.js` instead of hand-rolling `transitionPhase()` calls
 8. **Display routing summary**: "Routing 5 findings. 2 -> Phase 1a, 3 -> Phase 2b"
 9. **Next action**: prompt user to run appropriate command for the target phase
 

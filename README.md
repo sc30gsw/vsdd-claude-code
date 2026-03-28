@@ -153,7 +153,10 @@ Language verification skills: `vsdd-language-rust`, `vsdd-language-python`, `vsd
         proof-harnesses/
         fuzz-results/
         mutation-results/
+        security-results/
         verification-report.md
+        security-report.md
+        purity-audit.md
       escalations/
         escalation-{timestamp}.md
 ```
@@ -214,8 +217,8 @@ npx vsdd-claude-code --profile standard --dry-run
 /vsdd-feedback
 
 # Phase 5: Run formal hardening
-# Even in lean mode, this writes verification-report.md.
-# If there are zero required proof obligations, the report is lightweight.
+# Even in lean mode, this writes verification-report.md, security-report.md, and purity-audit.md.
+# If there are zero required proof obligations, the proof report is lightweight, but security/purity artifacts are still required.
 /vsdd-harden
 
 # Phase 6: Check four-dimensional convergence
@@ -271,7 +274,7 @@ init
   |                +--> proof gap          --> 5
   |
   v (PASS)
- 5  Formal hardening (Tier 0-3 verification)
+ 5  Formal hardening (proofs + security hardening + purity audit)
   |
   v
  6  Convergence check (specs + tests + implementation + required proofs)
@@ -291,11 +294,12 @@ Gate prerequisites:
 | 2c | Green phase evidence exists, was recorded after entering 2b, and proves both `target-feature-tests: PASS` and `regression-baseline: PASS` |
 | 3 | Tests pass post-refactor, with green evidence recorded after the latest implementation/refactor phase and carrying both target/regression PASS markers. Strict mode also requires `contracts/sprint-{N}.md` with `status: approved`, at least one `CRIT-XXX`, and `reviews/contracts/sprint-{N}/output/verdict.json` with `overallVerdict: PASS`, matching `reviewContext.contractPath`, matching `reviewContext.contractDigest`, and `iteration = negotiationRound + 1` |
 | 5 | Adversary verdict PASS |
-| 6 | Verification report exists and all required proof obligations pass. Strict mode also requires `convergenceSignals.allCriteriaEvaluated = true` plus an exact `convergenceSignals.evaluatedCriteria` match against the approved contract's `CRIT-XXX` set |
+| 6 | `verification-report.md`, `security-report.md`, and `purity-audit.md` exist and all required proof obligations pass. Strict mode also requires `convergenceSignals.allCriteriaEvaluated = true` plus an exact `convergenceSignals.evaluatedCriteria` match against the approved contract's `CRIT-XXX` set |
 
 For review iterations beyond the first, convergence also requires `convergenceSignals.findingCount < convergenceSignals.previousFindingCount` before completion.
 
 Evidence logs use explicit top-of-file markers so hooks can distinguish "new tests failed" from "baseline still green" and "target tests passed" from "regression suite passed".
+Feedback routing is explicit in runtime state: the orchestrator records `3 -> 4 -> target` rather than jumping directly out of Phase 3.
 
 ---
 
@@ -305,10 +309,10 @@ Evidence logs use explicit top-of-file markers so hooks can distinguish "new tes
 |---|---|---|
 | Sprint contracts | Required per sprint | Required for risky work only |
 | Sprint contract review | Required before Phase 3; verdict is bound to the approved contract snapshot | Optional when a sprint contract exists |
-| Adversary review rounds | Multiple | Single |
+| Adversary review rounds | Multiple (up to 5 Phase 3 iterations) | Reduced (up to 3 Phase 3 iterations) |
 | Human approval at spec gate | Required | Not required |
 | Proof obligations | Required obligations are enforced | Selective; often zero are marked required |
-| Formal hardening report | Required | Required |
+| Formal hardening artifacts | `verification-report.md`, `security-report.md`, `purity-audit.md` | `verification-report.md`, `security-report.md`, `purity-audit.md` |
 | Phases traversed | All 6 | All 6 |
 | Gate enforcement hook profile | strict | standard |
 | Iteration limit (adversary) | 5 | 3 |

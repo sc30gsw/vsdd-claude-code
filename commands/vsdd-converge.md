@@ -25,7 +25,12 @@ Run after Phase 5 (formal hardening) completes. Requires active feature at phase
    - no extra criterion IDs may appear
 4. **Check duplicate detection**: `convergenceSignals.duplicateFindings` must be empty
 5. **Check open finding beads**: no `adversary-finding` bead may remain in `open` status
-6. **All 4 dimensions converged?**
+6. **Check formal hardening artifacts**:
+   - `verification/verification-report.md` exists
+   - `verification/security-report.md` exists
+   - `verification/purity-audit.md` exists
+   - all required proof obligations are `proved` or explicitly `skipped`
+7. **All 4 dimensions converged?**
    - YES: record gate PASS, transition to `complete`, display success summary
    - NO: record failure details, check iteration limit (max 2)
      - Under limit: route back to Phase 3 for re-review

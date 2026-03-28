@@ -17,10 +17,12 @@ const {
   initFeature,
   readState,
   transitionPhase,
+  routeFeedback,
   recordGate,
   writeState,
   getLanguageForFeature,
   getActiveFeaturePath,
+  getIterationLimit,
   computeSprintContractReviewDigest,
 } = vsdd;
 
@@ -41,6 +43,24 @@ function writeFile(absRoot, rel, content = 'ok\n') {
   const p = path.join(absRoot, rel);
   fs.mkdirSync(path.dirname(p), { recursive: true });
   fs.writeFileSync(p, content, 'utf8');
+}
+
+function writeFormalHardeningArtifacts(absRoot, featureName, overrides = {}) {
+  writeFile(
+    absRoot,
+    `.vsdd/features/${featureName}/verification/verification-report.md`,
+    overrides.verificationReport || '# Verification Report\n'
+  );
+  writeFile(
+    absRoot,
+    `.vsdd/features/${featureName}/verification/security-report.md`,
+    overrides.securityReport || '# Security Hardening Report\n'
+  );
+  writeFile(
+    absRoot,
+    `.vsdd/features/${featureName}/verification/purity-audit.md`,
+    overrides.purityAudit || '# Purity Boundary Audit\n'
+  );
 }
 
 function assert(cond, msg) {
@@ -289,16 +309,18 @@ function writePassingReviewVerdict(root, feature, reviewScope, evidenceLocation,
     ) + '\n'
   );
   transitionPhase(feat, '5');
-  writeFile(
-    root,
-    `.vsdd/features/${feat}/verification/verification-report.md`,
-    '# Verification Report\n\nNo required proof obligations.\n'
-  );
+  writeFormalHardeningArtifacts(root, feat, {
+    verificationReport: '# Verification Report\n\nNo required proof obligations.\n',
+  });
   transitionPhase(feat, '6');
   transitionPhase(feat, 'complete');
 
   const st = readState(feat);
   assert(st.currentPhase === 'complete', 'lean should end at complete');
+  assert(
+    fs.existsSync(path.join(root, `.vsdd/features/${feat}/verification/security-results`)),
+    'initFeature should create verification/security-results'
+  );
 }
 
 // ── Freshness: pre-written green evidence must not satisfy phase 2c ──
@@ -470,7 +492,7 @@ function writePassingReviewVerdict(root, feature, reviewScope, evidenceLocation,
       convergenceSignals: createStrictConvergenceSignals(['CRIT-001']),
     }
   );
-  writeFile(root, `.vsdd/features/${feat}/verification/verification-report.md`, '# Report\n');
+  writeFormalHardeningArtifacts(root, feat);
   const st = readState(feat);
   st.proofObligations = [
     { id: 'PROP-001', tier: 1, required: true, status: 'proved' },
@@ -562,11 +584,108 @@ function writePassingReviewVerdict(root, feature, reviewScope, evidenceLocation,
     'target-feature-tests: PASS\nregression-baseline: PASS\nafter-refactor: PASS\n'
   );
   transitionPhase(feat, '3');
-  transitionPhase(feat, '4');
-  transitionPhase(feat, '1b');
+  routeFeedback(feat, '1b');
 
   const state = readState(feat);
   assert(state.currentPhase === '1b', 'feedback loop should allow routing verification-architecture findings back to phase 1b');
+  assert(
+    state.phaseHistory.some((entry) => entry.from === '3' && entry.to === '4'),
+    'feedback routing should explicitly transition through phase 4'
+  );
+}
+
+// ── Lean: adversary iteration limit is 3, not 5 ──
+{
+  const root = tmpDir();
+  process.chdir(root);
+  const feat = 'lean-iteration-limit-feature';
+  initFeature(feat, 'lean');
+
+  transitionPhase(feat, '1a');
+  writeFile(root, `.vsdd/features/${feat}/specs/behavioral-spec.md`, '# Behavioral\n');
+  transitionPhase(feat, '1b');
+  writeFile(root, `.vsdd/features/${feat}/specs/verification-architecture.md`, '# Verification\n');
+  transitionPhase(feat, '1c');
+  recordGate(feat, '1c', 'PASS', 'adversary');
+  transitionPhase(feat, '2a');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
+    'new-feature-tests: FAIL\nregression-baseline: PASS\n'
+  );
+  transitionPhase(feat, '2b');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    'target-feature-tests: PASS\nregression-baseline: PASS\n'
+  );
+  transitionPhase(feat, '2c');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    'target-feature-tests: PASS\nregression-baseline: PASS\nafter-refactor: PASS\n'
+  );
+
+  assert(getIterationLimit(readState(feat), '3') === 3, 'lean mode should cap phase 3 at 3 iterations');
+
+  const state = readState(feat);
+  state.iterations['3'] = 3;
+  writeState(feat, state);
+
+  assertThrows(
+    () => transitionPhase(feat, '3'),
+    'Iteration limit exceeded for phase 3 (4/3)'
+  );
+}
+
+// ── Phase 6 requires verification, security, and purity artifacts ──
+{
+  const root = tmpDir();
+  process.chdir(root);
+  const feat = 'formal-hardening-artifacts-feature';
+  initFeature(feat, 'lean');
+
+  transitionPhase(feat, '1a');
+  writeFile(root, `.vsdd/features/${feat}/specs/behavioral-spec.md`, '# Behavioral\n');
+  transitionPhase(feat, '1b');
+  writeFile(root, `.vsdd/features/${feat}/specs/verification-architecture.md`, '# Verification\n');
+  transitionPhase(feat, '1c');
+  recordGate(feat, '1c', 'PASS', 'adversary');
+  transitionPhase(feat, '2a');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
+    'new-feature-tests: FAIL\nregression-baseline: PASS\n'
+  );
+  transitionPhase(feat, '2b');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    'target-feature-tests: PASS\nregression-baseline: PASS\n'
+  );
+  transitionPhase(feat, '2c');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    'target-feature-tests: PASS\nregression-baseline: PASS\nafter-refactor: PASS\n'
+  );
+  transitionPhase(feat, '3');
+  recordGate(feat, '3', 'PASS', 'adversary');
+  transitionPhase(feat, '5');
+
+  writeFile(root, `.vsdd/features/${feat}/verification/verification-report.md`, '# Verification Report\n');
+  writeFile(root, `.vsdd/features/${feat}/verification/purity-audit.md`, '# Purity Boundary Audit\n');
+  assertThrows(
+    () => transitionPhase(feat, '6'),
+    'security-report.md required for phase 6'
+  );
+
+  writeFile(root, `.vsdd/features/${feat}/verification/security-report.md`, '# Security Hardening Report\n');
+  fs.rmSync(path.join(root, `.vsdd/features/${feat}/verification/purity-audit.md`), { force: true });
+  assertThrows(
+    () => transitionPhase(feat, '6'),
+    'purity-audit.md required for phase 6'
+  );
 }
 
 // ── Convergence: duplicate findings must block completion ──
@@ -645,7 +764,7 @@ function writePassingReviewVerdict(root, feature, reviewScope, evidenceLocation,
       }),
     }
   );
-  writeFile(root, `.vsdd/features/${feat}/verification/verification-report.md`, '# Report\n');
+  writeFormalHardeningArtifacts(root, feat);
   transitionPhase(feat, '6');
 
   assertThrows(
@@ -728,7 +847,7 @@ function writePassingReviewVerdict(root, feature, reviewScope, evidenceLocation,
       convergenceSignals: createStrictConvergenceSignals(['CRIT-001']),
     }
   );
-  writeFile(root, `.vsdd/features/${feat}/verification/verification-report.md`, '# Report\n');
+  writeFormalHardeningArtifacts(root, feat);
   traceability.createBead(feat, {
     type: 'adversary-finding',
     artifactPath: `.vsdd/features/${feat}/reviews/sprint-1/output/findings/FIND-001.json`,
@@ -792,7 +911,7 @@ function writePassingReviewVerdict(root, feature, reviewScope, evidenceLocation,
       },
     }
   );
-  writeFile(root, `.vsdd/features/${feat}/verification/verification-report.md`, '# Report\n');
+  writeFormalHardeningArtifacts(root, feat);
   transitionPhase(feat, '6');
 
   assertThrows(
@@ -1041,7 +1160,7 @@ function writePassingReviewVerdict(root, feature, reviewScope, evidenceLocation,
       convergenceSignals: createStrictConvergenceSignals(['CRIT-001']),
     }
   );
-  writeFile(root, `.vsdd/features/${feat}/verification/verification-report.md`, '# Report\n');
+  writeFormalHardeningArtifacts(root, feat);
 
   assertThrows(
     () => transitionPhase(feat, '6'),

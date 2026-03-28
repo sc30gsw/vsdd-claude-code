@@ -30,7 +30,7 @@ origin: VSDD
 | duplication | any | Phase 2c |
 | proof_gap | any | Phase 5 |
 | invariant_violation | any | Phase 5 |
-| purity_boundary | any | Phase 2c or Phase 5 |
+| purity_boundary | any | Phase 1b by default; Phase 2c or 5 only when the architecture still stands |
 
 **Always route to the EARLIEST affected phase.**
 
@@ -39,7 +39,8 @@ origin: VSDD
 | Phase | Max Iterations | On Exceed |
 |-------|---------------|-----------|
 | 1c | 3 | Write escalation, pause for human |
-| 3 | 5 | Write escalation, pause for human |
+| 3 (strict) | 5 | Write escalation, pause for human |
+| 3 (lean) | 3 | Write escalation, pause for human |
 | 6 | 2 | Write escalation, pause for human |
 
 ## Escalation Protocol
@@ -57,4 +58,7 @@ When iteration limit exceeded:
 3. Group findings by `routeToPhase`
 4. Route to earliest affected phase (e.g., if 1a and 2b both affected, route to 1a first)
 5. Update finding beads to status "open" with resolution.status "open"
-6. Transition pipeline to target phase via `transitionPhase()`
+6. Transition pipeline via explicit Phase 4 routing:
+   - if current phase is `3`, enter `4` first
+   - from `4`, move to the target phase
+   - prefer `routeFeedback(featureName, targetPhase, reason)` over hand-written `transitionPhase()` chains

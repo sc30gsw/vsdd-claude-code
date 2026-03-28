@@ -172,8 +172,8 @@ npx vsdd-claude-code --profile standard --dry-run
 /vsdd-feedback
 
 # フェーズ5: 形式的強化
-# leanモードでも verification-report.md は必ず生成される。
-# required な証明義務がゼロなら軽量レポートになる。
+# leanモードでも verification-report.md / security-report.md / purity-audit.md は必ず生成される。
+# required な証明義務がゼロでも、security と purity の監査成果物は必須。
 /vsdd-harden
 
 # フェーズ6: 4次元収束を確認
@@ -196,12 +196,12 @@ init -> 1a -> 1b -> 1c -> 2a -> 2b -> 2c -> 3 -> 4 -> [1a|1b|2a|2b|2c|5] -> 5 ->
                                                                      収束ループ（最大2回）
 ```
 
-フェーズ4（フィードバック統合）では、adversaryの指摘内容に応じて適切なフェーズへルーティングされる。
+フェーズ4（フィードバック統合）では、adversaryの指摘内容に応じて適切なフェーズへルーティングされる。runtime 上も `3 -> 4 -> 対象フェーズ` を明示的に記録する。
 
 strict モードでは追加で以下を強制する。
 
 - フェーズ3前: `contracts/sprint-{N}.md` は `status: approved` で、contract review verdict の `reviewContext.contractPath` と `reviewContext.contractDigest` が現在の契約に一致している必要がある
-- フェーズ6前: `convergenceSignals.allCriteriaEvaluated = true` に加えて、`convergenceSignals.evaluatedCriteria` が承認済み contract の `CRIT-XXX` 集合と完全一致している必要がある
+- フェーズ6前: `verification-report.md` / `security-report.md` / `purity-audit.md` が存在し、strict では `convergenceSignals.allCriteriaEvaluated = true` に加えて `convergenceSignals.evaluatedCriteria` が承認済み contract の `CRIT-XXX` 集合と完全一致している必要がある
 - 収束ループが 2 回目以降なら、完了前に `convergenceSignals.findingCount < convergenceSignals.previousFindingCount` も必要になる
 
 | 指摘の種類 | ルーティング先 |
@@ -225,10 +225,10 @@ strict モードでは追加で以下を強制する。
 | 対象用途 | 高保証作業、安全要件のある実装 | プロダクト開発、試作、通常のフィーチャー開発 |
 | スプリント契約 | 全スプリントで必須 | リスクの高い作業のみ |
 | スプリント契約レビュー | フェーズ3前に必須。判定は承認済み契約スナップショットに束縛される | 契約を使う場合のみ任意 |
-| adversaryレビュー | 複数ラウンド | 1ラウンド |
+| adversaryレビュー | 複数ラウンド（フェーズ3は最大5回） | 短縮ラウンド（フェーズ3は最大3回） |
 | 仕様レビュー時の人手承認 | 必須 | 不要 |
 | 証明義務 | required な義務を強制 | 選択的。required が 0 件でもよい |
-| 形式的強化レポート | 必須 | 必須 |
+| 形式的強化成果物 | `verification-report.md` / `security-report.md` / `purity-audit.md` | `verification-report.md` / `security-report.md` / `purity-audit.md` |
 | ゲート強制 | strictフックプロファイル | 緩和された設定 |
 | イテレーション速度 | 低速（高保証） | 高速 |
 | 推奨フロー | 全6フェーズを完全に実行 | 全6フェーズを維持しつつ運用を軽量化 |
@@ -418,7 +418,10 @@ VSDDは `.vsdd/` ディレクトリ配下にすべてのランタイム状態を
         proof-harnesses/      # フェーズ5で生成
         fuzz-results/
         mutation-results/
+        security-results/
         verification-report.md
+        security-report.md
+        purity-audit.md
       escalations/
         escalation-{timestamp}.md
 ```

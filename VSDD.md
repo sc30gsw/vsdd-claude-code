@@ -7,7 +7,7 @@ It combines four constraints into one workflow:
 1. Spec-first: define behavioral requirements before code.
 2. Red-before-green: write failing tests before implementation.
 3. Adversarial review: use a fresh-context reviewer that judges only from artifacts on disk.
-4. Selective formal hardening: require proof only where the feature declares required obligations.
+4. Selective formal hardening: require proof where the feature declares required obligations, while still producing security and purity audit artifacts for every Phase 5 pass.
 
 ## Phases
 
@@ -40,6 +40,8 @@ It combines four constraints into one workflow:
 - `reviews/contracts/sprint-N/output/verdict.json` with `overallVerdict: PASS`, matching `reviewContext.contractPath`, and matching `reviewContext.contractDigest` in strict mode
 - `reviews/sprint-N/output/verdict.json`
 - `verification/verification-report.md`
+- `verification/security-report.md`
+- `verification/purity-audit.md`
 
 ## Completion Rule
 
@@ -50,6 +52,7 @@ A feature is complete only when:
 - no duplicate findings remain
 - no `adversary-finding` bead remains open
 - all required proof obligations are satisfied
+- formal hardening artifacts (`verification-report.md`, `security-report.md`, `purity-audit.md`) exist
 - in strict mode, `convergenceSignals.evaluatedCriteria` exactly matches the approved contract's `CRIT-XXX` set
 
 ## Traceability

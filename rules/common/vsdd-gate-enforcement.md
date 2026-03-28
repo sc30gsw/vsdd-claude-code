@@ -10,12 +10,12 @@ The VSDD pipeline enforces strict phase ordering. No phase can be entered withou
 |-------|----------|
 | 1b (Verification Architecture) | behavioral-spec.md exists in specs/ |
 | 1c (Spec Review Gate) | verification-architecture.md exists in specs/ |
-| 2a (Test Generation - Red) | Spec gate passed: adversary PASS on spec review |
+| 2a (Test Generation - Red) | Lean: adversary PASS on spec review. Strict: adversary PASS plus explicit human approval |
 | 2b (Implementation - Green) | Red phase evidence: new feature tests fail, regression baseline green |
 | 2c (Refactor) | Green phase evidence: all tests (target + regression) pass |
-| 3 (Adversarial Review) | Tests pass post-refactor |
+| 3 (Adversarial Review) | Tests pass post-refactor; strict mode also requires approved sprint contract + matching contract-review PASS |
 | 5 (Formal Hardening) | Adversary verdict PASS on implementation |
-| 6 (Convergence Check) | Verification report exists, all required proof obligations pass |
+| 6 (Convergence Check) | `verification-report.md`, `security-report.md`, and `purity-audit.md` exist, and all required proof obligations pass |
 
 ## Write Restrictions by Phase
 
@@ -27,14 +27,15 @@ Test files may NOT be written during:
 
 Spec files may only be modified during:
 - 1a, 1b, 1c (spec phases)
-- 4 (feedback loop if routed to 1a)
+- 4 (feedback loop if routed to 1a or 1b)
 
 ## Iteration Limits (Safety Valve)
 
 | Phase | Max Iterations | On Exceed |
 |-------|---------------|-----------|
 | 1c (Spec Review) | 3 | Escalate to human |
-| 3 (Implementation Review) | 5 | Escalate to human |
+| 3 (Implementation Review, strict) | 5 | Escalate to human |
+| 3 (Implementation Review, lean) | 3 | Escalate to human |
 | 6 (Convergence) | 2 | Escalate to human |
 
 When an iteration limit is reached, an escalation record is written to escalations/ and the pipeline pauses for human intervention.
@@ -42,8 +43,10 @@ When an iteration limit is reached, an escalation record is written to escalatio
 ## Lean Mode Relaxations
 
 In lean mode, the following gates are relaxed:
-- Phase 1b: Optional (can skip verification architecture)
-- Phase 1c: Single round or auto-SKIP
-- Phase 2c: Merged into 2b (refactor is part of implementation)
-- Phase 5: Skipped unless proof obligations exist
+- Phase 1c does not require explicit human approval
+- Sprint contracts are only expected for risky or ambiguous work
+- Phase 3 iteration cap is lower (3 instead of 5)
+- Required proof obligations may be zero
 - Gate enforcement hooks use standard profile (not strict)
+
+Lean mode still traverses all 6 phases. It does not skip Phase 1b, Phase 2c, or Phase 5.

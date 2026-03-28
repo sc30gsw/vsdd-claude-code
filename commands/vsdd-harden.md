@@ -1,9 +1,9 @@
 ---
-description: Run Phase 5 (formal hardening) for the active VSDD feature. Invokes vsdd-verifier to execute verification tier tools (Kani, hypothesis, fast-check, proptest) against required proof obligations.
+description: Run Phase 5 (formal hardening) for the active VSDD feature. Invokes vsdd-verifier to execute proof obligations, security hardening, and a purity-boundary audit before convergence.
 ---
 
 ## What
-Runs formal hardening (Phase 5). Invokes the vsdd-verifier agent to execute language-appropriate verification tools against the proof obligations defined in Phase 1b. Produces a verification report.
+Runs formal hardening (Phase 5). Invokes the vsdd-verifier agent to execute language-appropriate verification tools against the proof obligations defined in Phase 1b, run security hardening checks, and audit the purity boundary. Produces `verification-report.md`, `security-report.md`, and `purity-audit.md`.
 
 ## When
 Run after adversarial review PASS (Phase 3 gate passed). Requires active feature at phase `5`.
@@ -12,14 +12,25 @@ Run after adversarial review PASS (Phase 3 gate passed). Requires active feature
 
 1. **Read proof obligations** from `state.json.proofObligations`
 2. **Filter required obligations**: skip Tier 0 and non-required obligations
-3. **If no required obligations**: write a lightweight verification report that documents the absence of required proofs, then transition to Phase 6
-4. **Invoke vsdd-verifier agent** for each obligation:
+3. **Run security hardening regardless of proof count**:
+   - execute Semgrep/Wycheproof/project-appropriate equivalents when relevant
+   - capture raw outputs under `verification/security-results/`
+   - summarize results in `verification/security-report.md`
+4. **Audit purity boundaries regardless of proof count**:
+   - compare the implemented core/shell split against `specs/verification-architecture.md`
+   - write findings and residual risks to `verification/purity-audit.md`
+5. **If no required obligations**: still write a lightweight verification report that documents the absence of required proofs, the security sweep, and the purity audit
+6. **Invoke vsdd-verifier agent** for each obligation:
    - Write proof harness to `verification/proof-harnesses/`
    - Run appropriate tool (Kani, hypothesis, fast-check)
    - Capture results to `verification/fuzz-results/` or `verification/mutation-results/`
    - Update obligation status in state.json
-5. **Write verification-report.md** with all results
-6. **Transition to Phase 6** if all required obligations pass
+7. **Write verification-report.md** with proof results and any graceful degradation
+8. **Transition to Phase 6** only when:
+   - all required obligations pass
+   - `verification/verification-report.md` exists
+   - `verification/security-report.md` exists
+   - `verification/purity-audit.md` exists
 
 ## Language profile resolution
 

@@ -27,6 +27,7 @@ Run at the start of every new feature development cycle. Must be run before `/vs
          verification/proof-harnesses/
          verification/fuzz-results/
          verification/mutation-results/
+         verification/security-results/
          escalations/
    ```
 4. **Initialize via state library** (do not hand-author `state.json`):
