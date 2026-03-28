@@ -206,7 +206,7 @@ A fresh `vsdd-adversary` agent is spawned that reads ONLY from disk. The adversa
 
 **Decision**: Per-phase iteration limits (spec review: 3, implementation review: 5, convergence: 2). Escalate to human after hitting limit.
 
-**Routing**: Each adversary finding has `routeToPhase` field. Orchestrator routes to earliest affected phase, re-runs from there.
+**Routing**: Each adversary finding has `routeToPhase` field. Orchestrator routes to earliest affected phase, re-runs from there. Verification-architecture defects must be able to return to Phase `1b`, not just `1a` or `5`.
 
 ### 7. Verification Tiers + Proof Obligation Registry [HIGH PRIORITY]
 
@@ -447,7 +447,7 @@ vsdd/<feature>/phase-6     # Convergence achieved
 ```
 init -> 1a (behavioral spec) -> 1b (verification arch) -> 1c (spec review gate)
   -> 2a (test gen / Red) -> 2b (implementation / Green) -> 2c (refactor)
-  -> 3 (adversarial review) -> 4 (feedback loop) -> [back to affected phase if FAIL]
+  -> 3 (adversarial review) -> 4 (feedback loop) -> [1a|1b|2a|2b|2c|5]
   -> 5 (formal hardening) -> 6 (convergence check) -> complete
 ```
 
@@ -474,12 +474,14 @@ Gate prerequisites:
 | test_coverage / test_quality | Phase 2a (test generation) |
 | implementation_bug / error_handling / security_surface | Phase 2b (implementation fix) |
 | code_structure / naming / duplication | Phase 2c (refactor) |
-| proof_gap / invariant_violation / purity_boundary | Phase 5 (formal verification by default; route earlier if architectural refactor is needed) |
+| verification_tool_mismatch | Phase 1b (verification architecture update) |
+| proof_gap / invariant_violation | Phase 5 (formal verification by default; route earlier if architectural refactor is needed) |
+| purity_boundary | Phase 1b by default; Phase 2c or 5 only when the verification architecture still stands |
 
 ### Convergence Detection (Phase 6)
 
 Four-dimensional convergence signals:
-1. **Finding diminishment**: Monotonically decreasing findings count across iterations
+1. **Finding diminishment**: Monotonically decreasing findings count across iterations; for iterations beyond the first, `findingCount < previousFindingCount` is required at completion
 2. **Finding specificity**: Adversary findings must cite real files/lines (hallucination detection)
 3. **Grading criteria coverage**: All contract criteria evaluated exactly once; enforced via `verdict.json.convergenceSignals.allCriteriaEvaluated = true` plus an exact `convergenceSignals.evaluatedCriteria` set match against the approved contract
 4. **Duplicate detection**: No regurgitation of previously-addressed findings

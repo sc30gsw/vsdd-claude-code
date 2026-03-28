@@ -19,7 +19,7 @@ Run after `/vsdd-adversary` returns a FAIL verdict. Requires active feature at p
    2a: [FIND-002]            <- missing test
    2b: [FIND-004, FIND-005]  <- implementation bug
    ```
-5. **Route to EARLIEST affected phase** (route to 1a before 2a before 2b before 2c before 5)
+5. **Route to EARLIEST affected phase** (route to 1a before 1b before 2a before 2b before 2c before 5)
 6. **Create adversary-finding beads** for each finding
 7. **Transition pipeline** to target phase via `transitionPhase()`
 8. **Display routing summary**: "Routing 5 findings. 2 -> Phase 1a, 3 -> Phase 2b"
@@ -33,6 +33,7 @@ Run after `/vsdd-adversary` returns a FAIL verdict. Requires active feature at p
 |----------|------------------|----------|
 | `spec_ambiguity` | any | Phase 1a |
 | `spec_gap` | any | Phase 1a |
+| `verification_tool_mismatch` | any | Phase 1b |
 | `requirement_mismatch` | any | Phase 2b |
 | `missing_edge_case` | critical | Phase 1a |
 | `missing_edge_case` | high/medium/low | Phase 2a |
@@ -46,7 +47,7 @@ Run after `/vsdd-adversary` returns a FAIL verdict. Requires active feature at p
 | `duplication` | any | Phase 2c |
 | `proof_gap` | any | Phase 5 |
 | `invariant_violation` | any | Phase 5 |
-| `purity_boundary` | any | Phase 2c or Phase 5 |
+| `purity_boundary` | any | Phase 1b by default; Phase 2c or Phase 5 only when the architecture itself remains valid |
 
 ## Examples
 

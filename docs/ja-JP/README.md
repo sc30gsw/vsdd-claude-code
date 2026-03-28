@@ -191,9 +191,9 @@ npx vsdd-claude-code --profile standard --dry-run
 ## パイプライン状態機械
 
 ```
-init -> 1a -> 1b -> 1c -> 2a -> 2b -> 2c -> 3 -> 4 -> [1a|2a|2b|2c|5] -> 5 -> 6 -> complete
-                                                                          ^
-                                                                  収束ループ（最大2回）
+init -> 1a -> 1b -> 1c -> 2a -> 2b -> 2c -> 3 -> 4 -> [1a|1b|2a|2b|2c|5] -> 5 -> 6 -> complete
+                                                                             ^
+                                                                     収束ループ（最大2回）
 ```
 
 フェーズ4（フィードバック統合）では、adversaryの指摘内容に応じて適切なフェーズへルーティングされる。
@@ -202,15 +202,18 @@ strict モードでは追加で以下を強制する。
 
 - フェーズ3前: `contracts/sprint-{N}.md` は `status: approved` で、contract review verdict の `reviewContext.contractPath` と `reviewContext.contractDigest` が現在の契約に一致している必要がある
 - フェーズ6前: `convergenceSignals.allCriteriaEvaluated = true` に加えて、`convergenceSignals.evaluatedCriteria` が承認済み contract の `CRIT-XXX` 集合と完全一致している必要がある
+- 収束ループが 2 回目以降なら、完了前に `convergenceSignals.findingCount < convergenceSignals.previousFindingCount` も必要になる
 
 | 指摘の種類 | ルーティング先 |
 |-----------|--------------|
 | 仕様の曖昧さ | フェーズ1a |
+| 検証ツール不一致 | フェーズ1b |
 | 要件との不一致 | フェーズ2b |
 | エッジケースの欠落 | フェーズ1a + 2a |
 | テスト品質の問題 | フェーズ2a |
 | 実装バグ | フェーズ2b |
 | コード構造の問題 | フェーズ2c |
+| 純粋性境界の破綻 | 原則フェーズ1b |
 | 証明ギャップ | フェーズ5 |
 
 ---

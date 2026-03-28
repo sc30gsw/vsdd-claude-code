@@ -36,6 +36,7 @@ const FINDING_CATEGORY_DIMENSIONS = {
   proof_gap: 'verification_readiness',
   invariant_violation: 'verification_readiness',
   purity_boundary: 'verification_readiness',
+  verification_tool_mismatch: 'verification_readiness',
 };
 
 function getSchemaPath(name) {

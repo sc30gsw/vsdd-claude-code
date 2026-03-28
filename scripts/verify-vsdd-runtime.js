@@ -109,6 +109,21 @@ function createPassingVerdict(feature, evidenceLocation, options = {}) {
     routeToPhase: '2b',
   };
   assert(validateDocument('finding', validFinding).valid, 'valid finding should pass schema validation');
+  assert(
+    validateDocument('finding', {
+      findingId: 'FIND-002',
+      dimension: 'verification_readiness',
+      category: 'verification_tool_mismatch',
+      severity: 'high',
+      description: 'The selected proof tool cannot verify the unbounded liveness property claimed by PROP-003.',
+      evidence: {
+        filePath: 'specs/verification-architecture.md',
+        lineRange: '12-22',
+      },
+      routeToPhase: '1b',
+    }).valid,
+    'verification_tool_mismatch findings should route cleanly to phase 1b'
+  );
 
   const invalidFinding = {
     ...validFinding,

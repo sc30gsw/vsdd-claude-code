@@ -59,12 +59,14 @@ When spawning an adversary review (Phase 3):
 
 Route adversary findings based on `category`:
 - `spec_ambiguity` / `spec_gap` → Phase 1a
+- `verification_tool_mismatch` → Phase 1b
 - `requirement_mismatch` → Phase 2b
 - `missing_edge_case` → Phase 1a or Phase 2a depending on severity
 - `test_coverage` / `test_quality` → Phase 2a
 - `implementation_bug` / `error_handling` / `security_surface` → Phase 2b
 - `code_structure` / `naming` / `duplication` → Phase 2c
-- `proof_gap` / `invariant_violation` / `purity_boundary` → Phase 5 by default
+- `purity_boundary` → Phase 1b by default; Phase 2c or Phase 5 only if the architecture still stands
+- `proof_gap` / `invariant_violation` → Phase 5 by default
 
 Always route to the EARLIEST affected phase.
 
@@ -72,6 +74,7 @@ Always route to the EARLIEST affected phase.
 
 Check all four dimensions:
 1. **Finding diminishment**: Compare `convergenceSignals.findingCount` vs `previousFindingCount` across iterations
+   - for iterations beyond the first, require `findingCount < previousFindingCount`
 2. **Finding specificity**: Verify all evidence.filePath values in findings are real files (`fs.existsSync`)
 3. **Criteria coverage**: All contract criteria must have been evaluated
    - require `convergenceSignals.allCriteriaEvaluated === true`

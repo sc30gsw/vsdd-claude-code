@@ -262,10 +262,12 @@ init
   +-- FAIL --> 4  Feedback routing
   |                |
   |                +--> spec ambiguity     --> 1a
+  |                +--> verification tool  --> 1b
   |                +--> missing edge cases --> 1a + 2a
   |                +--> test quality       --> 2a
   |                +--> implementation bug --> 2b
   |                +--> code structure     --> 2c
+  |                +--> purity boundary    --> 1b
   |                +--> proof gap          --> 5
   |
   v (PASS)
@@ -290,6 +292,8 @@ Gate prerequisites:
 | 3 | Tests pass post-refactor, with green evidence recorded after the latest implementation/refactor phase and carrying both target/regression PASS markers. Strict mode also requires `contracts/sprint-{N}.md` with `status: approved`, at least one `CRIT-XXX`, and `reviews/contracts/sprint-{N}/output/verdict.json` with `overallVerdict: PASS`, matching `reviewContext.contractPath`, matching `reviewContext.contractDigest`, and `iteration = negotiationRound + 1` |
 | 5 | Adversary verdict PASS |
 | 6 | Verification report exists and all required proof obligations pass. Strict mode also requires `convergenceSignals.allCriteriaEvaluated = true` plus an exact `convergenceSignals.evaluatedCriteria` match against the approved contract's `CRIT-XXX` set |
+
+For review iterations beyond the first, convergence also requires `convergenceSignals.findingCount < convergenceSignals.previousFindingCount` before completion.
 
 Evidence logs use explicit top-of-file markers so hooks can distinguish "new tests failed" from "baseline still green" and "target tests passed" from "regression suite passed".
 

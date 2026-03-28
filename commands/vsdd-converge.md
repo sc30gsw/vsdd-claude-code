@@ -12,6 +12,7 @@ Run after Phase 5 (formal hardening) completes. Requires active feature at phase
 
 1. **Check finding diminishment**: compare `convergenceSignals.findingCount` across iterations
    - Completion requires the current sprint to reach `findingCount = 0`
+   - For iterations beyond the first, completion also requires `findingCount < previousFindingCount`
 2. **Check finding specificity**: verify all `evidence.filePath` values are real files
    ```bash
    for f in reviews/sprint-*/output/findings/*.json; do

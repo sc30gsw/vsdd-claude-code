@@ -51,7 +51,7 @@ const STRICT_TRANSITION_MAP = {
   '2b':       ['2c'],
   '2c':       ['3'],
   '3':        ['4', '5'],
-  '4':        ['1a', '2a', '2b', '2c', '5'],
+  '4':        ['1a', '1b', '2a', '2b', '2c', '5'],
   '5':        ['6'],
   '6':        ['complete', '3'],
   'complete': [],
@@ -778,6 +778,21 @@ function validateConvergenceForCompletion(featureName, state) {
   }
 
   const convergenceSignals = verdict.convergenceSignals || {};
+  if (verdict.iteration > 1) {
+    if (!Number.isInteger(convergenceSignals.previousFindingCount)) {
+      return {
+        ok: false,
+        reason: 'Completion requires convergenceSignals.previousFindingCount for iterations beyond the first',
+      };
+    }
+    if ((convergenceSignals.findingCount || 0) >= convergenceSignals.previousFindingCount) {
+      return {
+        ok: false,
+        reason: 'Completion requires findings to decrease versus convergenceSignals.previousFindingCount on later iterations',
+      };
+    }
+  }
+
   if ((convergenceSignals.findingCount || 0) !== 0) {
     return { ok: false, reason: 'Completion requires zero active findings in convergenceSignals.findingCount' };
   }

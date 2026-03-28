@@ -95,6 +95,7 @@ You MUST actively search for these failure modes and emit first-class findings w
 - `security_surface`: missing validation, authz/authn assumptions, injection paths, unsafe parsing, secret handling gaps
 - `spec_gap`: behavior present in code/tests but missing from the spec or contract
 - `purity_boundary`: logic presented as pure but still coupled to I/O, time, randomness, persistence, or hidden global state
+- `verification_tool_mismatch`: the selected verification tooling cannot actually prove or execute the properties claimed by the spec/contract
 
 ### Step 3: Write Output
 

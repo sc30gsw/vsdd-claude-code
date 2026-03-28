@@ -530,6 +530,45 @@ function writePassingReviewVerdict(root, feature, reviewScope, evidenceLocation,
   assert(sprintReviewBlocked.status === 2, 'sprint review verdict should stay blocked during phase 2c');
 }
 
+// ── Feedback loop: verification-architecture defects can route back to phase 1b ──
+{
+  const root = tmpDir();
+  process.chdir(root);
+  const feat = 'feedback-phase-1b-feature';
+  initFeature(feat, 'lean');
+
+  transitionPhase(feat, '1a');
+  writeFile(root, `.vsdd/features/${feat}/specs/behavioral-spec.md`, '# Behavioral\n');
+  transitionPhase(feat, '1b');
+  writeFile(root, `.vsdd/features/${feat}/specs/verification-architecture.md`, '# Verification\n');
+  transitionPhase(feat, '1c');
+  recordGate(feat, '1c', 'PASS', 'adversary');
+  transitionPhase(feat, '2a');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
+    'new-feature-tests: FAIL\nregression-baseline: PASS\n'
+  );
+  transitionPhase(feat, '2b');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    'target-feature-tests: PASS\nregression-baseline: PASS\n'
+  );
+  transitionPhase(feat, '2c');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    'target-feature-tests: PASS\nregression-baseline: PASS\nafter-refactor: PASS\n'
+  );
+  transitionPhase(feat, '3');
+  transitionPhase(feat, '4');
+  transitionPhase(feat, '1b');
+
+  const state = readState(feat);
+  assert(state.currentPhase === '1b', 'feedback loop should allow routing verification-architecture findings back to phase 1b');
+}
+
 // ── Convergence: duplicate findings must block completion ──
 {
   const root = tmpDir();
@@ -701,6 +740,64 @@ function writePassingReviewVerdict(root, feature, reviewScope, evidenceLocation,
   assertThrows(
     () => transitionPhase(feat, 'complete'),
     'Open adversary findings'
+  );
+}
+
+// ── Convergence: later iterations must reduce findings versus previousFindingCount ──
+{
+  const root = tmpDir();
+  process.chdir(root);
+  const feat = 'non-diminishing-findings-feature';
+  initFeature(feat, 'lean');
+
+  transitionPhase(feat, '1a');
+  writeFile(root, `.vsdd/features/${feat}/specs/behavioral-spec.md`, '# B\n');
+  transitionPhase(feat, '1b');
+  writeFile(root, `.vsdd/features/${feat}/specs/verification-architecture.md`, '# V\n');
+  transitionPhase(feat, '1c');
+  recordGate(feat, '1c', 'PASS', 'adversary');
+  transitionPhase(feat, '2a');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
+    'new-feature-tests: FAIL\nregression-baseline: PASS\n'
+  );
+  transitionPhase(feat, '2b');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    'target-feature-tests: PASS\nregression-baseline: PASS\n'
+  );
+  transitionPhase(feat, '2c');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    'target-feature-tests: PASS\nregression-baseline: PASS\nafter-refactor: PASS\n'
+  );
+  transitionPhase(feat, '3');
+  recordGate(feat, '3', 'PASS', 'adversary');
+  transitionPhase(feat, '5');
+  writePassingReviewVerdict(
+    root,
+    feat,
+    'sprint-1',
+    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    {
+      iteration: 2,
+      convergenceSignals: {
+        findingCount: 0,
+        previousFindingCount: 0,
+        allCriteriaEvaluated: true,
+        duplicateFindings: [],
+      },
+    }
+  );
+  writeFile(root, `.vsdd/features/${feat}/verification/verification-report.md`, '# Report\n');
+  transitionPhase(feat, '6');
+
+  assertThrows(
+    () => transitionPhase(feat, 'complete'),
+    'findings to decrease'
   );
 }
 

@@ -48,10 +48,12 @@ Fresh-context adversary reviews implementation against spec. Binary PASS/FAIL ac
 ### Phase 4: Feedback Integration
 Routes adversary findings to the appropriate phase:
 - Spec ambiguity -> Phase 1a
+- Verification tool mismatch -> Phase 1b
 - Missing edge cases -> Phase 1a + 2a
 - Test quality issues -> Phase 2a
 - Implementation bugs -> Phase 2b
 - Code structure issues -> Phase 2c
+- Purity boundary failures -> Phase 1b by default
 - Proof gaps -> Phase 5
 
 ### Phase 5: Formal Hardening
@@ -68,6 +70,7 @@ Exit only when four-dimensional convergence is achieved:
 3. Implementation passes all tests
 4. All required proofs pass
 5. In strict mode, `convergenceSignals.evaluatedCriteria` exactly matches the approved contract's `CRIT-XXX` set
+6. On later review iterations, `convergenceSignals.findingCount` is lower than `previousFindingCount`
 
 ## 4 Roles
 

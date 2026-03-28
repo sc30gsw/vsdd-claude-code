@@ -16,6 +16,9 @@ Run after `/vsdd-impl` completes Phases 2b and 2c. Requires active feature at ph
    - frontmatter must include `status: approved`
    - the contract must define at least one `CRIT-XXX` criterion
    - `reviews/contracts/sprint-N/output/verdict.json` must exist and `overallVerdict` must be `PASS`
+   - `reviewContext.contractPath` must reference `contracts/sprint-N.md`
+   - `reviewContext.contractDigest` must still match the approved contract snapshot
+   - `iteration` must equal `negotiationRound + 1`
 3. **Write review manifest** to `reviews/sprint-N/input/manifest.json`:
    ```json
    {
