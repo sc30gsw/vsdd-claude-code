@@ -36,15 +36,19 @@ Spec Crystallization -> Test-First Implementation -> Adversarial Review -> Feedb
 - `strict` -- full VSDD ceremony for high-assurance work: sprint contracts, multiple adversary passes, proof obligations, all 6 phases enforced
 - `lean` -- all 6 phases remain in place, but approvals, sprint contracts, and proof obligations are lighter for product work and faster iteration
 
+These modes are plugin-specific extensions, not a claim that canonical VSDD defines two ceremonies. Canonical VSDD assumes the human Architect signs off on the Phase 1c spec gate; this plugin keeps that as a hard requirement in `strict` mode and relaxes it in `lean` mode for faster product iteration.
+
 **Fresh-context adversary agent**
 The adversary (`vsdd-adversary`) runs on the Opus model and is always spawned as a new agent instance with zero conversational history from the builder. It reads review artifacts from disk, produces findings, and terminates. It cannot say "overall looks good" -- it must cite concrete evidence for every verdict.
 
-**Binary PASS/FAIL verdicts across 5 dimensions**
+**Binary PASS/FAIL verdicts across 5 operational dimensions**
 1. Spec Fidelity
 2. Edge Case Coverage
 3. Implementation Correctness
 4. Structural Integrity
 5. Verification Readiness
+
+These are stable machine-readable buckets for the plugin, not a claim that the original article names these exact five dimensions. In methodology terms they compress the broader Phase 3 concerns: spec fidelity, test quality including edge cases, code quality, security surface, and spec gaps / verification readiness.
 
 **Chainlink bead traceability system**
 Every requirement, test, implementation block, adversary finding, and formal proof is assigned a bead identifier and linked in a directed graph. Any line of code can be traced back to its originating requirement. The full chain is preserved in an append-only `history.jsonl` audit log.
@@ -67,7 +71,11 @@ The `/vsdd-commit` command generates conventional commit messages that include p
 
 ## Architecture
 
-### 4 Agents
+### Methodology Roles vs Runtime Agents
+
+Canonical VSDD defines four roles: Human Architect, Builder, Tracker (Chainlink), and Adversary. This plugin maps those roles onto runtime components as follows: the human Architect remains outside the plugin, the Tracker is implemented as the bead graph plus `history.jsonl`, and the plugin adds `vsdd-orchestrator` and `vsdd-verifier` as execution aids for pipeline coordination and Phase 5 hardening.
+
+### 4 Runtime Agents
 
 | Agent | Model | Access | Role |
 |---|---|---|---|
@@ -84,7 +92,7 @@ Agents communicate exclusively through files under `.vsdd/features/<feature-name
 |---|---|---|
 | `/vsdd-init` | -- | Initialize a feature pipeline |
 | `/vsdd-spec` | 1a + 1b | Write behavioral spec and verification architecture |
-| `/vsdd-spec-review` | 1c | Spec review gate (adversary review; strict mode also requires human approval) |
+| `/vsdd-spec-review` | 1c | Spec review gate (canonical VSDD expects adversary + human review; this plugin makes human approval mandatory in strict mode and optional in lean mode) |
 | `/vsdd-tdd` | 2a | Generate failing tests (Red phase) |
 | `/vsdd-impl` | 2b + 2c | Implement to pass tests (Green) then refactor |
 | `/vsdd-contract-review` | 2c | Strict-mode sprint contract review before adversarial implementation review |
@@ -197,7 +205,8 @@ npx vsdd-claude-code --profile standard --dry-run
 # Phase 1a + 1b: Write behavioral spec and verification architecture
 /vsdd-spec
 
-# Phase 1c: Adversary reviews the spec; strict mode also requires human approval
+# Phase 1c: Canonical VSDD expects adversary review plus human sign-off.
+# This plugin enforces that in strict mode and leaves it optional in lean mode.
 /vsdd-spec-review
 
 # Phase 2a: Generate failing tests (Red phase)
@@ -206,6 +215,7 @@ npx vsdd-claude-code --profile standard --dry-run
 
 # Phase 2b + 2c: Implement to green, then refactor
 /vsdd-impl
+# Recommended canonical checkpoint: human reviews tests + implementation for spirit-of-spec alignment before Phase 3
 
 # Strict mode only: adversary reviews the sprint contract before phase 3
 /vsdd-contract-review
@@ -249,7 +259,7 @@ init
 1b  Verification architecture (purity boundary map, proof obligations)
   |
   v
-1c  Spec review gate (adversary reviews spec; strict adds human approval)
+1c  Spec review gate (canonical VSDD expects adversary review + human sign-off; strict enforces this, lean relaxes it)
   |
   v
 2a  Test generation -- Red phase (new tests must fail)
@@ -290,7 +300,7 @@ Gate prerequisites:
 |---|---|
 | 1b | `behavioral-spec.md` exists |
 | 1c | `behavioral-spec.md` and `verification-architecture.md` exist |
-| 2a | Lean: spec review PASS. Strict: adversary PASS plus explicit human approval |
+| 2a | Spec review PASS. Canonical VSDD expects explicit human approval at Phase 1c; this plugin enforces that in strict mode and treats it as a lean-mode relaxation |
 | 2b | Red phase evidence exists, was recorded after entering 2a, and proves both `new-feature-tests: FAIL` and `regression-baseline: PASS` |
 | 2c | Green phase evidence exists, was recorded after entering 2b, and proves both `target-feature-tests: PASS` and `regression-baseline: PASS` |
 | 3 | Tests pass post-refactor, with green evidence recorded after the latest implementation/refactor phase and carrying both target/regression PASS markers. Strict mode also requires `contracts/sprint-{N}.md` with `status: approved`, at least one `CRIT-XXX`, and `reviews/contracts/sprint-{N}/output/verdict.json` with `overallVerdict: PASS`, matching `reviewContext.contractPath`, matching `reviewContext.contractDigest`, and `iteration = negotiationRound + 1` |
@@ -312,7 +322,7 @@ Runtime also rejects feedback routing that skips an earlier `routeToPhase` from 
 | Sprint contracts | Required per sprint | Required for risky work only |
 | Sprint contract review | Required before Phase 3; verdict is bound to the approved contract snapshot | Optional when a sprint contract exists |
 | Adversary review rounds | Multiple (up to 5 Phase 3 iterations) | Reduced (up to 3 Phase 3 iterations) |
-| Human approval at spec gate | Required | Not required |
+| Human approval at spec gate | Required; matches canonical VSDD | Optional plugin relaxation; canonical VSDD still expects human sign-off |
 | Proof obligations | Required obligations are enforced | Selective; often zero are marked required |
 | Formal hardening artifacts | `verification-report.md`, `security-report.md`, `purity-audit.md` | `verification-report.md`, `security-report.md`, `purity-audit.md` |
 | Phases traversed | All 6 | All 6 |
