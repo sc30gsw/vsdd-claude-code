@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "hooks": {
     "PreToolUse": [
       {
@@ -7,68 +6,20 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/vsdd-gate-check.js\"",
-            "async": false,
-            "timeout": 10
+            "command": "node \"${CLAUDE_PLUGIN_DIR}/scripts/hooks/vsdd-gate-check.js\""
           }
-        ],
-        "description": "Block out-of-phase writes (tools + Bash heuristics) based on current VSDD pipeline phase"
-      }
-    ],
-    "SessionStart": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/vsdd-session-start.js\"",
-            "async": true,
-            "timeout": 5
-          }
-        ],
-        "description": "Load VSDD pipeline state and display context summary on session start"
-      }
-    ],
-    "Stop": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/vsdd-session-persist.js\"",
-            "async": false,
-            "timeout": 10
-          }
-        ],
-        "description": "Persist pipeline state and update index on session end"
-      }
-    ],
-    "PreCompact": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/vsdd-pre-compact.js\"",
-            "async": false,
-            "timeout": 10
-          }
-        ],
-        "description": "Checkpoint full pipeline state before context compaction"
+        ]
       }
     ],
     "PostToolUse": [
       {
-        "matcher": "Bash",
+        "matcher": "Write|Edit|MultiEdit",
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/vsdd-auto-commit.js\"",
-            "async": true,
-            "timeout": 15
+            "command": "node \"${CLAUDE_PLUGIN_DIR}/scripts/hooks/vsdd-auto-commit.js\""
           }
-        ],
-        "description": "Auto-commit on VSDD phase completion (requires VSDD_AUTO_COMMIT=true)"
+        ]
       }
     ]
   }

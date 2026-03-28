@@ -113,3 +113,29 @@ Every artifact is tracked via the Chainlink bead system:
 9. Harden: `/vsdd-harden`
 10. Converge: `/vsdd-converge`
 11. Check status: `/vsdd-status`
+
+## Plugin Installation (Claude Code Plugin System)
+
+Install via the Claude Code plugin system:
+
+```bash
+# Add the VSDD marketplace
+/plugin marketplace add sc30gsw/vsdd-claude-code
+
+# Install the plugin
+/plugin install vsdd@sc30gsw-vsdd-claude-code
+```
+
+After installation, skills are available as:
+- `/vsdd:init` — Initialize a feature pipeline
+- `/vsdd:spec` — Write behavioral specification
+- `/vsdd:spec-review` — Adversarial spec review
+- `/vsdd:tdd` — Generate tests (red phase)
+- `/vsdd:impl` — Implement and refactor (green + refactor)
+- `/vsdd:adversary` — Adversarial implementation review
+- `/vsdd:feedback` — Route findings to correct phase
+- `/vsdd:harden` — Formal hardening (Phase 5)
+- `/vsdd:converge` — Convergence check (Phase 6)
+- `/vsdd:escalate` — Architect escalation approval
+- `/vsdd:status` — Pipeline status
+- `/vsdd:trace` — Traceability chain

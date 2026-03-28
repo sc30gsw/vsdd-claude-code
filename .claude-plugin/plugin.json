@@ -1,17 +1,14 @@
 {
-  "name": "vsdd-claude-code",
+  "name": "vsdd",
   "version": "1.0.0",
-  "description": "Verified Spec-Driven Development (VSDD) workflow for Claude Code - enforces spec-first, test-first, adversarial review, and formal verification as sequential quality gates",
-  "agents": [
-    "./agents/vsdd-orchestrator.md",
-    "./agents/vsdd-builder.md",
-    "./agents/vsdd-adversary.md",
-    "./agents/vsdd-verifier.md"
-  ],
-  "commands": [
-    "./commands/"
-  ],
-  "skills": [
-    "./skills/"
-  ]
+  "description": "Verified Spec-Driven Development — adversarial quality gates for AI-assisted development",
+  "author": {
+    "name": "sc30gsw"
+  },
+  "homepage": "https://github.com/sc30gsw/vsdd-claude-code",
+  "repository": "https://github.com/sc30gsw/vsdd-claude-code",
+  "license": "MIT",
+  "keywords": ["vsdd", "tdd", "spec-driven", "verification", "adversarial-review"],
+  "skills": "./skills/",
+  "hooks": "./hooks/hooks.json"
 }
