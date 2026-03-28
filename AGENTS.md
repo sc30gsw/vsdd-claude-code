@@ -12,7 +12,7 @@
 ## When to Use Each Agent
 
 ### vsdd-orchestrator
-- `/vsdd-init`, `/vsdd-status`, `/vsdd-converge`, `/vsdd-feedback` commands
+- `/vsdd-init`, `/vsdd-status`, `/vsdd-converge`, `/vsdd-feedback`, `/vsdd-contract-review` commands
 - Phase transitions and gate recording
 - Writing review manifests for adversary
 - Routing adversary findings to correct phases
@@ -27,7 +27,7 @@
 - Refactoring (Phase 2c)
 
 ### vsdd-adversary
-- `/vsdd-adversary`, `/vsdd-spec-review` commands
+- `/vsdd-adversary`, `/vsdd-spec-review`, `/vsdd-contract-review` commands
 - **ALWAYS spawned as a FRESH agent instance** (new conversation, zero Builder context)
 - Reviews from disk only - reads review manifest and artifacts
 - Writes `verdict.json` and `findings/*.json` under the review output directory only
@@ -49,8 +49,11 @@
 ## Adversary Spawn Protocol
 
 When spawning vsdd-adversary, the orchestrator:
-1. Writes manifest to `reviews/sprint-{N}/input/manifest.json`
-2. Creates output directory `reviews/sprint-{N}/output/findings/`
+1. Writes manifest to one of:
+   - `reviews/spec/iteration-{N}/input/manifest.json`
+   - `reviews/contracts/sprint-{N}/input/manifest.json`
+   - `reviews/sprint-{N}/input/manifest.json`
+2. Creates matching `output/findings/`
 3. Spawns NEW vsdd-adversary agent (not the current agent)
 4. Waits for verdict.json to appear
 5. Reads and processes verdict

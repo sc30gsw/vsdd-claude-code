@@ -77,7 +77,7 @@ The `/vsdd-commit` command generates conventional commit messages that include p
 
 Agents communicate exclusively through files under `.vsdd/features/<feature-name>/`. There is no shared conversational context between the builder and the adversary.
 
-### 12 Slash Commands
+### 13 Slash Commands
 
 | Command | Phase | Purpose |
 |---|---|---|
@@ -86,6 +86,7 @@ Agents communicate exclusively through files under `.vsdd/features/<feature-name
 | `/vsdd-spec-review` | 1c | Spec review gate (adversary review; strict mode also requires human approval) |
 | `/vsdd-tdd` | 2a | Generate failing tests (Red phase) |
 | `/vsdd-impl` | 2b + 2c | Implement to pass tests (Green) then refactor |
+| `/vsdd-contract-review` | 2c | Strict-mode sprint contract review before adversarial implementation review |
 | `/vsdd-adversary` | 3 | Run adversarial review with fresh-context agent |
 | `/vsdd-feedback` | 4 | Route adversary findings to the correct phase |
 | `/vsdd-harden` | 5 | Execute formal verification tier |
@@ -130,6 +131,12 @@ Language verification skills: `vsdd-language-rust`, `vsdd-language-python`, `vsd
         spec/
           iteration-{N}/
             input/manifest.json   # Spec review manifest (Phase 1c)
+            output/
+              findings/FIND-NNN.json
+              verdict.json
+        contracts/
+          sprint-{N}/
+            input/manifest.json   # Strict-mode contract review manifest
             output/
               findings/FIND-NNN.json
               verdict.json
@@ -186,7 +193,7 @@ npx vsdd-claude-code --profile standard --dry-run
 # Phase 1a + 1b: Write behavioral spec and verification architecture
 /vsdd-spec
 
-# Phase 1c: Adversary reviews the spec; human approves
+# Phase 1c: Adversary reviews the spec; strict mode also requires human approval
 /vsdd-spec-review
 
 # Phase 2a: Generate failing tests (Red phase)
@@ -195,6 +202,9 @@ npx vsdd-claude-code --profile standard --dry-run
 
 # Phase 2b + 2c: Implement to green, then refactor
 /vsdd-impl
+
+# Strict mode only: adversary reviews the sprint contract before phase 3
+/vsdd-contract-review
 
 # Phase 3: Adversarial review -- fresh opus agent, binary verdict
 /vsdd-adversary
@@ -234,7 +244,7 @@ init
 1b  Verification architecture (purity boundary map, proof obligations)
   |
   v
-1c  Spec review gate (adversary reviews spec, human approves)
+1c  Spec review gate (adversary reviews spec; strict adds human approval)
   |
   v
 2a  Test generation -- Red phase (new tests must fail)
@@ -276,7 +286,7 @@ Gate prerequisites:
 | 2a | Lean: spec review PASS. Strict: adversary PASS plus explicit human approval |
 | 2b | Red phase evidence exists, was recorded after entering 2a, and proves both `new-feature-tests: FAIL` and `regression-baseline: PASS` |
 | 2c | Green phase evidence exists, was recorded after entering 2b, and proves both `target-feature-tests: PASS` and `regression-baseline: PASS` |
-| 3 | Tests pass post-refactor, with green evidence recorded after the latest implementation/refactor phase and carrying both target/regression PASS markers |
+| 3 | Tests pass post-refactor, with green evidence recorded after the latest implementation/refactor phase and carrying both target/regression PASS markers. Strict mode also requires `contracts/sprint-{N}.md` with `status: approved`, at least one `CRIT-XXX`, and `reviews/contracts/sprint-{N}/output/verdict.json` with `overallVerdict: PASS` |
 | 5 | Adversary verdict PASS |
 | 6 | Verification report exists and all required proof obligations pass |
 
@@ -289,6 +299,7 @@ Evidence logs use explicit top-of-file markers so hooks can distinguish "new tes
 | Capability | strict | lean |
 |---|---|---|
 | Sprint contracts | Required per sprint | Required for risky work only |
+| Sprint contract review | Required before Phase 3 | Optional when a sprint contract exists |
 | Adversary review rounds | Multiple | Single |
 | Human approval at spec gate | Required | Not required |
 | Proof obligations | Required obligations are enforced | Selective; often zero are marked required |

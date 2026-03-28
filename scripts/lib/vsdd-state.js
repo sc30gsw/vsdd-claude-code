@@ -205,7 +205,7 @@ const GATE_PREREQUISITES = {
       };
     }
     if (state.mode === 'strict') {
-      return validateApprovedSprintContract(state.featureName, sprint);
+      return validateSprintContractReview(state.featureName, sprint);
     }
     return { ok: true };
   },
@@ -308,6 +308,17 @@ function readActiveFeatureFile() {
 
 function getSprintContractPath(featureName, sprintNumber) {
   return path.join(getFeaturePath(featureName), 'contracts', `sprint-${sprintNumber}.md`);
+}
+
+function getSprintContractReviewPath(featureName, sprintNumber) {
+  return path.join(
+    getFeaturePath(featureName),
+    'reviews',
+    'contracts',
+    `sprint-${sprintNumber}`,
+    'output',
+    'verdict.json'
+  );
 }
 
 function hasSprintCriteria(content) {
@@ -441,6 +452,38 @@ function validateApprovedSprintContract(featureName, sprintNumber) {
   }
 
   return { ok: true, contractPath, frontmatter: frontmatterObject };
+}
+
+function validateSprintContractReview(featureName, sprintNumber) {
+  const contractCheck = validateApprovedSprintContract(featureName, sprintNumber);
+  if (!contractCheck.ok) {
+    return contractCheck;
+  }
+
+  const verdictPath = getSprintContractReviewPath(featureName, sprintNumber);
+  if (!fs.existsSync(verdictPath)) {
+    return {
+      ok: false,
+      reason: `Contract review PASS required for sprint ${sprintNumber}: reviews/contracts/sprint-${sprintNumber}/output/verdict.json`,
+    };
+  }
+
+  try {
+    const verdict = JSON.parse(fs.readFileSync(verdictPath, 'utf8'));
+    assertValidDocument('grading', verdict, `contract review verdict sprint-${sprintNumber}`);
+    if (verdict.overallVerdict !== 'PASS') {
+      return {
+        ok: false,
+        reason: `Contract review PASS required for sprint ${sprintNumber} before Phase 3`,
+      };
+    }
+    return { ok: true, verdictPath, contractPath: contractCheck.contractPath, verdict };
+  } catch (error) {
+    return {
+      ok: false,
+      reason: `Contract review verdict for sprint ${sprintNumber} is not valid JSON: ${error.message}`,
+    };
+  }
 }
 
 function getLatestPhaseTimestamp(state, phase) {
@@ -1140,6 +1183,7 @@ module.exports = {
   getActiveFeaturePath,
   getHistoryPath,
   getSprintContractPath,
+  getSprintContractReviewPath,
 
   // State CRUD
   readState,
@@ -1174,5 +1218,6 @@ module.exports = {
   // Sprint management
   startSprint,
   validateApprovedSprintContract,
+  validateSprintContractReview,
   validateCriteriaCoverage,
 };

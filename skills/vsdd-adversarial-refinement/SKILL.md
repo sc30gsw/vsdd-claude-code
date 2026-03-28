@@ -39,10 +39,20 @@ Watch for these patterns and reject them:
 
 ## Finding Routing Guide
 
-| Dimension | Finding Type | Route To |
-|-----------|-------------|---------|
-| spec_fidelity | Missing requirement | 1a (if spec ambiguous) or 2b (if impl wrong) |
-| edge_case_coverage | Untested edge case | 2a (add test) |
-| implementation_correctness | Logic error | 2b |
-| structural_integrity | Code organization | 2c |
-| verification_readiness | Purity boundary violated | 2b or 5 |
+| Category | Meaning | Route To |
+|----------|---------|----------|
+| spec_ambiguity | Requirement or contract wording is ambiguous | 1a |
+| spec_gap | Behavior exists but spec/contract does not cover it | 1a |
+| requirement_mismatch | Spec is clear, but tests or implementation do not satisfy it | 2b |
+| missing_edge_case | Edge case absent from spec or tests | 1a or 2a |
+| test_coverage | Required behavior has no meaningful test | 2a |
+| test_quality | Tautological or over-mocked test, or implementation-detail assertion | 2a |
+| implementation_bug | Logic defect | 2b |
+| error_handling | Incorrect or missing error path | 2b |
+| security_surface | Validation/auth/injection issue | 2b |
+| code_structure | Cohesion/abstraction/organization issue | 2c |
+| naming | Misleading or imprecise names | 2c |
+| duplication | Repeated logic that should be unified | 2c |
+| proof_gap | Missing proof harness or unverifiable claim | 5 |
+| invariant_violation | Proof/testing evidence contradicts required invariant | 5 |
+| purity_boundary | Supposedly pure logic still depends on effects | 2c or 5 |

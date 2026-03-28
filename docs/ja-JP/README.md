@@ -34,7 +34,7 @@ VSDDはこの問題に対して、以下の3つの手法を統合した体系的
 |---------|------|------|
 | 1a | 行動仕様 | EARS形式の要件定義、エッジケースカタログ |
 | 1b | 検証アーキテクチャ | 純粋性境界マップ、証明義務の定義 |
-| 1c | 仕様レビューゲート | adversaryによる仕様レビュー、人間による承認 |
+| 1c | 仕様レビューゲート | adversaryによる仕様レビュー。strict では人間による承認も必要 |
 | 2a | テスト生成（Red） | 必ず失敗するテストを先に書く |
 | 2b | 実装（Green） | テストを通過させる最小実装 |
 | 2c | リファクタ | グリーンを維持しながら構造を改善 |
@@ -110,7 +110,7 @@ PreToolUseフックがフェーズ外の `Write`/`Edit` および、リダイレ
 
 | コンポーネント | 数量 | 説明 |
 |--------------|------|------|
-| スラッシュコマンド | 12 | `/vsdd-init` から `/vsdd-trace` まで |
+| スラッシュコマンド | 13 | `/vsdd-init` から `/vsdd-commit` まで |
 | スキル | 13 | トレーサビリティ、言語プロファイルなど |
 | JSONスキーマ | 6 | state, bead, finding, grading など |
 
@@ -161,6 +161,9 @@ npx vsdd-claude-code --profile standard --dry-run
 # フェーズ2b + 2c: 実装して Green にし、その後リファクタ
 /vsdd-impl
 
+# strict モードのみ: sprint contract を adversary がレビュー
+/vsdd-contract-review
+
 # フェーズ3: 敵対的レビュー（新鮮なコンテキストのopusエージェントが審査）
 /vsdd-adversary
 
@@ -197,6 +200,7 @@ init -> 1a -> 1b -> 1c -> 2a -> 2b -> 2c -> 3 -> 4 -> [1a|2a|2b|2c|5] -> 5 -> 6 
 | 指摘の種類 | ルーティング先 |
 |-----------|--------------|
 | 仕様の曖昧さ | フェーズ1a |
+| 要件との不一致 | フェーズ2b |
 | エッジケースの欠落 | フェーズ1a + 2a |
 | テスト品質の問題 | フェーズ2a |
 | 実装バグ | フェーズ2b |
@@ -211,6 +215,7 @@ init -> 1a -> 1b -> 1c -> 2a -> 2b -> 2c -> 3 -> 4 -> [1a|2a|2b|2c|5] -> 5 -> 6 
 |------|------------|----------|
 | 対象用途 | 高保証作業、安全要件のある実装 | プロダクト開発、試作、通常のフィーチャー開発 |
 | スプリント契約 | 全スプリントで必須 | リスクの高い作業のみ |
+| スプリント契約レビュー | フェーズ3前に必須 | 契約を使う場合のみ任意 |
 | adversaryレビュー | 複数ラウンド | 1ラウンド |
 | 仕様レビュー時の人手承認 | 必須 | 不要 |
 | 証明義務 | required な義務を強制 | 選択的。required が 0 件でもよい |
@@ -381,6 +386,14 @@ VSDDは `.vsdd/` ディレクトリ配下にすべてのランタイム状態を
               findings/
                 FIND-NNN.json
               verdict.json
+        contracts/
+          sprint-{N}/
+            input/
+              manifest.json
+            output/
+              findings/
+                FIND-NNN.json
+              verdict.json
         sprint-{N}/
           input/
             manifest.json     # orchestratorがadversaryに渡すマニフェスト
@@ -412,6 +425,7 @@ VSDDは `.vsdd/` ディレクトリ配下にすべてのランタイム状態を
 | `/vsdd-spec-review` | 1c | adversaryによる仕様レビューを実行する。strict では人手承認も必要 |
 | `/vsdd-tdd` | 2a | 失敗するテストを生成する（Red） |
 | `/vsdd-impl` | 2b/2c | テストを通過する最小実装を行い、その後リファクタする |
+| `/vsdd-contract-review` | 2c | strict モードの sprint contract を adversary にレビューさせる |
 | `/vsdd-adversary` | 3 | 敵対的レビューを実行する |
 | `/vsdd-feedback` | 4 | adversaryの指摘を適切なフェーズへルーティングする |
 | `/vsdd-harden` | 5 | 形式的強化を実行する |

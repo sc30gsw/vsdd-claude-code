@@ -69,7 +69,7 @@ run('vsdd-session-start', async (_payload) => {
       lines.push(`   🔬 ${pendingProofs} required proof obligation(s) pending`);
     }
 
-    const nextAction = getNextAction(state.currentPhase);
+    const nextAction = getNextAction(state);
     if (nextAction) {
       lines.push(`   ➡️  Next: ${nextAction}`);
     }
@@ -83,15 +83,22 @@ run('vsdd-session-start', async (_payload) => {
   return { blocked: false };
 });
 
-function getNextAction(phase) {
+function getNextAction(state) {
+  const phase = state && state.currentPhase;
+  const mode = state && state.mode;
+
   const actions = {
     'init': 'Run `/vsdd-spec` to begin behavioral specification',
     '1a': 'Complete behavioral spec, then run `/vsdd-spec` for verification architecture',
     '1b': 'Complete verification architecture, then run `/vsdd-spec-review`',
-    '1c': 'Awaiting spec review gate - run `/vsdd-spec-review`',
+    '1c': mode === 'strict'
+      ? 'Run `/vsdd-spec-review`; after adversary PASS, record explicit human approval'
+      : 'Awaiting spec review gate - run `/vsdd-spec-review`',
     '2a': 'Generate failing tests with `/vsdd-tdd`',
     '2b': 'Implement to pass tests with `/vsdd-impl`',
-    '2c': 'Refactor and run `/vsdd-impl` to finish',
+    '2c': mode === 'strict'
+      ? 'Finish refactor, update `contracts/sprint-N.md`, then run `/vsdd-contract-review`'
+      : 'Refactor and run `/vsdd-impl` to finish',
     '3': 'Run adversarial review with `/vsdd-adversary`',
     '4': 'Route feedback with `/vsdd-feedback`',
     '5': 'Run formal verification with `/vsdd-harden`',

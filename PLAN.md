@@ -40,6 +40,7 @@ vsdd-claude-code/
     vsdd-spec-review.md               # Phase 1c: Spec review gate (strict mode additionally requires human approval)
     vsdd-tdd.md                       # Phase 2a: Test generation (Red)
     vsdd-impl.md                      # Phase 2b+2c: Implementation (Green) + Refactor
+    vsdd-contract-review.md           # Phase 2c: Strict-mode sprint contract review
     vsdd-adversary.md                 # Phase 3: Adversarial review (fresh context)
     vsdd-feedback.md                  # Phase 4: Feedback routing loop
     vsdd-harden.md                    # Phase 5: Formal verification
@@ -118,10 +119,20 @@ vsdd-claude-code/
         spec/
           iteration-{N}/
             input/manifest.json       # Spec review manifest (Orchestrator writes)
-            output/verdict.json       # Spec review verdict (Adversary writes)
+            output/
+              findings/FIND-NNN.json
+              verdict.json            # Spec review verdict (Adversary writes)
+        contracts/
+          sprint-{N}/
+            input/manifest.json       # Contract review manifest (Orchestrator writes)
+            output/
+              findings/FIND-NNN.json
+              verdict.json            # Contract review verdict (Adversary writes)
         sprint-{N}/
           input/manifest.json         # What to review (Orchestrator writes)
-          output/verdict.json         # Review verdict (Adversary writes)
+          output/
+            findings/FIND-NNN.json
+            verdict.json              # Review verdict (Adversary writes)
       evidence/
         sprint-{N}-red-phase.log       # New feature tests fail, regression baseline still green
         sprint-{N}-green-phase.log     # Target + regression tests pass
@@ -167,7 +178,7 @@ A fresh `vsdd-adversary` agent is spawned that reads ONLY from disk. The adversa
 
 **Format**: Markdown with YAML frontmatter containing criteria IDs, dimensions, weights, and pass thresholds.
 
-**Flow**: Builder writes -> Adversary reviews using the sprint review manifest/output directory -> negotiation (max 2 rounds) -> human approval before adversarial review for that sprint. Runtime enforcement requires `status: approved` and at least one `CRIT-XXX` criterion before strict-mode Phase 3.
+**Flow**: Builder writes -> `/vsdd-contract-review` spawns the Adversary against `reviews/contracts/sprint-{N}/` -> negotiation (max 2 rounds) -> human approval before adversarial review for that sprint. Runtime enforcement requires `status: approved`, at least one `CRIT-XXX` criterion, and a contract-review PASS verdict before strict-mode Phase 3.
 
 ### 3. Concrete Grading (Binary PASS/FAIL per Dimension)
 
@@ -448,20 +459,22 @@ Gate prerequisites:
 | 2a | Lean: adversary PASS on spec review. Strict: adversary PASS plus explicit human approval. Entering 2a starts sprint `N` for the implementation cycle |
 | 2b | Red phase evidence (new feature tests fail while regression baseline remains green) |
 | 2c | Green phase evidence (target feature tests and regression suite pass) |
-| 3 | Tests pass post-refactor; in strict mode `contracts/sprint-{N}.md` exists with `status: approved` and at least one `CRIT-XXX` |
+| 3 | Tests pass post-refactor; in strict mode `contracts/sprint-{N}.md` exists with `status: approved`, contains at least one `CRIT-XXX`, and `reviews/contracts/sprint-{N}/output/verdict.json` has `overallVerdict: PASS` |
 | 5 | Adversary verdict PASS |
 | 6 | Verification report exists, all required proof obligations pass, and strict-mode verdict sets `convergenceSignals.allCriteriaEvaluated = true` |
 
 ### Feedback Routing Table (Phase 4)
 
-| Finding Dimension | Route To |
-|-------------------|----------|
-| spec_ambiguity (CRITICAL) | Phase 1a (spec rewrite) |
-| missing_edge_cases (CRITICAL) | Phase 1a + Phase 2a |
+| Finding Category | Route To |
+|------------------|----------|
+| spec_ambiguity | Phase 1a (spec rewrite) |
+| spec_gap | Phase 1a (spec update) |
+| requirement_mismatch | Phase 2b (implementation fix) |
+| missing_edge_case | Phase 1a or Phase 2a depending on severity |
 | test_coverage / test_quality | Phase 2a (test generation) |
-| implementation_correctness / error_handling | Phase 2b (implementation fix) |
+| implementation_bug / error_handling / security_surface | Phase 2b (implementation fix) |
 | code_structure / naming / duplication | Phase 2c (refactor) |
-| proof_gap / invariant_violation | Phase 5 (formal verification) |
+| proof_gap / invariant_violation / purity_boundary | Phase 5 (formal verification by default; route earlier if architectural refactor is needed) |
 
 ### Convergence Detection (Phase 6)
 
@@ -489,48 +502,49 @@ Four-dimensional convergence signals:
 9. Create `agents/vsdd-verifier.md`
 10. Create `AGENTS.md` (orchestration instructions)
 
-### Phase C: Commands (12 slash commands)
+### Phase C: Commands (13 slash commands)
 11. Create `commands/vsdd-init.md`
 12. Create `commands/vsdd-spec.md`
 13. Create `commands/vsdd-spec-review.md`
 14. Create `commands/vsdd-tdd.md`
 15. Create `commands/vsdd-impl.md`
-16. Create `commands/vsdd-adversary.md`
-17. Create `commands/vsdd-feedback.md`
-18. Create `commands/vsdd-harden.md`
-19. Create `commands/vsdd-converge.md`
-20. Create `commands/vsdd-status.md`
-21. Create `commands/vsdd-trace.md` (traceability chain display)
-22. Create `commands/vsdd-commit.md` (git commit with phase tag)
+16. Create `commands/vsdd-contract-review.md`
+17. Create `commands/vsdd-adversary.md`
+18. Create `commands/vsdd-feedback.md`
+19. Create `commands/vsdd-harden.md`
+20. Create `commands/vsdd-converge.md`
+21. Create `commands/vsdd-status.md`
+22. Create `commands/vsdd-trace.md` (traceability chain display)
+23. Create `commands/vsdd-commit.md` (git commit with phase tag)
 
 ### Phase D: Skills (13 skills)
-23. Create 8 core skills in `skills/*/SKILL.md` (spec-crystallization, sprint-contracts, adversarial-refinement, grading-criteria, feedback-routing, convergence-detection, formal-hardening, verification-architecture)
-24. Create `skills/vsdd-traceability/SKILL.md` (Chainlink bead patterns)
-25. Create `skills/vsdd-git-integration/SKILL.md` (commit/tag automation)
-26. Create `skills/vsdd-language-rust/SKILL.md` (Kani, proptest, cargo-fuzz)
-27. Create `skills/vsdd-language-python/SKILL.md` (hypothesis, mutmut)
-28. Create `skills/vsdd-language-typescript/SKILL.md` (fast-check, stryker)
+24. Create 8 core skills in `skills/*/SKILL.md` (spec-crystallization, sprint-contracts, adversarial-refinement, grading-criteria, feedback-routing, convergence-detection, formal-hardening, verification-architecture)
+25. Create `skills/vsdd-traceability/SKILL.md` (Chainlink bead patterns)
+26. Create `skills/vsdd-git-integration/SKILL.md` (commit/tag automation)
+27. Create `skills/vsdd-language-rust/SKILL.md` (Kani, proptest, cargo-fuzz)
+28. Create `skills/vsdd-language-python/SKILL.md` (hypothesis, mutmut)
+29. Create `skills/vsdd-language-typescript/SKILL.md` (fast-check, stryker)
 
 ### Phase E: Hooks + Rules + Session Persistence + Git Integration
-29. Create `hooks/hooks.json` (5 hook events including auto-commit)
-30. Create `scripts/hooks/vsdd-gate-check.js`
-31. Create `scripts/hooks/vsdd-session-start.js`
-32. Create `scripts/hooks/vsdd-session-persist.js`
-33. Create `scripts/hooks/vsdd-pre-compact.js`
-34. Create `scripts/hooks/vsdd-auto-commit.js` (git commit on phase completion)
-35. Create `rules/common/vsdd-principles.md`
-36. Create `rules/common/vsdd-gate-enforcement.md`
-37. Create `rules/common/vsdd-anti-slop.md`
+30. Create `hooks/hooks.json` (5 hook events including auto-commit)
+31. Create `scripts/hooks/vsdd-gate-check.js`
+32. Create `scripts/hooks/vsdd-session-start.js`
+33. Create `scripts/hooks/vsdd-session-persist.js`
+34. Create `scripts/hooks/vsdd-pre-compact.js`
+35. Create `scripts/hooks/vsdd-auto-commit.js` (git commit on phase completion)
+36. Create `rules/common/vsdd-principles.md`
+37. Create `rules/common/vsdd-gate-enforcement.md`
+38. Create `rules/common/vsdd-anti-slop.md`
 
 ### Phase F: Install System + Polish
-38. Create `manifests/install-profiles.json` (minimal/standard/strict + language profiles)
-39. Create `manifests/install-modules.json`
-40. Create `manifests/install-components.json`
-41. Create `manifests/language-profiles.json` (rust/python/typescript/go/cpp toolsets)
-42. Create `VSDD.md` (methodology overview)
-43. Create `contexts/vsdd-active.md`
+39. Create `manifests/install-profiles.json` (minimal/standard/strict + language profiles)
+40. Create `manifests/install-modules.json`
+41. Create `manifests/install-components.json`
+42. Create `manifests/language-profiles.json` (rust/python/typescript/go/cpp toolsets)
+43. Create `VSDD.md` (methodology overview)
+44. Create `contexts/vsdd-active.md`
 
-**Total: ~56 files** (`marketplace.json` removed; `vsdd-index.schema.json` added)
+**Total: ~57 files** (`marketplace.json` removed; `vsdd-index.schema.json` added)
 
 ### Parallel Execution Strategy
 

@@ -6,7 +6,7 @@ description: Run Phase 3 (adversarial review) for the active VSDD feature. Spawn
 Runs the adversarial review (Phase 3). Spawns a fresh vsdd-adversary agent (opus model, review-output-only, zero Builder context) to review the implementation against the spec across 5 dimensions.
 
 ## When
-Run after `/vsdd-impl` completes Phases 2b and 2c. Requires active feature at phase `2c`.
+Run after `/vsdd-impl` completes Phases 2b and 2c. Requires active feature at phase `2c`. In strict mode, `/vsdd-contract-review` must already have produced a PASS verdict for the current sprint contract.
 
 ## How
 
@@ -15,9 +15,11 @@ Run after `/vsdd-impl` completes Phases 2b and 2c. Requires active feature at ph
    - `contracts/sprint-N.md` must exist
    - frontmatter must include `status: approved`
    - the contract must define at least one `CRIT-XXX` criterion
+   - `reviews/contracts/sprint-N/output/verdict.json` must exist and `overallVerdict` must be `PASS`
 3. **Write review manifest** to `reviews/sprint-N/input/manifest.json`:
    ```json
    {
+     "reviewType": "implementation",
      "featureName": "...",
      "sprintNumber": N,
      "contractPath": "contracts/sprint-N.md",
@@ -36,7 +38,7 @@ Run after `/vsdd-impl` completes Phases 2b and 2c. Requires active feature at ph
    - `reviews/sprint-N/output/findings/FIND-NNN.json` (one per finding)
 7. **Record gate**: `recordGate(feature, '3', overallVerdict, 'adversary')`
 8. **If PASS**: transition to Phase 5 in all modes, display summary
-9. **If FAIL**: display findings grouped by dimension, proceed to `/vsdd-feedback`
+9. **If FAIL**: display findings grouped by dimension/category, proceed to `/vsdd-feedback`
 
 ## Fresh Context Requirement
 

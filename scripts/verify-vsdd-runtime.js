@@ -81,6 +81,7 @@ function createPassingVerdict(feature, evidenceLocation) {
   const validFinding = {
     findingId: 'FIND-001',
     dimension: 'spec_fidelity',
+    category: 'requirement_mismatch',
     severity: 'critical',
     description: 'REQ-001 is not covered by any implementation path in the reviewed artifact set.',
     evidence: {
@@ -99,9 +100,23 @@ function createPassingVerdict(feature, evidenceLocation) {
   assert(
     !validateDocument('finding', {
       ...validFinding,
+      category: undefined,
+    }).valid,
+    'finding without category should fail schema validation'
+  );
+  assert(
+    !validateDocument('finding', {
+      ...validFinding,
       evidence: { filePath: 'src/parser.ts' },
     }).valid,
     'finding without lineRange should fail schema validation'
+  );
+  assert(
+    !validateDocument('finding', {
+      ...validFinding,
+      dimension: 'structural_integrity',
+    }).valid,
+    'finding category/dimension mismatch should fail semantic validation'
   );
 
   const validVerdict = createPassingVerdict('runtime-check', 'src/parser.ts');
@@ -136,7 +151,7 @@ assertThrows(
   'featureName must be kebab-case'
 );
 
-// ── Contract validation is enforced before strict-mode phase 3 ──
+// ── Contract validation and contract review are enforced before strict-mode phase 3 ──
 {
   const root = tmpDir();
   process.chdir(root);
@@ -178,6 +193,51 @@ assertThrows(
   assertThrows(
     () => transitionPhase(feat, '3'),
     'Invalid sprint contract'
+  );
+}
+
+{
+  const root = tmpDir();
+  process.chdir(root);
+  const feat = 'contract-review-feature';
+  initFeature(feat, 'strict');
+  transitionPhase(feat, '1a');
+  writeFile(root, `.vsdd/features/${feat}/specs/behavioral-spec.md`, '# Behavioral\n');
+  transitionPhase(feat, '1b');
+  writeFile(root, `.vsdd/features/${feat}/specs/verification-architecture.md`, '# Verification\n');
+  transitionPhase(feat, '1c');
+  recordGate(feat, '1c', 'PASS', 'adversary');
+  recordGate(feat, '1c', 'PASS', 'human', { approvedBasedOn: 'adversary' });
+  transitionPhase(feat, '2a');
+  writeFile(root, `.vsdd/features/${feat}/evidence/sprint-1-red-phase.log`, 'new-feature-tests: FAIL\nregression-baseline: PASS\n');
+  transitionPhase(feat, '2b');
+  writeFile(root, `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`, 'target-feature-tests: PASS\nregression-baseline: PASS\n');
+  transitionPhase(feat, '2c');
+  writeFile(root, `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`, 'target-feature-tests: PASS\nregression-baseline: PASS\nafter-refactor: PASS\n');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/contracts/sprint-1.md`,
+    [
+      '---',
+      'sprintNumber: 1',
+      'feature: contract-review-feature',
+      'status: approved',
+      'criteria:',
+      '  - id: CRIT-001',
+      '    dimension: spec_fidelity',
+      '    description: Requirements map cleanly to reviewed artifacts',
+      '    weight: 0.30',
+      '    passThreshold: Every REQ-XXX can be evaluated from spec, tests, and source',
+      '---',
+      '',
+      '# Contract',
+      '',
+    ].join('\n')
+  );
+
+  assertThrows(
+    () => transitionPhase(feat, '3'),
+    'Contract review PASS required'
   );
 }
 

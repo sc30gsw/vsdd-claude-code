@@ -3,11 +3,31 @@
   "$id": "vsdd.finding.v1",
   "title": "VSDD Adversary Finding",
   "type": "object",
-  "required": ["findingId", "dimension", "severity", "description", "evidence", "routeToPhase"],
+  "required": ["findingId", "dimension", "category", "severity", "description", "evidence", "routeToPhase"],
   "additionalProperties": false,
   "properties": {
     "findingId": { "type": "string", "pattern": "^FIND-\\d{3,}$" },
     "dimension": { "type": "string", "enum": ["spec_fidelity", "edge_case_coverage", "implementation_correctness", "structural_integrity", "verification_readiness"] },
+    "category": {
+      "type": "string",
+      "enum": [
+        "spec_ambiguity",
+        "spec_gap",
+        "requirement_mismatch",
+        "missing_edge_case",
+        "test_coverage",
+        "test_quality",
+        "implementation_bug",
+        "error_handling",
+        "security_surface",
+        "code_structure",
+        "naming",
+        "duplication",
+        "proof_gap",
+        "invariant_violation",
+        "purity_boundary"
+      ]
+    },
     "severity": { "type": "string", "enum": ["critical", "high", "medium", "low"] },
     "description": { "type": "string", "minLength": 20 },
     "evidence": {

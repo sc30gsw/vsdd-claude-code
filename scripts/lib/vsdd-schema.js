@@ -20,6 +20,23 @@ const CANONICAL_GRADING_DIMENSIONS = [
   'structural_integrity',
   'verification_readiness',
 ];
+const FINDING_CATEGORY_DIMENSIONS = {
+  spec_ambiguity: 'spec_fidelity',
+  spec_gap: 'spec_fidelity',
+  requirement_mismatch: 'spec_fidelity',
+  missing_edge_case: 'edge_case_coverage',
+  test_coverage: 'edge_case_coverage',
+  test_quality: 'edge_case_coverage',
+  implementation_bug: 'implementation_correctness',
+  error_handling: 'implementation_correctness',
+  security_surface: 'implementation_correctness',
+  code_structure: 'structural_integrity',
+  naming: 'structural_integrity',
+  duplication: 'structural_integrity',
+  proof_gap: 'verification_readiness',
+  invariant_violation: 'verification_readiness',
+  purity_boundary: 'verification_readiness',
+};
 
 function getSchemaPath(name) {
   const fileName = SCHEMA_FILE_MAP[name];
@@ -269,6 +286,13 @@ function validateGradingSemantics(value, errors) {
 }
 
 function validateFindingSemantics(value, errors) {
+  if (value && value.category && value.dimension) {
+    const expectedDimension = FINDING_CATEGORY_DIMENSIONS[value.category];
+    if (expectedDimension && value.dimension !== expectedDimension) {
+      errors.push(`$.category ${value.category} must use dimension ${expectedDimension}`);
+    }
+  }
+
   const evidence = value && value.evidence;
   if (!evidence || typeof evidence !== 'object') {
     return;
@@ -305,6 +329,7 @@ function validateContractSemantics(value, errors) {
 module.exports = {
   SCHEMA_FILE_MAP,
   CANONICAL_GRADING_DIMENSIONS,
+  FINDING_CATEGORY_DIMENSIONS,
   loadSchema,
   validateDocument,
   assertValidDocument,

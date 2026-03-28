@@ -99,7 +99,7 @@ Write `specs/verification-architecture.md`:
 
 ## Sprint Contracts
 
-Before Phase 3 adversarial review (in strict mode), write `.vsdd/features/<name>/contracts/sprint-N.md`:
+Before Phase 3 adversarial review (in strict mode), write `.vsdd/features/<name>/contracts/sprint-N.md` and expect it to go through `/vsdd-contract-review`:
 
 ```markdown
 ---
@@ -107,7 +107,7 @@ sprintNumber: N
 feature: feature-name
 scope: "What this sprint covers"
 negotiationRound: 0
-status: approved
+status: under-review
 criteria:
   - id: CRIT-001
     dimension: spec_fidelity
@@ -122,7 +122,7 @@ criteria:
 ---
 ```
 
-The strict Phase 3 gate requires this contract to exist, contain `CRIT-XXX` entries, and be human-approved (`status: approved`).
+The strict Phase 3 gate requires this contract to exist, contain `CRIT-XXX` entries, pass adversarial contract review, and be human-approved (`status: approved`).
 
 ## Anti-Slop Bias
 

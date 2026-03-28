@@ -7,7 +7,7 @@ origin: VSDD
 # VSDD Sprint Contracts
 
 ## When to Activate
-- Phase 2a in strict mode (before adversarial review)
+- Phase 2c in strict mode (after refactor, before adversarial review)
 - Writing grading criteria for a sprint
 - Reviewing a sprint contract before approving
 
@@ -38,9 +38,9 @@ Pass thresholds MUST be binary-evaluable (yes/no), NOT numeric:
 ## Negotiation Protocol
 
 1. Builder proposes contract → sets `status: draft`
-2. Adversary reviews criteria → may request changes
+2. Orchestrator runs `/vsdd-contract-review` → adversary reviews criteria against spec/tests/source
 3. Maximum 2 negotiation rounds (`negotiationRound` field)
-4. Human approves final contract before implementation
+4. Human approves final contract before Phase 3 by setting `status: approved`
 
 ## Sprint Contract Template
 

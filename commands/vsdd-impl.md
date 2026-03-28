@@ -38,6 +38,7 @@ Run after `/vsdd-tdd` completes Phase 2a with red phase evidence. Requires activ
    - Do NOT add features, change behavior, or modify spec
 10. **Verify tests still pass** after each refactor step
 11. **Refresh green evidence** after the final refactor run, again including `target-feature-tests: PASS` and `regression-baseline: PASS`, so Phase 3 sees post-refactor test results
+12. **In strict mode, update the sprint contract** in `contracts/sprint-N.md` so it reflects the final refactored artifact set, then run `/vsdd-contract-review` before `/vsdd-adversary`
 
 ## Examples
 

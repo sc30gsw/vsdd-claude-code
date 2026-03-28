@@ -11,6 +11,7 @@ VSDD enforces structured quality gates through 6 phases, 4 roles, and 8 principl
 ### Strict Mode
 Full VSDD ceremony for high-assurance work:
 - Sprint contracts required per sprint
+- Contract review PASS required before Phase 3
 - Multiple adversary review rounds
 - Proof obligations enforced
 - All 6 phases traversed
@@ -18,9 +19,9 @@ Full VSDD ceremony for high-assurance work:
 
 ### Lean Mode
 Streamlined flow for product work and prototyping:
-- Planner -> Builder -> Evaluator flow
+- Full 6-phase VSDD flow with lighter approvals and contract requirements
 - Sprint contracts only for risky work
-- Optional formal verification
+- Phase 5 still runs, but required proof obligations are often zero
 - Relaxed gate enforcement
 - Faster iteration cycles
 
@@ -29,7 +30,7 @@ Streamlined flow for product work and prototyping:
 ### Phase 1: Spec Crystallization
 - **1a**: Behavioral specification (EARS format requirements, edge case catalog)
 - **1b**: Verification architecture (purity boundary map, proof obligations)
-- **1c**: Spec review gate (adversary reviews spec, human approves)
+- **1c**: Spec review gate (adversary reviews spec; strict mode also requires human approval)
 
 ### Phase 2: Test-First Implementation (TDD Core)
 - **2a**: Test generation (Red phase - tests must fail)
@@ -92,7 +93,11 @@ Every artifact is tracked via the Chainlink bead system:
 1. Install: `bash install.sh --profile standard`
 2. Initialize: `/vsdd-init <feature-name> --mode lean`
 3. Write spec: `/vsdd-spec`
-4. Generate tests: `/vsdd-tdd`
-5. Implement: `/vsdd-impl`
-6. Review: `/vsdd-adversary`
-7. Check status: `/vsdd-status`
+4. Review spec: `/vsdd-spec-review`
+5. Generate tests: `/vsdd-tdd`
+6. Implement and refactor: `/vsdd-impl`
+7. Strict mode only: `/vsdd-contract-review`
+8. Review implementation: `/vsdd-adversary`
+9. Harden: `/vsdd-harden`
+10. Converge: `/vsdd-converge`
+11. Check status: `/vsdd-status`

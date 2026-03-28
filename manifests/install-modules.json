@@ -69,7 +69,7 @@
     {
       "id": "vsdd-commands",
       "kind": "commands",
-      "description": "12 VSDD slash commands for pipeline control",
+      "description": "13 VSDD slash commands for pipeline control",
       "paths": ["commands/"],
       "targets": ["claude"],
       "dependencies": ["vsdd-rules", "vsdd-runtime", "vsdd-schemas"],

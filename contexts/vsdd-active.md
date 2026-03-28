@@ -20,7 +20,7 @@ When VSDD is active:
 | 1c | Spec Review Gate | review verdicts only | /vsdd-spec-review |
 | 2a | Test Generation (Red) | tests/ only | /vsdd-tdd |
 | 2b | Implementation (Green) | src/ tests/ | /vsdd-impl |
-| 2c | Refactor | src/ tests/ | /vsdd-impl |
+| 2c | Refactor | src/ tests/ contracts/ contract-review artifacts | /vsdd-impl, /vsdd-contract-review |
 | 3 | Adversarial Review | review output only | /vsdd-adversary |
 | 4 | Feedback Routing | routed phase files | /vsdd-feedback |
 | 5 | Formal Hardening | verification/ | /vsdd-harden |
@@ -30,6 +30,7 @@ When VSDD is active:
 
 - `/vsdd-status` - Show current pipeline state
 - `/vsdd-trace <bead-id>` - Show traceability chain
+- `/vsdd-contract-review` - Review the strict-mode sprint contract
 - `/vsdd-commit` - Commit current phase artifacts
 
 ## State Files

@@ -13,15 +13,24 @@ origin: VSDD
 
 ## Routing Table
 
-| Finding Dimension | Severity | Route To |
-|-------------------|---------|---------|
-| spec_fidelity | critical | Phase 1a (spec ambiguous) |
-| spec_fidelity | high | Phase 2b (implementation wrong) |
-| edge_case_coverage | critical | Phase 1a + Phase 2a |
-| edge_case_coverage | high | Phase 2a |
-| implementation_correctness | any | Phase 2b |
-| structural_integrity | any | Phase 2c |
-| verification_readiness | any | Phase 5 |
+| Finding Category | Severity | Route To |
+|------------------|----------|----------|
+| spec_ambiguity | any | Phase 1a |
+| spec_gap | any | Phase 1a |
+| requirement_mismatch | any | Phase 2b |
+| missing_edge_case | critical | Phase 1a |
+| missing_edge_case | high/medium/low | Phase 2a |
+| test_coverage | any | Phase 2a |
+| test_quality | any | Phase 2a |
+| implementation_bug | any | Phase 2b |
+| error_handling | any | Phase 2b |
+| security_surface | any | Phase 2b |
+| code_structure | any | Phase 2c |
+| naming | any | Phase 2c |
+| duplication | any | Phase 2c |
+| proof_gap | any | Phase 5 |
+| invariant_violation | any | Phase 5 |
+| purity_boundary | any | Phase 2c or Phase 5 |
 
 **Always route to the EARLIEST affected phase.**
 

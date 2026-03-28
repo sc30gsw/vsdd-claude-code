@@ -25,7 +25,7 @@ It combines four constraints into one workflow:
 ## Modes
 
 - `lean`: traverses all 6 phases with lighter approval and contract requirements, intended for normal product work.
-- `strict`: traverses all 6 phases with sprint contracts, stronger review gates, and tighter convergence requirements.
+- `strict`: traverses all 6 phases with sprint contracts, adversarial contract review before Phase 3, stronger review gates, and tighter convergence requirements.
 
 ## Required Artifacts
 
@@ -37,6 +37,7 @@ It combines four constraints into one workflow:
 - `evidence/sprint-N-green-phase.log` with:
   - `target-feature-tests: PASS`
   - `regression-baseline: PASS`
+- `reviews/contracts/sprint-N/output/verdict.json` with `overallVerdict: PASS` in strict mode
 - `reviews/sprint-N/output/verdict.json`
 - `verification/verification-report.md`
 

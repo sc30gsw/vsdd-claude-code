@@ -105,12 +105,30 @@ const WRITE_RESTRICTIONS = [
     },
   },
   {
-    // Review manifests and verdicts are only writable while a review is running
-    name: 'review artifacts',
-    blockedInPhases: new Set(['init', '1a', '1b', '2a', '2b', '2c', '4', '5', '6', 'complete']),
+    // Spec review manifests/verdicts are only writable during phase 1c
+    name: 'spec review artifacts',
+    blockedInPhases: new Set(['init', '1a', '1b', '2a', '2b', '2c', '3', '4', '5', '6', 'complete']),
     matches: (filePath) => {
       const norm = filePath.replace(/\\/g, '/');
-      return norm.includes('/.vsdd/') && norm.includes('/reviews/');
+      return norm.includes('/.vsdd/') && norm.includes('/reviews/spec/');
+    },
+  },
+  {
+    // Contract review manifests/verdicts are only writable during phase 2c
+    name: 'contract review artifacts',
+    blockedInPhases: new Set(['init', '1a', '1b', '1c', '2a', '2b', '3', '4', '5', '6', 'complete']),
+    matches: (filePath) => {
+      const norm = filePath.replace(/\\/g, '/');
+      return norm.includes('/.vsdd/') && norm.includes('/reviews/contracts/');
+    },
+  },
+  {
+    // Sprint review manifests/verdicts are only writable during phase 3
+    name: 'sprint review artifacts',
+    blockedInPhases: new Set(['init', '1a', '1b', '1c', '2a', '2b', '2c', '4', '5', '6', 'complete']),
+    matches: (filePath) => {
+      const norm = filePath.replace(/\\/g, '/');
+      return norm.includes('/.vsdd/') && /\/reviews\/sprint-\d+\//i.test(norm);
     },
   },
   {

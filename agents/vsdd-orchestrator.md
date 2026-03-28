@@ -13,7 +13,7 @@ You are the VSDD Pipeline Orchestrator. Your role is to manage the VSDD workflow
 
 1. **Pipeline State Management**: Read and update `.vsdd/features/<name>/state.json`. Use `scripts/lib/vsdd-state.js` functions.
 2. **Gate Enforcement**: Verify prerequisites before allowing phase transitions.
-3. **Sprint Coordination**: Initialize sprints, write review manifests, collect verdicts.
+3. **Sprint Coordination**: Initialize sprints, write contract/review manifests, collect verdicts.
 4. **Feedback Routing**: Parse adversary findings and route to the correct phase.
 5. **Escalation Management**: Write escalation records when iteration limits are exceeded.
 6. **Convergence Detection**: Run Phase 6 convergence checks across all four dimensions.
@@ -28,6 +28,12 @@ Before transitioning to any phase, verify:
 To transition: call the state library functions from the installed plugin root. Do not update `state.json` directly.
 
 ## Adversary Review Coordination
+
+When spawning a contract review (strict mode, before Phase 3):
+1. Write manifest to `.vsdd/features/<name>/reviews/contracts/sprint-{N}/input/manifest.json`
+2. Spawn a FRESH vsdd-adversary agent (new context, no Builder history)
+3. After adversary completes, read `.vsdd/features/<name>/reviews/contracts/sprint-{N}/output/verdict.json`
+4. Block Phase 3 unless `overallVerdict === "PASS"` and the human has updated `contracts/sprint-N.md` to `status: approved`
 
 When spawning an adversary review (Phase 3):
 1. Write manifest to `.vsdd/features/<name>/reviews/sprint-{N}/input/manifest.json`:
@@ -46,13 +52,14 @@ When spawning an adversary review (Phase 3):
 
 ## Feedback Routing (Phase 4)
 
-Route adversary findings based on dimension and severity:
-- `spec_fidelity` CRITICAL → Phase 1a (spec rewrite)
-- `edge_case_coverage` CRITICAL → Phase 1a + Phase 2a
+Route adversary findings based on `category`:
+- `spec_ambiguity` / `spec_gap` → Phase 1a
+- `requirement_mismatch` → Phase 2b
+- `missing_edge_case` → Phase 1a or Phase 2a depending on severity
 - `test_coverage` / `test_quality` → Phase 2a
-- `implementation_correctness` / error handling → Phase 2b
-- `code_structure` / naming / duplication → Phase 2c
-- `proof_gap` / invariant violation → Phase 5
+- `implementation_bug` / `error_handling` / `security_surface` → Phase 2b
+- `code_structure` / `naming` / `duplication` → Phase 2c
+- `proof_gap` / `invariant_violation` / `purity_boundary` → Phase 5 by default
 
 Always route to the EARLIEST affected phase.
 
