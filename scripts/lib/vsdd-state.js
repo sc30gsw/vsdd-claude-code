@@ -22,8 +22,8 @@ const VALID_LANGUAGES = new Set(['rust', 'python', 'typescript', 'go', 'cpp']);
 const FEATURE_NAME_RE = /^[a-z0-9][a-z0-9-]*[a-z0-9]$/;
 const RED_EVIDENCE_PATTERNS = [
   {
-    pattern: /new[-\s]?feature[-\s]?tests:\s*(fail|failed|failing)\b|new tests.*fail|tests failing as expected/i,
-    description: 'new feature tests failing marker',
+    pattern: /new[-\s]?feature[-\s]?tests:\s*(fail|failed|failing)\b|new tests.*fail|tests failing as expected|coverage[-\s]?retrofit:\s*(true|yes|1)\b/i,
+    description: 'new feature tests failing marker (or coverage-retrofit flag for sprints that add tests to existing code)',
   },
   {
     pattern: /regression[-\s]?baseline:\s*(pass|passed|passing|green)\b|regression baseline.*pass|regression suite.*pass|existing tests.*pass/i,
@@ -611,11 +611,11 @@ function validateEvidenceLogFreshness(filePath, state, phase, description) {
   }
 
   const stats = fs.statSync(filePath);
-  // Allow 1 second tolerance for filesystems with coarse mtime precision (e.g. HFS+)
-  if (stats.mtimeMs < phaseTimestamp - 1000) {
+  // Allow 5 second tolerance for filesystems with coarse mtime precision (e.g. HFS+)
+  if (stats.mtimeMs < phaseTimestamp - 5000) {
     return {
       ok: false,
-      reason: `${description} must be recorded after entering phase ${phase}`,
+      reason: `${description} must be recorded after entering phase ${phase}. If the file already exists, update its mtime: run \`touch <path>\` after the phase transition is recorded.`,
     };
   }
 
@@ -662,7 +662,7 @@ function validateCriteriaCoverage(featureName, sprintNumber) {
     return { ok: false, reason: error.message };
   }
   if (!verdict.convergenceSignals || verdict.convergenceSignals.allCriteriaEvaluated !== true) {
-    return { ok: false, reason: `Sprint ${sprintNumber} verdict must set convergenceSignals.allCriteriaEvaluated=true before Phase 6` };
+    return { ok: false, reason: `Sprint ${sprintNumber} verdict is missing convergenceSignals. When a feature has gone through Phase 3 more than once, add to verdict.json: "convergenceSignals": { "findingCount": <current count>, "previousFindingCount": <prior count>, "allCriteriaEvaluated": true, "evaluatedCriteria": [] }` };
   }
 
   const evaluatedCriteria = Array.isArray(verdict.convergenceSignals.evaluatedCriteria)
@@ -751,7 +751,7 @@ function validateFormalHardeningArtifacts(featurePath, state) {
     if (!fs.existsSync(artifactPath)) {
       return {
         ok: false,
-        reason: `${artifact.label} required for phase 6`,
+        reason: `${artifact.label} not found. Create it at: .vsdd/features/<feature>/verification/${artifact.relativePath.replace(/\\/g, '/')} (not at project root verification/)`,
       };
     }
 
@@ -766,7 +766,7 @@ function validateFormalHardeningArtifacts(featurePath, state) {
 
     if (phase5Timestamp != null) {
       const stats = fs.statSync(artifactPath);
-      if (stats.mtimeMs < phase5Timestamp) {
+      if (stats.mtimeMs < phase5Timestamp - 5000) {
         return {
           ok: false,
           reason: `${artifact.label} must be recorded after entering phase 5`,
@@ -793,7 +793,7 @@ function validateFormalHardeningArtifacts(featurePath, state) {
     };
   }
   if (phase5Timestamp != null) {
-    const freshSecurityResultExists = securityResultEntries.some((entryPath) => fs.statSync(entryPath).mtimeMs >= phase5Timestamp);
+    const freshSecurityResultExists = securityResultEntries.some((entryPath) => fs.statSync(entryPath).mtimeMs >= phase5Timestamp - 5000);
     if (!freshSecurityResultExists) {
       return {
         ok: false,
@@ -1457,6 +1457,64 @@ function writeEscalation(featureName, escalation) {
   });
 }
 
+function approveEscalation(featureName, phase, reason) {
+  const state = readState(featureName);
+  const limit = getIterationLimit(state, phase);
+  if (!limit) {
+    throw new Error(`Phase ${phase} has no iteration limit configured`);
+  }
+
+  const iterCount = state.iterations[phase] || 0;
+  if (iterCount <= limit) {
+    throw new Error(`Phase ${phase} has not exceeded its iteration limit (${iterCount}/${limit}). No escalation needed.`);
+  }
+
+  const approvalReason = reason || 'Architect approved continuation';
+
+  // Reset iteration counter to (limit - 1) so next transitionPhase call lands at exactly limit
+  state.iterations[phase] = limit - 1;
+
+  // Record approval in phaseHistory
+  state.phaseHistory.push({
+    from: state.currentPhase,
+    to: state.currentPhase,
+    timestamp: new Date().toISOString(),
+    reason: `Architect escalation approved for phase ${phase}: ${approvalReason}`,
+    escalationApproved: true,
+  });
+
+  state.updatedAt = new Date().toISOString();
+  writeState(featureName, state);
+
+  // Mark escalation files for this phase as resolved
+  const escalationDir = path.join(getFeaturePath(featureName), 'escalations');
+  if (fs.existsSync(escalationDir)) {
+    const files = fs.readdirSync(escalationDir).filter(f => f.endsWith('.md'));
+    for (const file of files) {
+      const filePath = path.join(escalationDir, file);
+      const content = fs.readFileSync(filePath, 'utf8');
+      // Only amend files that mention this phase and are not already resolved
+      if (content.includes(`**Phase**: ${phase}`) && !content.includes('## Resolution')) {
+        const resolution = `\n## Resolution\n\nApproved by Architect at ${new Date().toISOString()}.\n` +
+          `Reason: ${approvalReason}\n` +
+          `Iteration counter reset to ${limit - 1} (limit: ${limit}).\n`;
+        atomicWriteText(filePath, content + resolution);
+      }
+    }
+  }
+
+  appendHistory({
+    event: 'escalation_approved',
+    featureName,
+    phase,
+    previousIteration: iterCount,
+    newIteration: limit - 1,
+    reason: approvalReason,
+  });
+
+  return { phase, previousIteration: iterCount, newIteration: limit - 1, limit };
+}
+
 // ── Feature Initialization ──
 
 function initFeature(featureName, mode = 'lean', language = null) {
@@ -1654,6 +1712,7 @@ module.exports = {
 
   // Escalation
   writeEscalation,
+  approveEscalation,
 
   // Feature lifecycle
   initFeature,

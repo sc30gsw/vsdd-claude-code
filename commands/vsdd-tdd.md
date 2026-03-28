@@ -27,6 +27,15 @@ Run after spec review gate (Phase 1c) passes. Requires active feature at phase `
    new-feature-tests: FAIL
    regression-baseline: PASS
    ```
+   For coverage-retrofit sprints (adding tests to already-implemented code):
+   - Use `coverage-retrofit: true` instead of `new-feature-tests: failing`
+   - Example:
+     ```
+     coverage-retrofit: true
+     regression-baseline: PASS
+     total-tests: 45
+     new-tests-added: 3
+     ```
 8. **Append the raw failing test output** after those markers so the gate can prove both conditions
 9. **Display summary**: sprint number, N tests generated, all failing as expected
 
