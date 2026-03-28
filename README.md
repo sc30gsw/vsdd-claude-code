@@ -349,9 +349,38 @@ Select mode at initialization:
 
 This is a Claude Code plugin. Installing it copies agents, commands, skills, hooks, and runtime scripts into `~/.claude/plugins/vsdd-claude-code/`, where Claude Code discovers them automatically on next launch.
 
-> **Note:** This plugin is not yet listed in the Claude Code plugin marketplace. Use the installation methods below until marketplace availability is announced.
+### Option 1: Claude Code Plugin System (Recommended)
 
-### Option 1: Install Script (Recommended)
+Claude Code のプラグインシステムを使って直接インストールできます。
+
+```bash
+# マーケットプレイスとして登録（初回のみ）
+/plugin marketplace add sc30gsw/vsdd-claude-code
+
+# プラグインをインストール
+/plugin install vsdd@sc30gsw-vsdd-claude-code
+```
+
+インストール後、以下のスキルが利用可能になります。
+
+| スキル | 説明 |
+|--------|------|
+| `/vsdd:init` | フィーチャーパイプラインを初期化 |
+| `/vsdd:spec` | 行動仕様を作成（Phase 1a/1b） |
+| `/vsdd:spec-review` | 仕様のAdversary Reviewを実行（Phase 1c） |
+| `/vsdd:tdd` | テストを生成（Phase 2a: Red Phase） |
+| `/vsdd:impl` | 実装とリファクタリング（Phase 2b/2c） |
+| `/vsdd:adversary` | 実装のAdversary Reviewを実行（Phase 3） |
+| `/vsdd:feedback` | Findingsを適切なフェーズにルーティング（Phase 4） |
+| `/vsdd:harden` | Formal Hardening（Phase 5） |
+| `/vsdd:converge` | Convergence検証（Phase 6） |
+| `/vsdd:escalate` | Architectエスカレーション承認 |
+| `/vsdd:status` | パイプラインステータスを表示 |
+| `/vsdd:trace` | トレーサビリティチェーンを確認 |
+
+> **Note:** Plugin System経由でインストールした場合、コマンドは `/vsdd:init` のようにコロン区切りの名前空間付きで呼び出します。
+
+### Option 2: Install Script
 
 ```bash
 git clone https://github.com/sc30gsw/vsdd-claude-code.git
