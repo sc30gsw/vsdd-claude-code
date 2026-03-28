@@ -25,7 +25,7 @@ Before transitioning to any phase, verify:
 - Required artifacts exist (check PLAN.md gate prerequisites table)
 - Iteration limit not exceeded
 
-To transition: call `node scripts/lib/vsdd-state.js` functions or update state.json directly.
+To transition: call the state library functions from the installed plugin root. Do not update `state.json` directly.
 
 ## Adversary Review Coordination
 
@@ -72,7 +72,11 @@ If not: record failure signals and route back to Phase 3 (max 2 attempts).
 Always use atomic writes via the state library. Never directly mutate state.json without validation.
 
 ```javascript
-const { readState, transitionPhase, recordGate } = require('./scripts/lib/vsdd-state');
+const path = require('path');
+const pluginRoot = process.env.CLAUDE_PLUGIN_ROOT || path.join(process.env.HOME, '.claude', 'plugins', 'vsdd-claude-code');
+const { readState, transitionPhase, recordGate } = require(
+  path.join(pluginRoot, 'scripts/lib/vsdd-state.js')
+);
 const state = readState('my-feature');
 transitionPhase('my-feature', '2a', 'Spec gate passed');
 recordGate('my-feature', '1c', 'PASS', 'adversary', 'All spec dimensions passed');

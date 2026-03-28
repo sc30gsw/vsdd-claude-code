@@ -13,6 +13,13 @@ const SCHEMA_FILE_MAP = {
 };
 
 const schemaCache = new Map();
+const CANONICAL_GRADING_DIMENSIONS = [
+  'spec_fidelity',
+  'edge_case_coverage',
+  'implementation_correctness',
+  'structural_integrity',
+  'verification_readiness',
+];
 
 function getSchemaPath(name) {
   const fileName = SCHEMA_FILE_MAP[name];
@@ -34,6 +41,7 @@ function validateDocument(name, value) {
   const schema = loadSchema(name);
   const errors = [];
   validateAgainstSchema(schema, value, '$', schema, errors);
+  validateSemanticRules(name, value, errors);
   return { valid: errors.length === 0, errors };
 }
 
@@ -198,8 +206,105 @@ function isTypeMatch(typeName, value) {
   }
 }
 
+function validateSemanticRules(name, value, errors) {
+  switch (name) {
+    case 'grading':
+      validateGradingSemantics(value, errors);
+      break;
+    case 'finding':
+      validateFindingSemantics(value, errors);
+      break;
+    case 'contract':
+      validateContractSemantics(value, errors);
+      break;
+    default:
+      break;
+  }
+}
+
+function validateGradingSemantics(value, errors) {
+  if (!value || !Array.isArray(value.dimensions)) {
+    return;
+  }
+
+  const names = value.dimensions.map((dimension) => dimension && dimension.name).filter(Boolean);
+  const uniqueNames = new Set(names);
+
+  if (uniqueNames.size !== names.length) {
+    errors.push('$.dimensions must not repeat dimension names');
+  }
+
+  const missing = CANONICAL_GRADING_DIMENSIONS.filter((dimension) => !uniqueNames.has(dimension));
+  if (missing.length > 0) {
+    errors.push(`$.dimensions must include all canonical dimensions: missing ${missing.join(', ')}`);
+  }
+
+  const hasFail = value.dimensions.some((dimension) => dimension && dimension.verdict === 'FAIL');
+  const expectedOverallVerdict = hasFail ? 'FAIL' : 'PASS';
+  if (value.overallVerdict && value.overallVerdict !== expectedOverallVerdict) {
+    errors.push(`$.overallVerdict must equal ${expectedOverallVerdict} based on per-dimension verdicts`);
+  }
+
+  value.dimensions.forEach((dimension, index) => {
+    if (!dimension || typeof dimension !== 'object') {
+      return;
+    }
+
+    const findings = Array.isArray(dimension.findings) ? dimension.findings : [];
+    const evidence = Array.isArray(dimension.evidence) ? dimension.evidence : [];
+    const prefix = `$.dimensions[${index}]`;
+
+    if (dimension.verdict === 'PASS' && evidence.length === 0) {
+      errors.push(`${prefix}.evidence must include at least one concrete citation for PASS verdicts`);
+    }
+
+    if (dimension.verdict === 'PASS' && findings.length > 0) {
+      errors.push(`${prefix}.findings must be empty when verdict is PASS`);
+    }
+
+    if (dimension.verdict === 'FAIL' && findings.length === 0) {
+      errors.push(`${prefix}.findings must include at least one finding when verdict is FAIL`);
+    }
+  });
+}
+
+function validateFindingSemantics(value, errors) {
+  const evidence = value && value.evidence;
+  if (!evidence || typeof evidence !== 'object') {
+    return;
+  }
+
+  const lineRange = evidence.lineRange;
+  if (typeof lineRange !== 'string') {
+    return;
+  }
+
+  const match = lineRange.match(/^(\d+)-(\d+)$/);
+  if (!match) {
+    return;
+  }
+
+  const start = Number.parseInt(match[1], 10);
+  const end = Number.parseInt(match[2], 10);
+  if (start < 1 || end < start) {
+    errors.push('$.evidence.lineRange must be a positive 1-based range with start <= end');
+  }
+}
+
+function validateContractSemantics(value, errors) {
+  if (!value || !Array.isArray(value.criteria)) {
+    return;
+  }
+
+  const ids = value.criteria.map((criterion) => criterion && criterion.id).filter(Boolean);
+  if (new Set(ids).size !== ids.length) {
+    errors.push('$.criteria must not repeat criterion ids');
+  }
+}
+
 module.exports = {
   SCHEMA_FILE_MAP,
+  CANONICAL_GRADING_DIMENSIONS,
   loadSchema,
   validateDocument,
   assertValidDocument,

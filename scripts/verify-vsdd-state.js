@@ -24,6 +24,13 @@ const {
 } = vsdd;
 
 const gateHookPath = path.join(__dirname, 'hooks', 'vsdd-gate-check.js');
+const CANONICAL_DIMENSIONS = [
+  'spec_fidelity',
+  'edge_case_coverage',
+  'implementation_correctness',
+  'structural_integrity',
+  'verification_readiness',
+];
 
 function tmpDir() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'vsdd-verify-'));
@@ -62,6 +69,29 @@ function runGateHook(root, payload) {
     input: JSON.stringify(payload),
     encoding: 'utf8',
   });
+}
+
+function createPassingVerdict(feature, sprintNumber, iteration, evidenceLocation, convergenceSignals) {
+  return {
+    sprintNumber,
+    feature,
+    overallVerdict: 'PASS',
+    timestamp: new Date().toISOString(),
+    iteration,
+    dimensions: CANONICAL_DIMENSIONS.map((name) => ({
+      name,
+      verdict: 'PASS',
+      findings: [],
+      evidence: [
+        {
+          type: 'file',
+          location: evidenceLocation,
+          description: `Reviewed evidence for ${name}`,
+        },
+      ],
+    })),
+    convergenceSignals,
+  };
 }
 
 // ── Bash gate: block path-based writes even without redirection ──
@@ -159,22 +189,22 @@ function runGateHook(root, payload) {
   writeFile(
     root,
     `.vsdd/features/${feat}/reviews/sprint-1/output/verdict.json`,
-    JSON.stringify({
-      sprintNumber: 1,
-      feature: feat,
-      overallVerdict: 'PASS',
-      timestamp: new Date().toISOString(),
-      iteration: 1,
-      dimensions: [
-        { name: 'spec_fidelity', verdict: 'PASS', findings: [] },
-      ],
-      convergenceSignals: {
-        findingCount: 0,
-        previousFindingCount: 1,
-        allCriteriaEvaluated: true,
-        duplicateFindings: [],
-      },
-    }, null, 2) + '\n'
+    JSON.stringify(
+      createPassingVerdict(
+        feat,
+        1,
+        1,
+        `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+        {
+          findingCount: 0,
+          previousFindingCount: 1,
+          allCriteriaEvaluated: true,
+          duplicateFindings: [],
+        }
+      ),
+      null,
+      2
+    ) + '\n'
   );
   transitionPhase(feat, '6');
   transitionPhase(feat, 'complete');
@@ -325,21 +355,21 @@ function runGateHook(root, payload) {
   writeFile(
     root,
     `.vsdd/features/${feat}/reviews/sprint-1/output/verdict.json`,
-    JSON.stringify({
-      sprintNumber: 1,
-      feature: feat,
-      overallVerdict: 'PASS',
-      timestamp: new Date().toISOString(),
-      iteration: 1,
-      dimensions: [
-        { name: 'spec_fidelity', verdict: 'PASS', findings: [] },
-      ],
-      convergenceSignals: {
-        findingCount: 0,
-        allCriteriaEvaluated: true,
-        duplicateFindings: [],
-      },
-    }, null, 2) + '\n'
+    JSON.stringify(
+      createPassingVerdict(
+        feat,
+        1,
+        1,
+        `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+        {
+          findingCount: 0,
+          allCriteriaEvaluated: true,
+          duplicateFindings: [],
+        }
+      ),
+      null,
+      2
+    ) + '\n'
   );
   writeFile(root, `.vsdd/features/${feat}/verification/verification-report.md`, '# Report\n');
   const st = readState(feat);
@@ -414,22 +444,22 @@ function runGateHook(root, payload) {
   writeFile(
     root,
     `.vsdd/features/${feat}/reviews/sprint-1/output/verdict.json`,
-    JSON.stringify({
-      sprintNumber: 1,
-      feature: feat,
-      overallVerdict: 'PASS',
-      timestamp: new Date().toISOString(),
-      iteration: 2,
-      dimensions: [
-        { name: 'spec_fidelity', verdict: 'PASS', findings: [] },
-      ],
-      convergenceSignals: {
-        findingCount: 0,
-        previousFindingCount: 1,
-        allCriteriaEvaluated: true,
-        duplicateFindings: ['FIND-001'],
-      },
-    }, null, 2) + '\n'
+    JSON.stringify(
+      createPassingVerdict(
+        feat,
+        1,
+        2,
+        `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+        {
+          findingCount: 0,
+          previousFindingCount: 1,
+          allCriteriaEvaluated: true,
+          duplicateFindings: ['FIND-001'],
+        }
+      ),
+      null,
+      2
+    ) + '\n'
   );
   writeFile(root, `.vsdd/features/${feat}/verification/verification-report.md`, '# Report\n');
   transitionPhase(feat, '6');
@@ -498,22 +528,22 @@ function runGateHook(root, payload) {
   writeFile(
     root,
     `.vsdd/features/${feat}/reviews/sprint-1/output/verdict.json`,
-    JSON.stringify({
-      sprintNumber: 1,
-      feature: feat,
-      overallVerdict: 'PASS',
-      timestamp: new Date().toISOString(),
-      iteration: 2,
-      dimensions: [
-        { name: 'spec_fidelity', verdict: 'PASS', findings: [] },
-      ],
-      convergenceSignals: {
-        findingCount: 0,
-        previousFindingCount: 1,
-        allCriteriaEvaluated: true,
-        duplicateFindings: [],
-      },
-    }, null, 2) + '\n'
+    JSON.stringify(
+      createPassingVerdict(
+        feat,
+        1,
+        2,
+        `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+        {
+          findingCount: 0,
+          previousFindingCount: 1,
+          allCriteriaEvaluated: true,
+          duplicateFindings: [],
+        }
+      ),
+      null,
+      2
+    ) + '\n'
   );
   writeFile(root, `.vsdd/features/${feat}/verification/verification-report.md`, '# Report\n');
   traceability.createBead(feat, {

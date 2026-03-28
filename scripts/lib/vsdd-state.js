@@ -19,6 +19,7 @@ const VALID_PHASES = new Set([
 ]);
 
 const VALID_LANGUAGES = new Set(['rust', 'python', 'typescript', 'go', 'cpp']);
+const FEATURE_NAME_RE = /^[a-z0-9][a-z0-9-]*[a-z0-9]$/;
 const RED_EVIDENCE_PATTERNS = [
   {
     pattern: /new[-\s]?feature[-\s]?tests:\s*(fail|failed|failing)\b|new tests.*fail|tests failing as expected/i,
@@ -635,6 +636,21 @@ function resolveEvidenceFilePath(evidencePath) {
     : path.resolve(process.cwd(), evidencePath);
 }
 
+function parseLineRange(lineRange) {
+  const match = String(lineRange || '').match(/^(\d+)-(\d+)$/);
+  if (!match) {
+    return null;
+  }
+
+  const start = Number.parseInt(match[1], 10);
+  const end = Number.parseInt(match[2], 10);
+  if (!Number.isInteger(start) || !Number.isInteger(end) || start < 1 || end < start) {
+    return null;
+  }
+
+  return { start, end };
+}
+
 function validateFindingSpecificity(featureName, sprintNumber) {
   for (const findingPath of getFindingFiles(featureName, sprintNumber)) {
     let finding;
@@ -655,6 +671,24 @@ function validateFindingSpecificity(featureName, sprintNumber) {
       return {
         ok: false,
         reason: `Finding specificity check failed: evidence.filePath is missing or does not exist in ${path.relative(process.cwd(), findingPath)}`,
+      };
+    }
+
+    const range = parseLineRange(
+      finding && finding.evidence && finding.evidence.lineRange
+    );
+    if (!range) {
+      return {
+        ok: false,
+        reason: `Finding specificity check failed: evidence.lineRange is missing or invalid in ${path.relative(process.cwd(), findingPath)}`,
+      };
+    }
+
+    const lineCount = fs.readFileSync(evidencePath, 'utf8').split(/\r?\n/).length;
+    if (range.end > lineCount) {
+      return {
+        ok: false,
+        reason: `Finding specificity check failed: evidence.lineRange ${finding.evidence.lineRange} exceeds file length (${lineCount} lines) in ${path.relative(process.cwd(), findingPath)}`,
       };
     }
   }
@@ -1026,6 +1060,9 @@ function initFeature(featureName, mode = 'lean', language = null) {
   if (!featureName || typeof featureName !== 'string') {
     throw new Error('featureName is required');
   }
+  if (!FEATURE_NAME_RE.test(featureName)) {
+    throw new Error('featureName must be kebab-case using lowercase letters, numbers, and hyphens');
+  }
   if (!['strict', 'lean'].includes(mode)) {
     throw new Error('mode must be "strict" or "lean"');
   }
@@ -1082,6 +1119,7 @@ function initFeature(featureName, mode = 'lean', language = null) {
   };
 
   validateState(state);
+  assertValidDocument('state', state, `state for feature ${featureName}`);
   atomicWriteJson(getStatePath(featureName), state);
 
   // Update index

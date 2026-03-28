@@ -31,7 +31,9 @@ Run at the start of every new feature development cycle. Must be run before `/vs
    ```
 4. **Initialize via state library** (do not hand-author `state.json`):
    ```javascript
-   const { initFeature } = require('./scripts/lib/vsdd-state');
+   const path = require('path');
+   const pluginRoot = process.env.CLAUDE_PLUGIN_ROOT || path.join(process.env.HOME, '.claude', 'plugins', 'vsdd-claude-code');
+   const { initFeature } = require(path.join(pluginRoot, 'scripts/lib/vsdd-state.js'));
    // language: optional string rust|python|typescript|go|cpp
    initFeature('<feature-name>', '<strict|lean>', languageOrUndefined);
    ```

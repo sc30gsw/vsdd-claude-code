@@ -5,6 +5,29 @@ const { getActiveFeature, readState, appendHistory, getVsddRoot } = require('../
 const { execSync, execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const IMPLEMENTATION_HINTS = [
+  'src/',
+  'tests/',
+  'test/',
+  '__tests__/',
+  'lib/',
+  'app/',
+  'core/',
+  'package.json',
+  'package-lock.json',
+  'pnpm-lock.yaml',
+  'yarn.lock',
+  'bun.lockb',
+  'Cargo.toml',
+  'Cargo.lock',
+  'pyproject.toml',
+  'poetry.lock',
+  'requirements.txt',
+  'requirements-dev.txt',
+  'go.mod',
+  'go.sum',
+  'CMakeLists.txt',
+];
 
 function toPosix(filePath) {
   return String(filePath || '').replace(/\\/g, '/');
@@ -31,12 +54,13 @@ function phaseArtifactHints(state, activeFeature, vsddRelative) {
     '1a': ['specs/behavioral-spec.md'],
     '1b': ['specs/verification-architecture.md'],
     '2a': [
+      ...IMPLEMENTATION_HINTS.filter((hint) => hint.includes('test') || hint.startsWith('__tests__') || !hint.endsWith('/')),
       `contracts/sprint-${sprint}.md`,
       `evidence/sprint-${sprint}-red-phase.log`,
       `evidence/sprint-${sprint}-coverage.json`,
     ],
-    '2b': [`evidence/sprint-${sprint}-green-phase.log`],
-    '2c': [`evidence/sprint-${sprint}-green-phase.log`],
+    '2b': [...IMPLEMENTATION_HINTS, `evidence/sprint-${sprint}-green-phase.log`],
+    '2c': [...IMPLEMENTATION_HINTS, `evidence/sprint-${sprint}-green-phase.log`],
     '3': [
       `contracts/sprint-${sprint}.md`,
       `reviews/sprint-${sprint}/input/`,
@@ -109,10 +133,13 @@ run('vsdd-auto-commit', async (payload) => {
     const vsddRelative = vsddRoot.replace(process.cwd() + '/', '');
     const hints = phaseArtifactHints(state, activeFeature, vsddRelative);
     const parsedDirtyFiles = dirtyFiles.map(parsePorcelainPath).filter(Boolean);
-    const codeScope = /^(src|tests?|lib|app|core)\//;
+    const isImplementationPath = (filePath) => (
+      /^(src|tests?|lib|app|core|__tests__)\//.test(filePath) ||
+      /^(package\.json|package-lock\.json|pnpm-lock\.yaml|yarn\.lock|bun\.lockb|Cargo\.toml|Cargo\.lock|pyproject\.toml|poetry\.lock|requirements(?:-dev)?\.txt|go\.mod|go\.sum|CMakeLists\.txt)$/.test(filePath)
+    );
     const stageableDirty = parsedDirtyFiles.filter(file => matchesHint(file, hints));
-    const ambiguousCodeDirty = parsedDirtyFiles.filter(file => codeScope.test(file) && !matchesHint(file, hints));
-    const unrelatedDirty = parsedDirtyFiles.filter(file => !codeScope.test(file) && !matchesHint(file, hints));
+    const ambiguousCodeDirty = parsedDirtyFiles.filter(file => isImplementationPath(file) && !matchesHint(file, hints));
+    const unrelatedDirty = parsedDirtyFiles.filter(file => !isImplementationPath(file) && !matchesHint(file, hints));
 
     if (ambiguousCodeDirty.length > 0 || unrelatedDirty.length > 0) {
       // Dirty worktree with files outside the current feature/phase scope - emit pending checkpoint, no-op

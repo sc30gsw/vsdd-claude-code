@@ -8,6 +8,13 @@ const path = require('path');
 const { validateDocument } = require('./lib/vsdd-schema');
 const { resolveInstallPlan } = require('./install/resolve-install-plan');
 const { initFeature, transitionPhase, recordGate } = require('./lib/vsdd-state');
+const CANONICAL_DIMENSIONS = [
+  'spec_fidelity',
+  'edge_case_coverage',
+  'implementation_correctness',
+  'structural_integrity',
+  'verification_readiness',
+];
 
 function assert(condition, message) {
   if (!condition) {
@@ -42,6 +49,33 @@ function tmpDir() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'vsdd-runtime-verify-'));
 }
 
+function createPassingVerdict(feature, evidenceLocation) {
+  return {
+    sprintNumber: 1,
+    feature,
+    dimensions: CANONICAL_DIMENSIONS.map((name) => ({
+      name,
+      verdict: 'PASS',
+      findings: [],
+      evidence: [
+        {
+          type: 'file',
+          location: evidenceLocation,
+          description: `Reviewed evidence for ${name}`,
+        },
+      ],
+    })),
+    overallVerdict: 'PASS',
+    timestamp: new Date().toISOString(),
+    convergenceSignals: {
+      findingCount: 0,
+      previousFindingCount: 1,
+      allCriteriaEvaluated: true,
+      duplicateFindings: [],
+    },
+  };
+}
+
 // ── Schema validation: valid and invalid finding/grading payloads ──
 {
   const validFinding = {
@@ -62,32 +96,45 @@ function tmpDir() {
     routeToPhase: '9',
   };
   assert(!validateDocument('finding', invalidFinding).valid, 'invalid finding route should fail schema validation');
+  assert(
+    !validateDocument('finding', {
+      ...validFinding,
+      evidence: { filePath: 'src/parser.ts' },
+    }).valid,
+    'finding without lineRange should fail schema validation'
+  );
 
-  const validVerdict = {
-    sprintNumber: 1,
-    feature: 'runtime-check',
-    dimensions: [
-      { name: 'spec_fidelity', verdict: 'PASS', findings: [] },
-    ],
-    overallVerdict: 'PASS',
-    timestamp: new Date().toISOString(),
-    convergenceSignals: {
-      findingCount: 0,
-      previousFindingCount: 1,
-      allCriteriaEvaluated: true,
-      duplicateFindings: [],
-    },
-  };
+  const validVerdict = createPassingVerdict('runtime-check', 'src/parser.ts');
   assert(validateDocument('grading', validVerdict).valid, 'valid grading verdict should pass schema validation');
 
   const invalidVerdict = {
     ...validVerdict,
     dimensions: [
-      { name: 'spec_fidelity', verdict: 'MAYBE', findings: [] },
+      { name: 'spec_fidelity', verdict: 'MAYBE', findings: [], evidence: [] },
     ],
   };
   assert(!validateDocument('grading', invalidVerdict).valid, 'invalid verdict enum should fail schema validation');
+  assert(
+    !validateDocument('grading', {
+      ...validVerdict,
+      dimensions: validVerdict.dimensions.slice(0, 4),
+    }).valid,
+    'grading verdict must include all five canonical dimensions'
+  );
+  assert(
+    !validateDocument('grading', {
+      ...validVerdict,
+      overallVerdict: 'FAIL',
+    }).valid,
+    'overall verdict must match per-dimension verdicts'
+  );
 }
+
+// ── Feature names are validated before any state is written ──
+assertThrows(
+  () => initFeature('Bad_Name', 'lean'),
+  'featureName must be kebab-case'
+);
 
 // ── Contract validation is enforced before strict-mode phase 3 ──
 {
