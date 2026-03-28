@@ -173,6 +173,9 @@ const GATE_PREREQUISITES = {
 
     return { ok: true };
   },
+  // Note: phase 3 is re-entrant from phase 6 (convergence loop). In that case
+  // freshnessPhase falls back to '2b', which is satisfied because the current
+  // sprint's green-phase log was already written after the last phase 2b entry.
   '3': (state, featurePath) => {
     if (!state.sprintCount || state.sprintCount < 1) {
       return { ok: false, reason: 'No sprint started yet. Complete phase 2b first.' };
@@ -232,8 +235,11 @@ const GATE_PREREQUISITES = {
     if (failedProofs.length > 0) {
       return { ok: false, reason: `Required proof obligations not met: ${failedProofs.map(p => p.id).join(', ')}` };
     }
-    if (state.mode === 'strict' && state.sprintCount > 0) {
-      return validateCriteriaCoverage(state.featureName, state.sprintCount);
+    if (state.sprintCount > 0) {
+      const contractPath = getSprintContractPath(state.featureName, state.sprintCount);
+      if (state.mode === 'strict' || fs.existsSync(contractPath)) {
+        return validateCriteriaCoverage(state.featureName, state.sprintCount);
+      }
     }
     return { ok: true };
   },
@@ -245,6 +251,7 @@ const ITERATION_LIMITS = Object.freeze({
   default: Object.freeze({
     '1c': 3,
     '6': 2,
+    'contract-review': 2,
   }),
   strict: Object.freeze({
     '3': 5,
@@ -357,6 +364,7 @@ function normalizeSprintContractForReview(content) {
   const frontmatterBody = frontmatterMatch[1]
     .split('\n')
     .filter((line) => !/^\s*status:\s*/.test(line))
+    .map((line) => line.trimEnd())
     .join('\n');
   const rest = normalizedContent.slice(frontmatterMatch[0].length);
   return `---\n${frontmatterBody}\n---\n${rest}`;
@@ -555,16 +563,17 @@ function validateSprintContractReview(featureName, sprintNumber) {
         reason: `Contract review verdict iteration (${verdict.iteration || 'missing'}) must equal negotiationRound + 1 (${expectedIteration}) for sprint ${sprintNumber}`,
       };
     }
-    if (verdict.iteration > 2) {
+    const contractReviewLimit = ITERATION_LIMITS.default['contract-review'];
+    if (verdict.iteration > contractReviewLimit) {
       writeEscalation(featureName, {
         phase: 'contract-review',
         iteration: verdict.iteration,
-        limit: 2,
+        limit: contractReviewLimit,
         message: `Contract review negotiation limit exceeded for sprint ${sprintNumber}. Human review required before Phase 3.`,
       });
       return {
         ok: false,
-        reason: `Contract review negotiation limit exceeded for sprint ${sprintNumber} (${verdict.iteration}/2)`,
+        reason: `Contract review negotiation limit exceeded for sprint ${sprintNumber} (${verdict.iteration}/${contractReviewLimit})`,
       };
     }
     if (verdict.overallVerdict !== 'PASS') {
@@ -602,7 +611,8 @@ function validateEvidenceLogFreshness(filePath, state, phase, description) {
   }
 
   const stats = fs.statSync(filePath);
-  if (stats.mtimeMs < phaseTimestamp) {
+  // Allow 1 second tolerance for filesystems with coarse mtime precision (e.g. HFS+)
+  if (stats.mtimeMs < phaseTimestamp - 1000) {
     return {
       ok: false,
       reason: `${description} must be recorded after entering phase ${phase}`,
@@ -1266,6 +1276,8 @@ function transitionPhase(featureName, targetPhase, reason) {
     );
   }
 
+  // Both 1c→2a (initial sprint) and 4→2a (feedback-loop re-entry) begin a new sprint.
+  // Evidence logs are named sprint-N-red-phase.log so each 2a entry must have its own sprint number.
   if (targetPhase === '2a' && (current === '1c' || current === '4')) {
     state.sprintCount += 1;
     startedSprint = true;
@@ -1325,6 +1337,11 @@ function routeFeedback(featureName, targetPhase, reason) {
   const routingCheck = validateFeedbackRoutingTarget(featureName, state.sprintCount, targetPhase);
   if (!routingCheck.ok) {
     throw new Error(`Feedback routing check failed: ${routingCheck.reason}`);
+  }
+
+  const specificityCheck = validateFindingSpecificity(featureName);
+  if (!specificityCheck.ok) {
+    throw new Error(`Feedback routing blocked: ${specificityCheck.reason}`);
   }
 
   if (state.currentPhase === '3') {
@@ -1429,7 +1446,7 @@ function writeEscalation(featureName, escalation) {
     `3. Abandon this feature pipeline\n`;
 
   const filePath = path.join(escalationDir, `escalation-${timestamp}.md`);
-  fs.writeFileSync(filePath, content, 'utf8');
+  atomicWriteText(filePath, content);
 
   appendHistory({
     event: 'escalation_created',

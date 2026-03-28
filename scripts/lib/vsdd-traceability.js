@@ -130,6 +130,8 @@ function updateBeadStatus(featureName, beadId, newStatus) {
  * @param {string} toId
  */
 function linkBeads(featureName, fromId, toId) {
+  if (fromId === toId) throw new Error(`Cannot self-link bead: ${fromId}`);
+
   const state = readState(featureName);
   const beads = state.traceability.beads;
 
