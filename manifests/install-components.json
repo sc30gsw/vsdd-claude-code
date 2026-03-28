@@ -2,8 +2,8 @@
   "components": {
     "baseline": [
       {"id": "vsdd-core", "modules": ["vsdd-rules", "vsdd-runtime", "vsdd-schemas", "vsdd-manifests", "vsdd-docs", "vsdd-commands"]},
-      {"id": "vsdd-full", "modules": ["vsdd-rules", "vsdd-runtime", "vsdd-schemas", "vsdd-manifests", "vsdd-docs", "vsdd-commands", "vsdd-agents", "vsdd-skills"]},
-      {"id": "vsdd-strict", "modules": ["vsdd-rules", "vsdd-runtime", "vsdd-schemas", "vsdd-manifests", "vsdd-docs", "vsdd-commands", "vsdd-agents", "vsdd-skills", "vsdd-hooks"]}
+      {"id": "vsdd-full", "modules": ["vsdd-rules", "vsdd-runtime", "vsdd-schemas", "vsdd-manifests", "vsdd-docs", "vsdd-contexts", "vsdd-commands", "vsdd-agents", "vsdd-skills"]},
+      {"id": "vsdd-strict", "modules": ["vsdd-rules", "vsdd-runtime", "vsdd-schemas", "vsdd-manifests", "vsdd-docs", "vsdd-contexts", "vsdd-commands", "vsdd-agents", "vsdd-skills", "vsdd-hooks"]}
     ],
     "language": [
       {"id": "lang:rust", "modules": ["vsdd-language-rust"]},

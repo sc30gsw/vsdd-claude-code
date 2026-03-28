@@ -34,7 +34,7 @@ Spec Crystallization -> Test-First Implementation -> Adversarial Review -> Feedb
 
 **Two operating modes**
 - `strict` -- full VSDD ceremony for high-assurance work: sprint contracts, multiple adversary passes, proof obligations, all 6 phases enforced
-- `lean` -- streamlined planner/builder/evaluator flow for product work: fewer gates, optional formal verification, faster iteration
+- `lean` -- all 6 phases remain in place, but approvals, sprint contracts, and proof obligations are lighter for product work and faster iteration
 
 **Fresh-context adversary agent**
 The adversary (`vsdd-adversary`) runs on the Opus model and is always spawned as a new agent instance with zero conversational history from the builder. It reads review artifacts from disk, produces findings, and terminates. It cannot say "overall looks good" -- it must cite concrete evidence for every verdict.
@@ -83,7 +83,7 @@ Agents communicate exclusively through files under `.vsdd/features/<feature-name
 |---|---|---|
 | `/vsdd-init` | -- | Initialize a feature pipeline |
 | `/vsdd-spec` | 1a + 1b | Write behavioral spec and verification architecture |
-| `/vsdd-spec-review` | 1c | Spec review gate (adversary + human approval) |
+| `/vsdd-spec-review` | 1c | Spec review gate (adversary review; strict mode also requires human approval) |
 | `/vsdd-tdd` | 2a | Generate failing tests (Red phase) |
 | `/vsdd-impl` | 2b + 2c | Implement to pass tests (Green) then refactor |
 | `/vsdd-adversary` | 3 | Run adversarial review with fresh-context agent |
@@ -126,15 +126,18 @@ Language verification skills: `vsdd-language-rust`, `vsdd-language-python`, `vsd
         verification-architecture.md  # Phase 1b output
       contracts/
         sprint-{N}.md             # Work contract
-        sprint-{N}-review.md      # Adversary feedback on contract
       reviews/
         spec/
           iteration-{N}/
             input/manifest.json   # Spec review manifest (Phase 1c)
-            output/verdict.json
+            output/
+              findings/FIND-NNN.json
+              verdict.json
         sprint-{N}/
           input/manifest.json     # Orchestrator writes before review
-          output/verdict.json     # Adversary writes after review
+          output/
+            findings/FIND-NNN.json
+            verdict.json          # Adversary writes after review
       evidence/
         sprint-{N}-red-phase.log  # Contains new-feature-tests: FAIL and regression-baseline: PASS
         sprint-{N}-green-phase.log # Contains target-feature-tests: PASS and regression-baseline: PASS
@@ -199,7 +202,9 @@ npx vsdd-claude-code --profile standard --dry-run
 # Phase 4: Route findings back to affected phases (if FAIL)
 /vsdd-feedback
 
-# Phase 5: Run formal verification (optional in lean mode)
+# Phase 5: Run formal hardening
+# Even in lean mode, this writes verification-report.md.
+# If there are zero required proof obligations, the report is lightweight.
 /vsdd-harden
 
 # Phase 6: Check four-dimensional convergence
@@ -267,8 +272,8 @@ Gate prerequisites:
 | Phase | Required Before Entry |
 |---|---|
 | 1b | `behavioral-spec.md` exists |
-| 1c | `verification-architecture.md` exists |
-| 2a | Lean: spec review PASS or SKIP. Strict: adversary PASS plus explicit human approval |
+| 1c | `behavioral-spec.md` and `verification-architecture.md` exist |
+| 2a | Lean: spec review PASS. Strict: adversary PASS plus explicit human approval |
 | 2b | Red phase evidence exists, was recorded after entering 2a, and proves both `new-feature-tests: FAIL` and `regression-baseline: PASS` |
 | 2c | Green phase evidence exists, was recorded after entering 2b, and proves both `target-feature-tests: PASS` and `regression-baseline: PASS` |
 | 3 | Tests pass post-refactor, with green evidence recorded after the latest implementation/refactor phase and carrying both target/regression PASS markers |
@@ -285,8 +290,10 @@ Evidence logs use explicit top-of-file markers so hooks can distinguish "new tes
 |---|---|---|
 | Sprint contracts | Required per sprint | Required for risky work only |
 | Adversary review rounds | Multiple | Single |
-| Proof obligations | Enforced | Optional |
-| Phases traversed | All 6 | 1 -> 2 -> 3 -> 6 (abbreviated) |
+| Human approval at spec gate | Required | Not required |
+| Proof obligations | Required obligations are enforced | Selective; often zero are marked required |
+| Formal hardening report | Required | Required |
+| Phases traversed | All 6 | All 6 |
 | Gate enforcement hook profile | strict | standard |
 | Iteration limit (adversary) | 5 | 3 |
 | Human escalation threshold | Hit iteration limit | Hit iteration limit |
@@ -306,10 +313,10 @@ Select mode at initialization:
 ### Install Profiles
 
 ```bash
-# Minimal: rules, commands, and core runtime libraries only
+# Minimal: docs, manifests, schemas, rules, commands, and core runtime libraries
 bash install.sh --profile minimal
 
-# Standard: full workflow with agents and skills (recommended)
+# Standard: full workflow with contexts, agents, skills, and hooks (recommended)
 bash install.sh --profile standard
 
 # Strict: same hook bundle as standard; set VSDD_HOOK_PROFILE=strict for the strict hook map (e.g. auto-commit hook enabled)
@@ -407,8 +414,8 @@ These semantics apply when the hook bundle is installed. The `minimal` install p
 | Hook | Event | minimal | standard | strict |
 |---|---|---|---|---|
 | Gate enforcement | PreToolUse (Write/Edit/Bash heuristics) | OFF | ON | ON |
-| Session persistence | SessionStart | ON | ON | ON |
-| State persist on exit | Stop | ON | ON | ON |
+| Session persistence | SessionStart | OFF | ON | ON |
+| State persist on exit | Stop | OFF | ON | ON |
 | Pre-compact checkpoint | PreCompact | OFF | ON | ON |
 | Auto-commit on phase completion | PostToolUse (Bash) | OFF | OFF | ON |
 

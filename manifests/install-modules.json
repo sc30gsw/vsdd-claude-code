@@ -56,6 +56,17 @@
       "stability": "stable"
     },
     {
+      "id": "vsdd-contexts",
+      "kind": "contexts",
+      "description": "Session context files that summarize the active VSDD pipeline",
+      "paths": ["contexts/"],
+      "targets": ["claude"],
+      "dependencies": ["vsdd-docs"],
+      "defaultInstall": false,
+      "cost": "light",
+      "stability": "stable"
+    },
+    {
       "id": "vsdd-commands",
       "kind": "commands",
       "description": "12 VSDD slash commands for pipeline control",

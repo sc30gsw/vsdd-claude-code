@@ -7,12 +7,12 @@
     },
     "standard": {
       "description": "Full VSDD workflow: rules, commands, agents, skills, and standard hooks.",
-      "modules": ["vsdd-rules", "vsdd-runtime", "vsdd-schemas", "vsdd-manifests", "vsdd-docs", "vsdd-commands", "vsdd-agents", "vsdd-skills", "vsdd-hooks"],
+      "modules": ["vsdd-rules", "vsdd-runtime", "vsdd-schemas", "vsdd-manifests", "vsdd-docs", "vsdd-contexts", "vsdd-commands", "vsdd-agents", "vsdd-skills", "vsdd-hooks"],
       "hookProfile": "standard"
     },
     "strict": {
       "description": "Full VSDD with gate enforcement and auto-commit. For high-assurance work.",
-      "modules": ["vsdd-rules", "vsdd-runtime", "vsdd-schemas", "vsdd-manifests", "vsdd-docs", "vsdd-commands", "vsdd-agents", "vsdd-skills", "vsdd-hooks"],
+      "modules": ["vsdd-rules", "vsdd-runtime", "vsdd-schemas", "vsdd-manifests", "vsdd-docs", "vsdd-contexts", "vsdd-commands", "vsdd-agents", "vsdd-skills", "vsdd-hooks"],
       "hookProfile": "strict"
     }
   },

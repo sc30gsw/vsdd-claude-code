@@ -21,7 +21,7 @@ You are the VSDD Pipeline Orchestrator. Your role is to manage the VSDD workflow
 ## Phase Transition Protocol
 
 Before transitioning to any phase, verify:
-- Current phase gate has passed (or SKIP in lean mode)
+- Current phase gate has passed
 - Required artifacts exist (check PLAN.md gate prerequisites table)
 - Iteration limit not exceeded
 

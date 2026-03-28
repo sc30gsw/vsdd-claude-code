@@ -8,13 +8,11 @@ Runs formal hardening (Phase 5). Invokes the vsdd-verifier agent to execute lang
 ## When
 Run after adversarial review PASS (Phase 3 gate passed). Requires active feature at phase `5`.
 
-In lean mode with no proof obligations, this phase is automatically SKIPped.
-
 ## How
 
 1. **Read proof obligations** from `state.json.proofObligations`
 2. **Filter required obligations**: skip Tier 0 and non-required obligations
-3. **If no required obligations**: record gate SKIP, transition to Phase 6
+3. **If no required obligations**: write a lightweight verification report that documents the absence of required proofs, then transition to Phase 6
 4. **Invoke vsdd-verifier agent** for each obligation:
    - Write proof harness to `verification/proof-harnesses/`
    - Run appropriate tool (Kani, hypothesis, fast-check)

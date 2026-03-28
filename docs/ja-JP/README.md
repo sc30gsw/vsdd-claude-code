@@ -45,14 +45,14 @@ VSDDはこの問題に対して、以下の3つの手法を統合した体系的
 
 ### 2つの動作モード
 
-**strictモード**は高保証作業向けの完全な VSDD セレモニーを提供する。**leanモード**はプロダクト開発や試作に適したストリームライン化されたフローで動作する。詳細は[動作モード比較表](#動作モード比較表)を参照。
+**strictモード**は高保証作業向けの完全な VSDD セレモニーを提供する。**leanモード**も全6フェーズを通過するが、承認、スプリント契約、証明義務を軽量化してプロダクト開発や試作に向けた運用をしやすくする。詳細は[動作モード比較表](#動作モード比較表)を参照。
 
-### adversaryエージェント（opusモデル、読み取り専用）
+### adversaryエージェント（opusモデル、レビュー出力専用）
 
 adversaryエージェントはVSDDの中核的な品質ゲートだ。以下の制約のもとで動作する。
 
 - **新鮮なコンテキストで必ず起動する**: builderエージェントの文脈を一切引き継がない
-- **読み取り専用**: ファイルの読み取りとレビューのみを行い、コードを書かない
+- **レビュー出力以外は書き込まない**: `reviews/**/output/` 配下に verdict と findings を出力する以外、仕様・コード・テストは変更しない
 - **「全体的に良さそう」と言うことが禁止されている**: 明確な証拠に基づいたバイナリ PASS/FAIL の判定のみが許される
 
 adversaryエージェントは以下の5次元でPASS/FAILを判定する。
@@ -148,7 +148,7 @@ npx vsdd-claude-code --profile standard --dry-run
 # user-authフィーチャーをleanモードで初期化
 /vsdd-init user-auth --mode lean
 
-# フェーズ1a: 行動仕様の記述
+# フェーズ1a + 1b: 行動仕様と検証アーキテクチャの記述
 /vsdd-spec
 
 # フェーズ1c: 仕様レビューゲート
@@ -167,7 +167,9 @@ npx vsdd-claude-code --profile standard --dry-run
 # フェーズ4: FAIL 時は指摘をルーティング
 /vsdd-feedback
 
-# フェーズ5: 必要な証明義務があれば形式検証
+# フェーズ5: 形式的強化
+# leanモードでも verification-report.md は必ず生成される。
+# required な証明義務がゼロなら軽量レポートになる。
 /vsdd-harden
 
 # フェーズ6: 4次元収束を確認
@@ -210,10 +212,12 @@ init -> 1a -> 1b -> 1c -> 2a -> 2b -> 2c -> 3 -> 4 -> [1a|2a|2b|2c|5] -> 5 -> 6 
 | 対象用途 | 高保証作業、安全要件のある実装 | プロダクト開発、試作、通常のフィーチャー開発 |
 | スプリント契約 | 全スプリントで必須 | リスクの高い作業のみ |
 | adversaryレビュー | 複数ラウンド | 1ラウンド |
-| 形式検証 | 証明義務を強制 | オプション |
+| 仕様レビュー時の人手承認 | 必須 | 不要 |
+| 証明義務 | required な義務を強制 | 選択的。required が 0 件でもよい |
+| 形式的強化レポート | 必須 | 必須 |
 | ゲート強制 | strictフックプロファイル | 緩和された設定 |
 | イテレーション速度 | 低速（高保証） | 高速 |
-| 推奨フロー | 全6フェーズを完全に実行 | Planner -> Builder -> Evaluator |
+| 推奨フロー | 全6フェーズを完全に実行 | 全6フェーズを維持しつつ運用を軽量化 |
 
 ---
 
@@ -222,10 +226,10 @@ init -> 1a -> 1b -> 1c -> 2a -> 2b -> 2c -> 3 -> 4 -> [1a|2a|2b|2c|5] -> 5 -> 6 
 ### インストールプロファイル
 
 ```bash
-# minimal: rules と commands のみ
+# minimal: docs / manifests / schemas / rules / commands / core runtime を導入
 bash install.sh --profile minimal
 
-# standard: agents と skills を含むフルワークフロー（推奨）
+# standard: contexts / agents / skills / hooks を含むフルワークフロー（推奨）
 bash install.sh --profile standard
 
 # strict: standard に strict hook profile を組み合わせる高保証向け
@@ -240,7 +244,7 @@ npx vsdd-claude-code --profile standard
 
 | プロファイル | 内容 | 適用シーン |
 |------------|------|----------|
-| minimal | rules + commands + core runtime scripts のみ | 試用、軽量な利用 |
+| minimal | docs + manifests + schemas + rules + commands + core runtime | 試用、軽量な利用 |
 | standard | + agents, skills, contexts, hooks, scripts（既定 `VSDD_HOOK_PROFILE=standard`） | 通常の開発作業 |
 | strict | standard と同じファイル構成。`VSDD_HOOK_PROFILE=strict` で厳しいフックマップ（自動コミットフック有効化など） | 高保証作業、チーム開発 |
 
@@ -340,7 +344,8 @@ REQ-001 [spec-requirement] active
 | フック | minimal | standard | strict |
 |--------|---------|----------|--------|
 | ゲート強制（PreToolUse: Write/Edit/Bash） | OFF | ON | ON |
-| セッション永続化（Stop） | ON | ON | ON |
+| セッション開始コンテキスト（SessionStart） | OFF | ON | ON |
+| セッション永続化（Stop） | OFF | ON | ON |
 | コンパクト前チェックポイント（PreCompact） | OFF | ON | ON |
 | 自動コミット（PostToolUse） | OFF | OFF | ON（要設定） |
 
@@ -367,8 +372,15 @@ VSDDは `.vsdd/` ディレクトリ配下にすべてのランタイム状態を
         verification-architecture.md
       contracts/
         sprint-{N}.md
-        sprint-{N}-review.md
       reviews/
+        spec/
+          iteration-{N}/
+            input/
+              manifest.json
+            output/
+              findings/
+                FIND-NNN.json
+              verdict.json
         sprint-{N}/
           input/
             manifest.json     # orchestratorがadversaryに渡すマニフェスト
@@ -397,9 +409,9 @@ VSDDは `.vsdd/` ディレクトリ配下にすべてのランタイム状態を
 |---------|---------|------|
 | `/vsdd-init` | - | フィーチャーパイプラインを初期化する |
 | `/vsdd-spec` | 1a/1b | 行動仕様と検証アーキテクチャを記述する |
-| `/vsdd-spec-review` | 1c | adversaryによる仕様レビューを実行する |
+| `/vsdd-spec-review` | 1c | adversaryによる仕様レビューを実行する。strict では人手承認も必要 |
 | `/vsdd-tdd` | 2a | 失敗するテストを生成する（Red） |
-| `/vsdd-impl` | 2b | テストを通過する実装を行う（Green） |
+| `/vsdd-impl` | 2b/2c | テストを通過する最小実装を行い、その後リファクタする |
 | `/vsdd-adversary` | 3 | 敵対的レビューを実行する |
 | `/vsdd-feedback` | 4 | adversaryの指摘を適切なフェーズへルーティングする |
 | `/vsdd-harden` | 5 | 形式的強化を実行する |
@@ -420,4 +432,4 @@ VSDDは `.vsdd/` ディレクトリ配下にすべてのランタイム状態を
 
 ## ライセンス
 
-MIT License. 詳細は `LICENSE` ファイルを参照。
+MIT。詳細は `package.json` を参照。

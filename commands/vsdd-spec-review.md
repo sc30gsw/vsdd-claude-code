@@ -3,10 +3,10 @@ description: Run Phase 1c (spec review gate) for the active VSDD feature. Spawns
 ---
 
 ## What
-Runs the spec review gate (Phase 1c). Spawns a fresh vsdd-adversary agent to review the behavioral specification for completeness, correctness, and testability. Records the gate verdict.
+Runs the spec review gate (Phase 1c). Spawns a fresh vsdd-adversary agent to review the behavioral specification and verification architecture for completeness, correctness, and verification readiness. Records the gate verdict.
 
 ## When
-Run after `/vsdd-spec` completes Phase 1a and 1b. Requires active feature at phase `1b` (or `1a` in lean mode).
+Run after `/vsdd-spec` completes Phase 1a and 1b. Requires active feature at phase `1b`.
 
 ## How
 
@@ -22,7 +22,7 @@ Run after `/vsdd-spec` completes Phase 1a and 1b. Requires active feature at pha
 3. **Adversary reads and reviews** spec files only (no source code yet)
 4. **Collect verdict** from `reviews/spec/iteration-N/output/verdict.json`
 5. **Record adversary verdict**: `recordGate(feature, '1c', verdict, 'adversary')`
-6. **If PASS in lean mode**: transition to Phase 2a, notify user
+6. **If PASS in lean mode**: transition to Phase 2a when the user is ready
 7. **If PASS in strict mode**: require explicit user confirmation, then record human approval:
    `recordGate(feature, '1c', 'PASS', 'human', { approvedBasedOn: 'adversary' })`
 8. **If FAIL**: display findings, check iteration limit (max 3), prompt for revision
@@ -31,5 +31,5 @@ Run after `/vsdd-spec` completes Phase 1a and 1b. Requires active feature at pha
 
 ```bash
 /vsdd-spec-review
-/vsdd-spec-review --auto-approve    # lean mode: skip human confirmation on PASS
+/vsdd-spec-review --auto-approve    # strict mode: record the human approval immediately after a PASS
 ```

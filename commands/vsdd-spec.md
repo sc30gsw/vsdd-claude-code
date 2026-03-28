@@ -17,7 +17,7 @@ Run immediately after `/vsdd-init`. Requires active feature at phase `init` or `
    - Cover all functional requirements, edge cases, and non-functional constraints
    - Identify purity boundary candidates
 4. **Transition to 1a**: `transitionPhase(feature, '1a')`
-5. **In strict mode**: also run Phase 1b:
+5. **Run Phase 1b for all modes**:
    - Write `specs/verification-architecture.md`
    - Define proof obligations (PROP-XXX) per requirement
    - Assign verification tiers (0-3)
@@ -26,11 +26,10 @@ Run immediately after `/vsdd-init`. Requires active feature at phase `init` or `
 7. **Create traceability beads** for each REQ-XXX and PROP-XXX
 
 ## Lean Mode Behavior
-Phase 1b is optional. In lean mode, skip verification architecture unless the feature has critical invariants. Transition directly to 1c (or 2a if gate is skipped).
+Lean mode still completes both Phase 1a and Phase 1b. The difference is that lean mode typically records fewer `required: true` proof obligations and does not require strict-mode human approval at the spec gate.
 
 ## Examples
 
 ```bash
 /vsdd-spec
-/vsdd-spec --skip-arch    # lean mode: skip phase 1b
 ```

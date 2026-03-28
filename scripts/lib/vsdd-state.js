@@ -60,9 +60,6 @@ const STRICT_TRANSITION_MAP = {
 /** @deprecated Use getAllowedTransitions(state) — kept for backward compatibility */
 const TRANSITION_MAP = STRICT_TRANSITION_MAP;
 
-// ── Lean Mode: phases that may be skipped via alternate transitions ──
-const LEAN_OPTIONAL_PHASES = new Set(['1b', '2c', '5']);
-
 /**
  * Allowed next phases from currentPhase, mode-aware.
  * @param {object} state full state (uses currentPhase, mode, gates, proofObligations)
@@ -70,71 +67,7 @@ const LEAN_OPTIONAL_PHASES = new Set(['1b', '2c', '5']);
  */
 function getAllowedTransitions(state) {
   const current = state.currentPhase;
-  const mode = state.mode;
-
-  if (mode === 'strict') {
-    return [...(STRICT_TRANSITION_MAP[current] || [])];
-  }
-
-  // Lean: abbreviated path 1a -> 1c (skip 1b), 2b -> 3 (skip 2c), 3 -> 6 when no required proofs
-  const out = new Set();
-  switch (current) {
-    case 'init':
-      out.add('1a');
-      break;
-    case '1a':
-      out.add('1b');
-      out.add('1c');
-      break;
-    case '1b':
-      out.add('1c');
-      break;
-    case '1c':
-      out.add('2a');
-      break;
-    case '2a':
-      out.add('2b');
-      break;
-    case '2b':
-      out.add('2c');
-      out.add('3');
-      break;
-    case '2c':
-      out.add('3');
-      break;
-    case '3':
-      out.add('4');
-      {
-        const g3 = state.gates && state.gates['3'];
-        if (g3 && g3.verdict === 'PASS') {
-          out.add('5');
-          const required = (state.proofObligations || []).filter(p => p.required);
-          if (required.length === 0) {
-            out.add('6');
-          }
-        }
-      }
-      break;
-    case '4':
-      out.add('1a');
-      out.add('2a');
-      out.add('2b');
-      out.add('2c');
-      out.add('5');
-      break;
-    case '5':
-      out.add('6');
-      break;
-    case '6':
-      out.add('complete');
-      out.add('3');
-      break;
-    case 'complete':
-      break;
-    default:
-      break;
-  }
-  return [...out];
+  return [...(STRICT_TRANSITION_MAP[current] || [])];
 }
 
 // ── Gate Prerequisites ──
@@ -153,7 +86,6 @@ const GATE_PREREQUISITES = {
       return { ok: false, reason: 'behavioral-spec.md must exist before entering phase 1c' };
     }
     const archPath = path.join(featurePath, 'specs', 'verification-architecture.md');
-    if (state.mode === 'lean') return { ok: true };
     if (!fs.existsSync(archPath)) {
       return { ok: false, reason: 'verification-architecture.md must exist before entering phase 1c' };
     }
@@ -173,10 +105,10 @@ const GATE_PREREQUISITES = {
       return { ok: true };
     }
 
-    if (gate.verdict === 'PASS' || gate.verdict === 'SKIP') {
+    if (gate.verdict === 'PASS') {
       return { ok: true };
     }
-    return { ok: false, reason: 'Spec review gate must PASS (or SKIP in lean mode)' };
+    return { ok: false, reason: 'Spec review gate must PASS before phase 2a' };
   },
   '2b': (state, featurePath) => {
     if (!state.sprintCount || state.sprintCount < 1) {
@@ -288,9 +220,6 @@ const GATE_PREREQUISITES = {
   '6': (state, featurePath) => {
     const reportPath = path.join(featurePath, 'verification', 'verification-report.md');
     const requiredProofs = (state.proofObligations || []).filter(p => p.required);
-    if (state.mode === 'lean' && requiredProofs.length === 0) {
-      return { ok: true };
-    }
     if (!fs.existsSync(reportPath)) {
       return { ok: false, reason: 'verification-report.md required for phase 6' };
     }
@@ -861,26 +790,15 @@ function transitionPhase(featureName, targetPhase, reason) {
     throw new Error(transResult.reason);
   }
 
-  // 1b. Phase 3 -> 5 or 6: adversary must have recorded PASS
-  if (current === '3' && (targetPhase === '5' || targetPhase === '6')) {
+  // 1b. Phase 3 -> 5: adversary must have recorded PASS
+  if (current === '3' && targetPhase === '5') {
     const g3 = state.gates['3'];
     if (!g3 || g3.verdict !== 'PASS') {
-      throw new Error('Adversary gate (phase 3) must be PASS before entering phase 5 or 6');
-    }
-  }
-  if (current === '3' && targetPhase === '6') {
-    if (state.mode !== 'lean') {
-      throw new Error('Direct transition 3 -> 6 is only allowed in lean mode');
-    }
-    const required = (state.proofObligations || []).filter(p => p.required);
-    if (required.length > 0) {
-      throw new Error('Direct 3 -> 6 requires zero required proof obligations; use phase 5 first');
+      throw new Error('Adversary gate (phase 3) must be PASS before entering phase 5');
     }
   }
 
-  // 2. Lean mode: optional phases — prerequisites still enforced below unless waived in GATE_PREREQUISITES
-
-  // 3. Check gate prerequisites
+  // 2. Check gate prerequisites
   const prereq = GATE_PREREQUISITES[targetPhase];
   if (prereq) {
     const featurePath = getFeaturePath(featureName);
@@ -890,7 +808,7 @@ function transitionPhase(featureName, targetPhase, reason) {
     }
   }
 
-  // 4. Check iteration limits (safety valve)
+  // 3. Check iteration limits (safety valve)
   const iterCount = (state.iterations[targetPhase] || 0) + 1;
   const limit = ITERATION_LIMITS[targetPhase];
   if (limit && iterCount > limit) {
@@ -910,7 +828,7 @@ function transitionPhase(featureName, targetPhase, reason) {
     startedSprint = true;
   }
 
-  // 5. Apply transition
+  // 4. Apply transition
   state.currentPhase = targetPhase;
   state.iterations[targetPhase] = iterCount;
   state.phaseHistory.push({
@@ -1211,7 +1129,6 @@ module.exports = {
   VALID_LANGUAGES,
   STRICT_TRANSITION_MAP,
   TRANSITION_MAP,
-  LEAN_OPTIONAL_PHASES,
   ITERATION_LIMITS,
   getAllowedTransitions,
 

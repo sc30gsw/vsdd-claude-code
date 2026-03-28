@@ -57,3 +57,5 @@ Run at the start of every new feature development cycle. Must be run before `/vs
 | Small, low-risk features | Financial/security features |
 | Time-constrained work | High-assurance requirements |
 | Learning the VSDD workflow | Production deployment gates |
+
+Lean mode still traverses all 6 phases. It relaxes approval and contract requirements, but it does not skip Phase 1b, Phase 2c, or Phase 5.

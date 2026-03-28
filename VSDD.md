@@ -24,13 +24,13 @@ It combines four constraints into one workflow:
 
 ## Modes
 
-- `lean`: fewer mandatory gates, intended for normal product work.
-- `strict`: sprint contracts, stronger review gates, and tighter convergence requirements.
+- `lean`: traverses all 6 phases with lighter approval and contract requirements, intended for normal product work.
+- `strict`: traverses all 6 phases with sprint contracts, stronger review gates, and tighter convergence requirements.
 
 ## Required Artifacts
 
 - `specs/behavioral-spec.md`
-- `specs/verification-architecture.md` in strict mode
+- `specs/verification-architecture.md`
 - `evidence/sprint-N-red-phase.log` with:
   - `new-feature-tests: FAIL`
   - `regression-baseline: PASS`
@@ -38,7 +38,7 @@ It combines four constraints into one workflow:
   - `target-feature-tests: PASS`
   - `regression-baseline: PASS`
 - `reviews/sprint-N/output/verdict.json`
-- `verification/verification-report.md` when required proof obligations exist
+- `verification/verification-report.md`
 
 ## Completion Rule
 

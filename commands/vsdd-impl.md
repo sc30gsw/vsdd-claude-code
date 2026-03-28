@@ -43,5 +43,4 @@ Run after `/vsdd-tdd` completes Phase 2a with red phase evidence. Requires activ
 
 ```bash
 /vsdd-impl
-/vsdd-impl --skip-refactor    # lean mode: merge 2b and 2c
 ```

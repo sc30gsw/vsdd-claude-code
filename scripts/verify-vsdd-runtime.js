@@ -188,8 +188,13 @@ assertThrows(
   assert(minimal.paths.includes('schemas/'), 'minimal profile should include schemas path');
   assert(!minimal.modules.includes('vsdd-hooks'), 'minimal profile should not include hooks');
 
+  const standard = resolveInstallPlan('standard', null);
+  assert(standard.modules.includes('vsdd-contexts'), 'standard profile should include contexts');
+  assert(standard.paths.includes('contexts/'), 'standard profile should install context files');
+
   const strictTs = resolveInstallPlan('strict', 'typescript');
   assert(strictTs.modules.includes('vsdd-hooks'), 'strict profile should include hooks');
+  assert(strictTs.modules.includes('vsdd-contexts'), 'strict profile should include contexts');
   assert(strictTs.modules.includes('vsdd-language-typescript'), 'typescript language module should be resolved');
   assert(strictTs.paths.includes('skills/vsdd-language-typescript/'), 'typescript skill path should be installed');
   assert(strictTs.paths.includes('VSDD.md'), 'docs should be installed from manifests');

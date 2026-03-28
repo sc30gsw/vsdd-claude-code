@@ -149,6 +149,8 @@ function createPassingVerdict(feature, sprintNumber, iteration, evidenceLocation
   initFeature(feat, 'lean');
   transitionPhase(feat, '1a');
   writeFile(root, `.vsdd/features/${feat}/specs/behavioral-spec.md`, '# Behavioral\n');
+  transitionPhase(feat, '1b');
+  writeFile(root, `.vsdd/features/${feat}/specs/verification-architecture.md`, '# Verification\n');
   transitionPhase(feat, '1c');
 
   const blocked = runGateHook(root, {
@@ -158,7 +160,7 @@ function createPassingVerdict(feature, sprintNumber, iteration, evidenceLocation
   assert(blocked.status === 2, 'tests should stay blocked during phase 1c');
 }
 
-// ── Lean: 1a -> 1c -> 2a -> 2b -> 3 -> 6 -> complete (skip 1b, 2c, 5) ──
+// ── Lean: full 6-phase path with lighter gates (no human approval, selective proofs) ──
 {
   const root = tmpDir();
   process.chdir(root);
@@ -170,6 +172,8 @@ function createPassingVerdict(feature, sprintNumber, iteration, evidenceLocation
 
   transitionPhase(feat, '1a');
   writeFile(root, `.vsdd/features/${feat}/specs/behavioral-spec.md`, '# Behavioral\n');
+  transitionPhase(feat, '1b');
+  writeFile(root, `.vsdd/features/${feat}/specs/verification-architecture.md`, '# Verification\n');
   transitionPhase(feat, '1c');
   recordGate(feat, '1c', 'PASS', 'adversary');
   transitionPhase(feat, '2a');
@@ -183,6 +187,12 @@ function createPassingVerdict(feature, sprintNumber, iteration, evidenceLocation
     root,
     `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
     'target-feature-tests: PASS\nregression-baseline: PASS\n'
+  );
+  transitionPhase(feat, '2c');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    'target-feature-tests: PASS\nregression-baseline: PASS\nafter-refactor: PASS\n'
   );
   transitionPhase(feat, '3');
   recordGate(feat, '3', 'PASS', 'adversary');
@@ -206,6 +216,12 @@ function createPassingVerdict(feature, sprintNumber, iteration, evidenceLocation
       2
     ) + '\n'
   );
+  transitionPhase(feat, '5');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/verification/verification-report.md`,
+    '# Verification Report\n\nNo required proof obligations.\n'
+  );
   transitionPhase(feat, '6');
   transitionPhase(feat, 'complete');
 
@@ -222,6 +238,8 @@ function createPassingVerdict(feature, sprintNumber, iteration, evidenceLocation
 
   transitionPhase(feat, '1a');
   writeFile(root, `.vsdd/features/${feat}/specs/behavioral-spec.md`, '# Behavioral\n');
+  transitionPhase(feat, '1b');
+  writeFile(root, `.vsdd/features/${feat}/specs/verification-architecture.md`, '# Verification\n');
   transitionPhase(feat, '1c');
   recordGate(feat, '1c', 'PASS', 'adversary');
   transitionPhase(feat, '2a');
@@ -255,6 +273,8 @@ function createPassingVerdict(feature, sprintNumber, iteration, evidenceLocation
 
   transitionPhase(feat, '1a');
   writeFile(root, `.vsdd/features/${feat}/specs/behavioral-spec.md`, '# Behavioral\n');
+  transitionPhase(feat, '1b');
+  writeFile(root, `.vsdd/features/${feat}/specs/verification-architecture.md`, '# Verification\n');
   transitionPhase(feat, '1c');
   recordGate(feat, '1c', 'PASS', 'adversary');
   transitionPhase(feat, '2a');
@@ -275,6 +295,8 @@ function createPassingVerdict(feature, sprintNumber, iteration, evidenceLocation
 
   transitionPhase(feat, '1a');
   writeFile(root, `.vsdd/features/${feat}/specs/behavioral-spec.md`, '# Behavioral\n');
+  transitionPhase(feat, '1b');
+  writeFile(root, `.vsdd/features/${feat}/specs/verification-architecture.md`, '# Verification\n');
   transitionPhase(feat, '1c');
   recordGate(feat, '1c', 'PASS', 'adversary');
   transitionPhase(feat, '2a');
@@ -284,6 +306,12 @@ function createPassingVerdict(feature, sprintNumber, iteration, evidenceLocation
     'new-feature-tests: FAIL\nregression-baseline: PASS\n'
   );
   transitionPhase(feat, '2b');
+  writeFile(
+    root,
+    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    'target-feature-tests: PASS\nregression-baseline: PASS\n'
+  );
+  transitionPhase(feat, '2c');
   writeFile(root, `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`, 'target-feature-tests: PASS\n');
 
   assertThrows(

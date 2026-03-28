@@ -7,7 +7,7 @@ This context is loaded when a VSDD feature pipeline is active. It provides the c
 When VSDD is active:
 - All file writes are subject to phase-based gate enforcement
 - Spec files (`specs/`) may only be modified during phases 1a, 1b, 1c, and 4 (feedback)
-- Test files may not be written during phases init, 1a, 1b
+- Test files may not be written during phases init, 1a, 1b, and 1c
 - Source implementation files may not be written during phases init through 1c
 
 ## Phase Reference

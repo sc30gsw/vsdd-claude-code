@@ -18,7 +18,7 @@
 - Phase 1 specs are a **living hypothesis**, not a promise that the entire problem space is already known. Discovery during implementation must be expected and routed back into the spec.
 - The plugin should ship with **two operating modes**:
   - `strict`: close to the full VSDD ceremony for high-assurance work
-  - `lean`: planner/builder/evaluator flow with fewer gates for product work and prototyping
+  - `lean`: still traverses all 6 phases, but relaxes approvals, sprint contracts, and proof obligations for product work and prototyping
 - Terminology is standardized on **sprint** throughout this plan. Anthropic's article discusses both decomposition into chunks and a sprint-based full-stack harness; this design intentionally uses `sprint` as the canonical work unit.
 
 ---
@@ -37,7 +37,7 @@ vsdd-claude-code/
   commands/
     vsdd-init.md                      # Initialize feature pipeline
     vsdd-spec.md                      # Phase 1a+1b: Behavioral spec + verification architecture
-    vsdd-spec-review.md               # Phase 1c: Spec review gate (human approval)
+    vsdd-spec-review.md               # Phase 1c: Spec review gate (strict mode additionally requires human approval)
     vsdd-tdd.md                       # Phase 2a: Test generation (Red)
     vsdd-impl.md                      # Phase 2b+2c: Implementation (Green) + Refactor
     vsdd-adversary.md                 # Phase 3: Adversarial review (fresh context)
@@ -114,8 +114,11 @@ vsdd-claude-code/
         verification-architecture.md  # Phase 1b output
       contracts/
         sprint-{N}.md                  # Work contract (strict mode: must exist, contain CRIT-XXX, and be approved before Phase 3)
-        sprint-{N}-review.md           # Contract review (Adversary feedback)
       reviews/
+        spec/
+          iteration-{N}/
+            input/manifest.json       # Spec review manifest (Orchestrator writes)
+            output/verdict.json       # Spec review verdict (Adversary writes)
         sprint-{N}/
           input/manifest.json         # What to review (Orchestrator writes)
           output/verdict.json         # Review verdict (Adversary writes)
@@ -142,7 +145,7 @@ vsdd-claude-code/
 
 **Modes**:
 - `strict`: sprint contracts, repeated adversary passes, proof obligations, stronger hooks
-- `lean`: planner -> builder -> evaluator with optional end-of-run QA and selective proof checks
+- `lean`: full 6-phase VSDD flow with lighter approvals, selective proof obligations, and fewer mandatory sprint contracts
 
 **Spec Policy**: Phase 1 outputs are "good enough to start, precise enough to test." Any material discovery during implementation updates the spec, traceability graph, and proof obligation registry rather than being treated as process failure.
 
@@ -152,7 +155,11 @@ vsdd-claude-code/
 
 **Why**: The Adversary must have zero conversational context from the Builder. Anthropic's harness blog confirms: "separating the agent doing the work from the agent judging it proves to be a strong lever." Fresh context should be mandatory for adversarial review, but not assumed necessary for every agent phase in every model generation.
 
-**How**: The orchestrator writes all review inputs to `.vsdd/features/<feature>/reviews/sprint-{N}/input/`. A fresh `vsdd-adversary` agent is spawned that reads ONLY from disk. The adversary writes its verdict to `.vsdd/features/<feature>/reviews/sprint-{N}/output/verdict.json` and terminates.
+**How**: The orchestrator writes review inputs to disk before every adversarial pass:
+- Spec review (Phase 1c): `.vsdd/features/<feature>/reviews/spec/iteration-{N}/input/`
+- Implementation review (Phase 3): `.vsdd/features/<feature>/reviews/sprint-{N}/input/`
+
+A fresh `vsdd-adversary` agent is spawned that reads ONLY from disk. The adversary writes its verdict and findings under the matching `reviews/**/output/` directory and terminates.
 
 ### 2. Sprint Contracts (Harness Pattern)
 
@@ -160,7 +167,7 @@ vsdd-claude-code/
 
 **Format**: Markdown with YAML frontmatter containing criteria IDs, dimensions, weights, and pass thresholds.
 
-**Flow**: Builder writes -> Adversary reviews -> negotiation (max 2 rounds) -> human approval before adversarial review for that sprint. Runtime enforcement requires `status: approved` and at least one `CRIT-XXX` criterion before strict-mode Phase 3.
+**Flow**: Builder writes -> Adversary reviews using the sprint review manifest/output directory -> negotiation (max 2 rounds) -> human approval before adversarial review for that sprint. Runtime enforcement requires `status: approved` and at least one `CRIT-XXX` criterion before strict-mode Phase 3.
 
 ### 3. Concrete Grading (Binary PASS/FAIL per Dimension)
 
@@ -418,8 +425,8 @@ vsdd/<feature>/phase-6     # Convergence achieved
 | Agent | Writes to | Reads from |
 |-------|-----------|------------|
 | Orchestrator | `features/<feature>/state.json`, `reviews/*/input/manifest.json`, `escalations/` | Everything in `.vsdd/features/<feature>/` |
-| Builder | `specs/`, `contracts/sprint-{N}.md`, `evidence/`, source code, tests | `state.json`, `contracts/*-review.md`, `reviews/*/output/verdict.json` |
-| Adversary | `reviews/*/output/verdict.json`, `reviews/*/output/findings/*`, `contracts/sprint-{N}-review.md` (optional) | `specs/`, `contracts/sprint-{N}.md`, source code, tests (read); output only under `reviews/**/output/` |
+| Builder | `specs/`, `contracts/sprint-{N}.md`, `evidence/`, source code, tests | `state.json`, `reviews/*/output/verdict.json`, `reviews/*/output/findings/*` |
+| Adversary | `reviews/*/output/verdict.json`, `reviews/*/output/findings/*` | `specs/`, `contracts/sprint-{N}.md`, source code, tests (read); output only under `reviews/**/output/` |
 | Verifier | `verification/` | `specs/`, source code, tests, proof obligation registry |
 
 ---
@@ -437,8 +444,8 @@ Gate prerequisites:
 | Phase | Requires |
 |-------|----------|
 | 1b | `behavioral-spec.md` exists |
-| 1c | `behavioral-spec.md` exists; `verification-architecture.md` is also required in strict mode |
-| 2a | Spec gate passed (adversary PASS on spec review); entering 2a starts sprint `N` for the implementation cycle |
+| 1c | `behavioral-spec.md` and `verification-architecture.md` exist |
+| 2a | Lean: adversary PASS on spec review. Strict: adversary PASS plus explicit human approval. Entering 2a starts sprint `N` for the implementation cycle |
 | 2b | Red phase evidence (new feature tests fail while regression baseline remains green) |
 | 2c | Green phase evidence (target feature tests and regression suite pass) |
 | 3 | Tests pass post-refactor; in strict mode `contracts/sprint-{N}.md` exists with `status: approved` and at least one `CRIT-XXX` |

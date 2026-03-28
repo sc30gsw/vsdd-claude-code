@@ -3,10 +3,10 @@ description: Run Phase 3 (adversarial review) for the active VSDD feature. Spawn
 ---
 
 ## What
-Runs the adversarial review (Phase 3). Spawns a fresh vsdd-adversary agent (opus model, read-only, zero Builder context) to review the implementation against the spec across 5 dimensions.
+Runs the adversarial review (Phase 3). Spawns a fresh vsdd-adversary agent (opus model, review-output-only, zero Builder context) to review the implementation against the spec across 5 dimensions.
 
 ## When
-Run after `/vsdd-impl` completes Phases 2b and 2c. Requires active feature at phase `2c` (or `2b` in lean mode).
+Run after `/vsdd-impl` completes Phases 2b and 2c. Requires active feature at phase `2c`.
 
 ## How
 
@@ -35,7 +35,7 @@ Run after `/vsdd-impl` completes Phases 2b and 2c. Requires active feature at ph
    - `reviews/sprint-N/output/verdict.json`
    - `reviews/sprint-N/output/findings/FIND-NNN.json` (one per finding)
 7. **Record gate**: `recordGate(feature, '3', overallVerdict, 'adversary')`
-8. **If PASS**: transition to Phase 5 (strict or lean with required proofs) or Phase 6 (lean with zero required proof obligations), display summary
+8. **If PASS**: transition to Phase 5 in all modes, display summary
 9. **If FAIL**: display findings grouped by dimension, proceed to `/vsdd-feedback`
 
 ## Fresh Context Requirement

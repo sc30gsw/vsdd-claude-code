@@ -27,7 +27,7 @@ Read your review manifest from the input directory:
 This tells you:
 - Which files to review
 - Which spec file is authoritative
-- Which grading criteria apply (from sprint contract)
+- Which grading criteria apply (when a sprint contract exists)
 
 Review scopes:
 - Phase 1c spec review: `reviews/spec/iteration-N/`
@@ -37,9 +37,10 @@ Review scopes:
 
 ### Step 1: Read All Artifacts
 1. Read `specs/behavioral-spec.md` (the authoritative specification)
-2. Read all test files listed in manifest
-3. Read all source implementation files listed in manifest
-4. Read `contracts/sprint-N.md` for grading criteria
+2. If the manifest includes `specs/verification-architecture.md`, read it
+3. Read any test files listed in manifest
+4. Read any source implementation files listed in manifest
+5. If the manifest includes `contractPath`, read `contracts/sprint-N.md` for grading criteria
 
 ### Step 2: Evaluate Each Dimension
 
@@ -51,18 +52,20 @@ Review scopes:
 
 #### Dimension 2: Edge Case Coverage
 - Does the spec enumerate edge cases?
-- Are those edge cases tested?
+- In Phase 3: are those edge cases tested?
 - Are there edge cases the spec MISSED that you can identify?
 - Empty inputs, boundary values, concurrent access, error conditions?
 
 #### Dimension 3: Implementation Correctness
-- Does the code actually implement the specified behavior?
+- In Phase 1c: are the requirements concrete enough to be implemented unambiguously?
+- In Phase 3: does the code actually implement the specified behavior?
 - Are error conditions handled?
 - Are there logic errors, off-by-one errors, null pointer risks?
 - Are there security vulnerabilities (injection, overflow, etc.)?
 
 #### Dimension 4: Structural Integrity
-- Is the code organized coherently?
+- In Phase 1c: does the proposed module split respect the purity boundary and avoid hidden coupling?
+- In Phase 3: is the code organized coherently?
 - Is there unnecessary duplication?
 - Are abstractions appropriate (not over-abstracted, not under-abstracted)?
 - Are names clear and accurate?

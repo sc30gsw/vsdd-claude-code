@@ -123,15 +123,6 @@ const WRITE_RESTRICTIONS = [
     },
   },
   {
-    // Contract review notes can only be updated during feedback/refinement
-    name: 'contract review notes',
-    blockedInPhases: new Set(['init', '1a', '1b', '1c', '2a', '2b', '2c', '5', '6', 'complete']),
-    matches: (filePath) => {
-      const norm = filePath.replace(/\\/g, '/');
-      return norm.includes('/.vsdd/') && /\/contracts\/sprint-\d+-review\.md$/i.test(norm);
-    },
-  },
-  {
     // Escalations are audit records and should only be created via the orchestration library
     name: 'escalation records',
     blockedInPhases: new Set(['init', '1a', '1b', '1c', '2a', '2b', '2c', '3', '4', '5', '6', 'complete']),
