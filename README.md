@@ -15,11 +15,12 @@ A Claude Code plugin that brings **Verified Spec-Driven Development (VCSDD)** me
 
 AI-assisted development has a structural problem: there are no quality gates. Language models produce code that passes surface-level review but routinely harbors spec mismatches, untested edge cases, and structural debt. This is "AI slop" -- code that looks correct but conceals hidden deficiencies.
 
-VCSDD is a methodology that fuses three disciplines into a single workflow:
+VCSDD is a methodology that fuses four disciplines into a single workflow:
 
 - **Spec-Driven Development (SDD)** -- behavior is fully specified before any code is written
 - **Test-Driven Development (TDD)** -- failing tests are written before any implementation
 - **Verification-Driven Development (VDD)** -- formal verification is treated as a first-class deliverable, not an afterthought
+- **Coherence-Driven Development (CoDD)** -- dependency relationships between spec documents are tracked so that requirement changes propagate automatically to all affected artifacts
 
 These are joined by an **adversarial review gate**: a fresh-context agent running on a more capable model that reviews all artifacts with zero tolerance and produces binary verdicts. The adversary is structurally isolated from the builder -- it reads only from disk and cannot be influenced by the builder's conversational context.
 
@@ -57,6 +58,14 @@ Completion is blocked if any persisted adversary finding lacks a matching `adver
 **Gate enforcement via Claude Code hooks**
 The `vcsdd-gate-check.js` hook runs on `PreToolUse` for `Write`/`Edit`/`MultiEdit` and for `Bash` when the command targets phase-restricted paths. It blocks direct writes, shell redirects, in-place edits, and common path-based mutation commands such as `cp` into restricted areas. Gate strictness is controlled by the `VCSDD_HOOK_PROFILE` environment variable.
 
+**Coherence Engine (CoDD integration)**
+When requirements change mid-project, the Coherence Engine traces which downstream spec documents are affected and classifies them into confidence bands before any code is touched. It is implemented natively in Node.js inside `scripts/lib/vcsdd-coherence.js` and stores its graph in `.vcsdd/features/<name>/coherence.json`.
+- **CEG (Conditioned Evidence Graph)** -- directed dependency graph between spec documents; built from `coherence:` frontmatter blocks in Markdown files
+- **Noisy-OR confidence scoring** -- evidence-based edge weights aggregated into Green (≥90%) / Amber (≥50%) / Gray (<50%) impact bands
+- **BFS forward impact propagation** -- traces all downstream nodes when a spec changes, so no affected document is silently missed
+- **DFS cycle detection** -- prevents circular dependencies in the spec graph before they corrupt propagation
+- **Opt-in and non-blocking** -- activates only when `coherence.json` is present; completely a no-op when absent, preserving all existing VCSDD guarantees
+
 **Language verification profiles**
 - **Rust** -- `proptest`, `cargo-fuzz`, `cargo-mutants`, with `kani` as the bundled Tier 2 verifier and `cbmc` as a Tier 3 fallback hint
 - **Python** -- `hypothesis` and `mutmut`
@@ -86,7 +95,7 @@ Canonical VCSDD defines four roles: Human Architect, Builder, Tracker (Chainlink
 
 Agents communicate exclusively through files under `.vcsdd/features/<feature-name>/`. There is no shared conversational context between the builder and the adversary.
 
-### 13 Slash Commands
+### 16 Slash Commands
 
 | Command | Phase | Purpose |
 |---|---|---|
@@ -103,14 +112,19 @@ Agents communicate exclusively through files under `.vcsdd/features/<feature-nam
 | `/vcsdd-status` | -- | Display current pipeline state |
 | `/vcsdd-trace` | -- | Display full traceability chain for a bead |
 | `/vcsdd-commit` | -- | Commit with phase tag and bead summary |
+| `/vcsdd-coherence-scan` | -- | Rebuild CEG from spec frontmatter |
+| `/vcsdd-coherence-impact` | -- | Run BFS change-impact analysis from changed spec nodes |
+| `/vcsdd-coherence-validate` | -- | Validate CEG reference integrity and detect cycles |
 
-### 13 Skills
+### 16 Skills
 
 Core workflow skills: `vcsdd-spec-crystallization`, `vcsdd-sprint-contracts`, `vcsdd-adversarial-refinement`, `vcsdd-grading-criteria`, `vcsdd-feedback-routing`, `vcsdd-convergence-detection`, `vcsdd-formal-hardening`, `vcsdd-verification-architecture`, `vcsdd-traceability`, `vcsdd-git-integration`
 
 Language verification skills: `vcsdd-language-rust`, `vcsdd-language-python`, `vcsdd-language-typescript`
 
-### 6 JSON Schemas
+Coherence skills: `vcsdd-coherence-scan`, `vcsdd-coherence-impact`, `vcsdd-coherence-validate`
+
+### 7 JSON Schemas
 
 | Schema | Validates |
 |---|---|
@@ -120,6 +134,7 @@ Language verification skills: `vcsdd-language-rust`, `vcsdd-language-python`, `v
 | `vcsdd-grading.schema.json` | Grading criteria |
 | `vcsdd-finding.schema.json` | Adversary finding format |
 | `vcsdd-bead.schema.json` | Traceability bead |
+| `vcsdd-coherence.schema.json` | Coherence graph (CEG nodes, edges, evidence) |
 
 ### Runtime State Layout
 
@@ -168,6 +183,7 @@ Language verification skills: `vcsdd-language-rust`, `vcsdd-language-python`, `v
         purity-audit.md
       escalations/
         escalation-{timestamp}.md
+      coherence.json                  # CEG (optional; coherence engine is no-op when absent)
 ```
 
 ---
@@ -255,6 +271,16 @@ pnpm dlx vcsdd-claude-code --profile standard
 
 # Commit with phase tag and artifact manifest
 /vcsdd-commit
+
+# --- Optional: Coherence Engine (CoDD) ---
+# Rebuild the CEG from coherence: frontmatter in spec files
+/vcsdd-coherence-scan
+
+# Run change-impact analysis (classify downstream specs into Green/Amber/Gray)
+/vcsdd-coherence-impact [node_id]
+
+# Validate CEG reference integrity and detect circular dependencies
+/vcsdd-coherence-validate
 ```
 
 ---
@@ -540,6 +566,8 @@ Even with the flag enabled, auto-commit skips when dirty files fall outside the 
 - **VCSDD Methodology** (original specification): https://gist.github.com/dollspace-gay/d8d3bc3ecf4188df049d7a4726bb2a00
 - **Anthropic Harness Design** (planner/generator/evaluator architecture): https://www.anthropic.com/engineering/harness-design-long-running-apps
 - **everything-claude-code** (ECC plugin patterns): https://github.com/affaan-m/everything-claude-code
+- **CoDD (Coherence-Driven Development)**: https://github.com/yohey-w/codd-dev
+- **CoDD — Coherence Engine解説** (Zenn article, Japanese): https://zenn.dev/shio_shoppaize/articles/shogun-codd-coherence
 
 ---
 
