@@ -109,8 +109,9 @@ Coherence is **optional and advisory** — it activates automatically when
 
 When `coherence.json` exists, **structural validation** (including cycle detection)
 runs at the Phase **2a** gate: a failing validation **blocks** entering 2a until the
-graph is fixed. Unexpected errors while loading or running the coherence module are
-**logged to history only** and do not block the gate.
+graph is fixed. When `coherence.json` is present (opt-in), runtime errors in the
+coherence module also **block the Phase 2a gate** and are logged to history.
+When `coherence.json` is absent, the coherence check is skipped entirely.
 
 New commands:
 - `/vcsdd-coherence-scan` — rebuild CEG from spec frontmatter

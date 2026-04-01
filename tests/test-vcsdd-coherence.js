@@ -610,18 +610,18 @@ assert(cleanResult.ok === true, 'clean graph → ok: true');
 assertEqual(cleanResult.warnings, [], 'clean graph → no warnings');
 assertEqual(cleanResult.cycles, [], 'clean graph → no cycles');
 
-section('validateCoherence — dangling reference warns');
+section('validateCoherence — dangling reference blocks');
 
 const danglingCeg = makeCeg(
   [{ id: 'a' }],
   [makeEdge('a', 'ghost', 0.9)],  // 'ghost' is not in nodes
 );
 const danglingResult = validateCoherence(danglingCeg);
-assert(danglingResult.ok === true, 'dangling ref → ok: true (warning only, not failure)');
-assert(danglingResult.warnings.length > 0, 'dangling ref → at least one warning');
+assert(danglingResult.ok === false, 'dangling ref → ok: false (reference integrity error)');
+assert(danglingResult.errors.length > 0, 'dangling ref → at least one error');
 assert(
-  danglingResult.warnings.some(w => w.includes('ghost')),
-  'warning mentions missing node "ghost"'
+  danglingResult.errors.some(w => w.includes('ghost')),
+  'error mentions missing node "ghost"'
 );
 
 section('validateCoherence — cycle → ok: false');
@@ -1048,11 +1048,11 @@ section('addEdge semantic deduplication');
   assert(ceg.nodes['req:real'].placeholder === false, 'scanned node is not placeholder');
 
   const result = validateCoherence(ceg);
-  assert(result.ok === true, 'placeholder ref is a warning only, not a hard failure');
-  assert(Array.isArray(result.warnings), 'warnings array returned');
+  assert(result.ok === false, 'placeholder ref → ok: false (reference integrity error)');
+  assert(Array.isArray(result.errors), 'errors array returned');
   assert(
-    result.warnings.some(w => w.includes('req:ghost') && w.includes('placeholder')),
-    'warning mentions placeholder node req:ghost',
+    result.errors.some(w => w.includes('req:ghost') && w.includes('placeholder')),
+    'error mentions placeholder node req:ghost',
   );
 
   section('validateCoherence — no placeholder warnings when all nodes are real');
@@ -1119,6 +1119,42 @@ section('addEdge semantic deduplication');
     }
   } finally {
     fs.rmSync(tmpDir2, { recursive: true, force: true });
+  }
+}
+
+// Bug 5: rebuildFromFrontmatter — throws on corrupted coherence.json (no silent overwrite)
+{
+  section('rebuildFromFrontmatter — throws on corrupted coherence.json');
+
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vcsdd-coherence-rebuild-'));
+  try {
+    const featureDir = path.join(tmpDir, '.vcsdd', 'features', 'rebuild-corrupt-test');
+    fs.mkdirSync(featureDir, { recursive: true });
+    const coherencePath = path.join(featureDir, 'coherence.json');
+    fs.writeFileSync(coherencePath, '{not valid json!!!');
+
+    // Create minimal specs/ dir so scanSpecFrontmatter doesn't fail
+    fs.mkdirSync(path.join(featureDir, 'specs'), { recursive: true });
+
+    const origCwd = process.cwd();
+    process.chdir(tmpDir);
+    try {
+      let threw = false;
+      let thrownMessage = '';
+      try {
+        rebuildFromFrontmatter('rebuild-corrupt-test');
+      } catch (err) {
+        threw = true;
+        thrownMessage = err.message;
+      }
+      assert(threw, 'rebuildFromFrontmatter throws when coherence.json is corrupted');
+      assert(thrownMessage.includes('corrupted'), 'error message mentions "corrupted"');
+      assert(thrownMessage.includes('rebuild-corrupt-test'), 'error message mentions feature name');
+    } finally {
+      process.chdir(origCwd);
+    }
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 }
 

@@ -595,10 +595,11 @@ function detectCycles(ceg) {
  *   1. All edge source/target IDs reference known nodes
  *   2. No circular dependencies
  *
- * @returns {{ ok: boolean, reason?: string, warnings?: string[], cycles?: string[] }}
+ * @returns {{ ok: boolean, reason?: string, warnings?: string[], errors?: string[], cycles?: string[] }}
  */
 function validateCoherence(ceg) {
   const warnings = [];
+  const errors   = [];
 
   // 1. Reference integrity
   for (const edge of ceg.edges) {
@@ -606,15 +607,19 @@ function validateCoherence(ceg) {
     const src = ceg.nodes[edge.sourceId];
     const tgt = ceg.nodes[edge.targetId];
     if (!src) {
-      warnings.push(`Edge ${edge.id}: unknown source node "${edge.sourceId}"`);
+      errors.push(`Edge ${edge.id}: unknown source node "${edge.sourceId}"`);
     } else if (src.placeholder) {
-      warnings.push(`Edge ${edge.id}: source node "${edge.sourceId}" is a placeholder (no matching document found)`);
+      errors.push(`Edge ${edge.id}: source node "${edge.sourceId}" is a placeholder (no matching document found)`);
     }
     if (!tgt) {
-      warnings.push(`Edge ${edge.id}: unknown target node "${edge.targetId}"`);
+      errors.push(`Edge ${edge.id}: unknown target node "${edge.targetId}"`);
     } else if (tgt.placeholder) {
-      warnings.push(`Edge ${edge.id}: target node "${edge.targetId}" is a placeholder (no matching document found)`);
+      errors.push(`Edge ${edge.id}: target node "${edge.targetId}" is a placeholder (no matching document found)`);
     }
+  }
+
+  if (errors.length > 0) {
+    return { ok: false, reason: `Reference integrity errors: ${errors[0]}`, warnings, errors };
   }
 
   // 2. Cycle detection
@@ -624,11 +629,12 @@ function validateCoherence(ceg) {
       ok:     false,
       reason: `Circular dependency detected: ${cycles[0]}`,
       warnings,
+      errors,
       cycles,
     };
   }
 
-  return { ok: true, warnings, cycles: [] };
+  return { ok: true, warnings, errors: [], cycles: [] };
 }
 
 // ── Frontmatter scanning ───────────────────────────────────────────────────
@@ -918,9 +924,10 @@ function rebuildFromFrontmatter(featureName) {
     removeAutoEvidence(ceg);
   } else {
     if (status === 'corrupted') {
-      console.warn(
-        `[vcsdd-coherence] WARNING: coherence.json for "${featureName}" was corrupted. ` +
-        `A backup has been saved to coherence.json.bak. Human evidence may have been lost.`,
+      throw new Error(
+        `[vcsdd-coherence] coherence.json for "${featureName}" is corrupted. ` +
+        `A backup was saved to coherence.json.bak. ` +
+        `Restore from backup or delete coherence.json to force a clean rebuild.`,
       );
     }
     ceg = {

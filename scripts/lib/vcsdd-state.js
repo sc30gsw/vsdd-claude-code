@@ -124,13 +124,13 @@ const GATE_PREREQUISITES = {
           }
         }
       } catch (err) {
-        // Log error but do not block the gate — coherence is advisory
         appendHistory({
           event:       'coherence_check_error',
           featureName: state.featureName,
           phase:       '2a',
           error:       err.message,
         });
+        return { ok: false, reason: `Coherence module error: ${err.message}` };
       }
     }
 
@@ -1391,15 +1391,22 @@ function routeFeedback(featureName, targetPhase, reason) {
       const { loadCoherence, propagateImpact, impactNodeIncomingStats } = require('./vcsdd-coherence');
       const ceg = loadCoherence(featureName);
       if (ceg) {
-        // Find spec nodes affected by this routing — heuristic: nodes whose
-        // path starts with 'specs/' and whose type is 'design' or 'requirement'
-        const specNodes = Object.keys(ceg.nodes).filter(id => {
-          const n = ceg.nodes[id];
-          return n.path && n.path.startsWith('specs/') &&
-            (n.type === 'design' || n.type === 'requirement');
-        });
-        if (specNodes.length > 0) {
-          const impacts = propagateImpact(ceg, specNodes, 5, 0.5);
+        // Find start nodes: prefer nodes mentioned in the reason string,
+        // fall back to spec nodes only when routing to a spec phase (1a/1b/1c).
+        // Skip impact logging entirely when no relevant start nodes are found.
+        const allNodeIds = Object.keys(ceg.nodes);
+        const mentionedNodes = allNodeIds.filter(id => reason && reason.includes(id));
+        const startNodes = mentionedNodes.length > 0
+          ? mentionedNodes
+          : (targetPhase.startsWith('1')
+            ? allNodeIds.filter(id => {
+                const n = ceg.nodes[id];
+                return n.path && n.path.startsWith('specs/') &&
+                  (n.type === 'design' || n.type === 'requirement');
+              })
+            : []);
+        if (startNodes.length > 0) {
+          const impacts = propagateImpact(ceg, startNodes, 5, 0.5);
           if (impacts.size > 0) {
             appendHistory({
               event: 'coherence_impact',

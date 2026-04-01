@@ -7,12 +7,12 @@
     },
     "standard": {
       "description": "Full VCSDD workflow: rules, commands, agents, skills, and standard hooks.",
-      "modules": ["vcsdd-rules", "vcsdd-runtime", "vcsdd-schemas", "vcsdd-manifests", "vcsdd-docs", "vcsdd-contexts", "vcsdd-commands", "vcsdd-agents", "vcsdd-skills", "vcsdd-hooks"],
+      "modules": ["vcsdd-rules", "vcsdd-runtime", "vcsdd-schemas", "vcsdd-manifests", "vcsdd-docs", "vcsdd-contexts", "vcsdd-commands", "vcsdd-agents", "vcsdd-skills", "vcsdd-hooks", "vcsdd-coherence"],
       "hookProfile": "standard"
     },
     "strict": {
       "description": "Full VCSDD with gate enforcement and auto-commit. For high-assurance work.",
-      "modules": ["vcsdd-rules", "vcsdd-runtime", "vcsdd-schemas", "vcsdd-manifests", "vcsdd-docs", "vcsdd-contexts", "vcsdd-commands", "vcsdd-agents", "vcsdd-skills", "vcsdd-hooks"],
+      "modules": ["vcsdd-rules", "vcsdd-runtime", "vcsdd-schemas", "vcsdd-manifests", "vcsdd-docs", "vcsdd-contexts", "vcsdd-commands", "vcsdd-agents", "vcsdd-skills", "vcsdd-hooks", "vcsdd-coherence"],
       "hookProfile": "strict"
     }
   },
