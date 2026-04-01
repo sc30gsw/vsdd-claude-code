@@ -344,15 +344,17 @@ function classifyBand(confidence, evidenceCount, bands = DEFAULT_BANDS) {
  * @returns {Map<string, {depth, path, source, confidence}>}
  */
 function propagateImpact(ceg, startNodeIds, maxDepth = 10, minConfidence = 0) {
-  // visited: nodeId -> { depth, path, source, confidence }
+  // visited: nodeId -> { depth, path, source }
+  // Confidence is NOT tracked during BFS — it is looked up from edges at
+  // report time, matching the CoDD reference implementation (propagate.py).
   const visited = new Map();
 
   // Seed the queue with all start nodes at depth 0
-  // Queue entry: [nodeId, depth, nodePath, sourceNodeId, edgeConfidence]
-  const queue = startNodeIds.map(id => [id, 0, [id], id, 1.0]);
+  // Queue entry: [nodeId, depth, nodePath, sourceNodeId]
+  const queue = startNodeIds.map(id => [id, 0, [id], id]);
 
   while (queue.length > 0) {
-    const [current, depth, nodePath, source, edgeConfidence] = queue.shift(); // FIFO = BFS
+    const [current, depth, nodePath, source] = queue.shift(); // FIFO = BFS
 
     if (depth > maxDepth) continue;
 
@@ -360,7 +362,7 @@ function propagateImpact(ceg, startNodeIds, maxDepth = 10, minConfidence = 0) {
     // Only process if we found a strictly shorter path
     if (existing && existing.depth <= depth) continue;
 
-    visited.set(current, { depth, path: nodePath, source, confidence: edgeConfidence });
+    visited.set(current, { depth, path: nodePath, source });
 
     // Incoming edges: nodes whose targetId === current (depend ON current)
     for (const edge of ceg.edges) {
@@ -372,7 +374,7 @@ function propagateImpact(ceg, startNodeIds, maxDepth = 10, minConfidence = 0) {
       const existingDep = visited.get(dep);
       // Enqueue if: never seen, OR the new depth would be strictly shorter
       if (!existingDep || existingDep.depth > depth + 1) {
-        queue.push([dep, depth + 1, [...nodePath, dep], source, edge.confidence]);
+        queue.push([dep, depth + 1, [...nodePath, dep], source]);
       }
     }
   }
@@ -398,14 +400,25 @@ function generateImpactReport(impacts, ceg, bands = DEFAULT_BANDS) {
   for (const [nodeId, info] of impacts) {
     const node  = ceg.nodes[nodeId];
     const label = escapeMd(node?.name ?? node?.path ?? nodeId);
+
+    // CoDD approach (propagate.py:240-245): classify band from the impacted
+    // node's own outgoing edges — the edges it declared as depends_on.
+    // evidenceCount = number of active dependency edges from this node
+    // maxConf       = highest confidence among those edges
+    const nodeEdges    = ceg.edges.filter(e => e.sourceId === nodeId && e.isActive);
+    const evidenceCount = nodeEdges.length;
+    const maxConf       = nodeEdges.length > 0
+      ? Math.max(...nodeEdges.map(e => e.confidence))
+      : 0;
+
     const entry = {
       nodeId: escapeMd(nodeId),
       label,
       depth:      info.depth,
-      confidence: info.confidence,
+      confidence: maxConf,
       path:       info.path,
     };
-    const band = classifyBand(info.confidence, info.path.length, bands);
+    const band = classifyBand(maxConf, evidenceCount, bands);
     if (band === 'green') green.push(entry);
     else if (band === 'amber') amber.push(entry);
     else gray.push(entry);
@@ -621,7 +634,8 @@ function parseMinimalYaml(yamlText) {
     }
   }
 
-  for (const rawLine of lines) {
+  for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
+    const rawLine = lines[lineIdx];
     const trimmed = rawLine.trim();
     if (trimmed === '' || trimmed.startsWith('#')) continue;
 
@@ -663,14 +677,32 @@ function parseMinimalYaml(yamlText) {
 
       if (DANGEROUS_KEYS.has(key)) continue;
 
-      const targetObj = scope.arrayKey !== null ? scope.obj : scope.obj;
+      const targetObj = scope.obj;
 
       if (value === '') {
-        // Value is empty — the next lines will be either an array or a mapping.
-        // We defer the decision: create an empty array first (most common case
-        // in coherence frontmatter), and open a new scope.
-        safeSet(targetObj, key, []);
-        scopes.push({ obj: targetObj, arrayKey: key, indent });
+        // Value is empty — lookahead to determine if next content line is an
+        // array item ("- ...") or a key:value mapping.  This distinction is
+        // critical: `coherence:` is a nested map, while `depends_on:` is an
+        // array.  Without lookahead the parser would always create an array,
+        // causing `node_id`, `type`, etc. to be flattened to the root object.
+        let nextIsArray = false;
+        for (let j = lineIdx + 1; j < lines.length; j++) {
+          const next = lines[j].trim();
+          if (next === '' || next.startsWith('#')) continue;
+          nextIsArray = next.startsWith('- ');
+          break;
+        }
+
+        if (nextIsArray) {
+          // Array value: create [] and open array scope
+          safeSet(targetObj, key, []);
+          scopes.push({ obj: targetObj, arrayKey: key, indent });
+        } else {
+          // Nested mapping: create {} and open object scope
+          const nested = Object.create(null);
+          safeSet(targetObj, key, nested);
+          scopes.push({ obj: nested, arrayKey: null, indent });
+        }
       } else {
         safeSet(targetObj, key, parseScalar(value));
       }
