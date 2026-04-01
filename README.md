@@ -65,7 +65,8 @@ When requirements change mid-project, the Coherence Engine traces which downstre
 - **BFS forward impact propagation** -- traces all downstream nodes when a spec changes, so no affected document is silently missed
 - **DFS cycle detection** -- prevents circular dependencies in the spec graph before they corrupt propagation
 - **Reference integrity enforcement** -- dangling references and placeholder nodes are hard errors at the Phase 2a gate; a broken graph blocks entering the red phase until fixed
-- **Opt-in** -- activates only when `coherence.json` is present; completely a no-op when absent, preserving all existing VCSDD guarantees. When opted in, coherence errors (dangling refs, cycles, corrupted graph, runtime failures) block the Phase 2a gate
+- **Opt-in** -- activates when spec frontmatter declares `coherence:` metadata or an existing `coherence.json` is already being tracked. Pure VCSDD features without coherence metadata remain a no-op. When opted in, coherence errors (dangling refs, cycles, corrupted graph, runtime failures) block the Phase 2a gate
+- **Automatic refresh hook** -- in `standard` and `strict` hook profiles, spec edits automatically rebuild `coherence.json` before later commands rely on it
 
 **Language verification profiles**
 - **Rust** -- `proptest`, `cargo-fuzz`, `cargo-mutants`, with `kani` as the bundled Tier 2 verifier and `cbmc` as a Tier 3 fallback hint
@@ -549,7 +550,8 @@ These semantics apply when the hook bundle is installed. The `minimal` install p
 | Session persistence | SessionStart | ON | ON | ON |
 | State persist on exit | Stop | ON | ON | ON |
 | Pre-compact checkpoint | PreCompact | OFF | ON | ON |
-| Auto-commit on phase completion | PostToolUse (Bash) | OFF | OFF | ON |
+| Coherence refresh | PostToolUse (spec Write/Edit/MultiEdit) | OFF | ON | ON |
+| Auto-commit on phase completion | PostToolUse (Write/Edit/MultiEdit) | OFF | OFF | ON |
 
 Hook profile activation is orthogonal to feature mode. Use `VCSDD_HOOK_PROFILE=minimal` when you want session lifecycle hooks without gate enforcement.
 
