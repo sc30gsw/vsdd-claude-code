@@ -110,7 +110,7 @@ const GATE_PREREQUISITES = {
     // Coherence validation is opt-in (only when coherence.json exists).
     // Rebuilds from frontmatter first to ensure the CEG is fresh (not stale).
     // If the rebuilt CEG has cycles, we block phase 2a.
-    // If the coherence runtime fails unexpectedly, we record history but do not block (advisory).
+    // If the coherence runtime fails unexpectedly, we record history and block phase 2a.
     const coherencePath = path.join(featurePath, 'coherence.json');
     if (fs.existsSync(coherencePath)) {
       try {
