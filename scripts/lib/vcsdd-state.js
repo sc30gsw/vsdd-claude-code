@@ -1387,7 +1387,7 @@ function routeFeedback(featureName, targetPhase, reason) {
   const coherencePath = path.join(featurePath, 'coherence.json');
   if (fs.existsSync(coherencePath)) {
     try {
-      const { loadCoherence, propagateImpact } = require('./vcsdd-coherence');
+      const { loadCoherence, propagateImpact, impactNodeIncomingStats } = require('./vcsdd-coherence');
       const ceg = loadCoherence(featureName);
       if (ceg) {
         // Find spec nodes affected by this routing — heuristic: nodes whose
@@ -1403,10 +1403,15 @@ function routeFeedback(featureName, targetPhase, reason) {
               event: 'coherence_impact',
               featureName,
               routedToPhase: targetPhase,
-              impactedNodes: [...impacts.entries()].map(([id, info]) => ({
-                nodeId: id,
-                depth: info.depth,
-              })),
+              impactedNodes: [...impacts.entries()].map(([id, info]) => {
+                const { evidenceCount, maxConfidence } = impactNodeIncomingStats(ceg, id);
+                return {
+                  nodeId: id,
+                  depth: info.depth,
+                  confidence: maxConfidence,
+                  evidenceCount,
+                };
+              }),
             });
           }
         }

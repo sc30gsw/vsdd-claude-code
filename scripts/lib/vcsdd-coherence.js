@@ -387,6 +387,20 @@ function propagateImpact(ceg, startNodeIds, maxDepth = 10, minConfidence = 0) {
 }
 
 /**
+ * Active incoming edges to a node (same inputs as band classification in generateImpactReport).
+ *
+ * @returns {{ evidenceCount: number, maxConfidence: number }}
+ */
+function impactNodeIncomingStats(ceg, nodeId) {
+  const nodeEdges     = ceg.edges.filter(e => e.targetId === nodeId && e.isActive);
+  const evidenceCount = nodeEdges.length;
+  const maxConfidence = evidenceCount > 0
+    ? Math.max(...nodeEdges.map(e => e.confidence))
+    : 0;
+  return { evidenceCount, maxConfidence };
+}
+
+/**
  * Generate a Markdown impact report.
  * Node labels are escaped to prevent Markdown injection.
  */
@@ -406,13 +420,7 @@ function generateImpactReport(impacts, ceg, bands = DEFAULT_BANDS) {
     // CoDD approach (propagate.py:240-245): classify band from the incoming
     // edges TO the impacted node — edges from nodes that depend ON this node.
     // This mirrors ceg.get_incoming_edges(target_id) in the upstream implementation.
-    // evidenceCount = number of active incoming edges to this node
-    // maxConf       = highest confidence among those edges
-    const nodeEdges    = ceg.edges.filter(e => e.targetId === nodeId && e.isActive);
-    const evidenceCount = nodeEdges.length;
-    const maxConf       = nodeEdges.length > 0
-      ? Math.max(...nodeEdges.map(e => e.confidence))
-      : 0;
+    const { evidenceCount, maxConfidence: maxConf } = impactNodeIncomingStats(ceg, nodeId);
 
     const entry = {
       nodeId: escapeMd(nodeId),
@@ -940,6 +948,7 @@ module.exports = {
 
   // Impact propagation
   propagateImpact,
+  impactNodeIncomingStats,
   generateImpactReport,
 
   // Cycle detection & validation
