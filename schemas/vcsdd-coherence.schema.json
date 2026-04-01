@@ -45,6 +45,10 @@
           "type": "string",
           "description": "Semantic type of the node, e.g. 'design', 'requirement', 'file'."
         },
+        "placeholder": {
+          "type": "boolean",
+          "description": "True when a node was auto-created (e.g. by addEdge) without corresponding scanned frontmatter; false when created from scanned frontmatter."
+        },
         "path": {
           "type": "string",
           "description": "Relative file path within the feature directory."

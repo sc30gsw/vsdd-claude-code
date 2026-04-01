@@ -74,10 +74,12 @@ function section(name) {
 
 // ── Helper: build minimal CEG ─────────────────────────────────────────────────
 
+let nextEdgeId = 1;
+
 function makeCeg(nodes, edges) {
   const nodeMap = {};
   for (const n of nodes) nodeMap[n.id] = n;
-  return { version: '1', nodes: nodeMap, edges };
+  return { version: 1, nodes: nodeMap, edges };
 }
 
 function makeEdge(sourceId, targetId, confidence, evidenceCount = 1) {
@@ -86,7 +88,7 @@ function makeEdge(sourceId, targetId, confidence, evidenceCount = 1) {
     evidence.push({ sourceType: 'frontmatter', method: 'frontmatter', score: 0.9, isNegative: false });
   }
   return {
-    id:         `${sourceId}--${targetId}`,
+    id:         nextEdgeId++,
     sourceId,
     targetId,
     relation:   'depends_on',
@@ -250,7 +252,7 @@ section('impactNodeIncomingStats — incoming active edges to node');
 
 {
   const sCeg = {
-    version: '1',
+    version: 1,
     nodes: { x: { type: 'design' }, y: { type: 'design' } },
     edges: [
       { id: 1, sourceId: 'x', targetId: 'y', relation: 'depends_on', semantic: 'governance',
@@ -645,7 +647,7 @@ section('removeAutoEvidence — removes auto evidence, keeps human');
 function makeCegWithEvidence(nodes, edges) {
   const nodeMap = {};
   for (const n of nodes) nodeMap[n.id] = n;
-  return { version: '1', nodes: nodeMap, edges };
+  return { version: 1, nodes: nodeMap, edges };
 }
 
 const autoHumanCeg = makeCegWithEvidence(
@@ -767,7 +769,7 @@ section('data_dependencies — intermediate db_column node created (Bug 2 fix)')
 // so BFS via incoming edges from db_column surfaces all dependents.
 // Previously, VCSDD created a direct edge from declaring doc to affected targets.
 {
-  const depCeg = { version: '1', nodes: {}, edges: [] };
+  const depCeg = { version: 1, nodes: {}, edges: [] };
   const docNodeId = 'design:user-service';
   upsertNode(depCeg, docNodeId, { type: 'design', name: 'User Service' });
 
@@ -942,7 +944,7 @@ section('rebuildFromFrontmatter node_id validation');
 section('addEdge semantic deduplication');
 
 {
-  const ceg = { version: '1', nodes: {}, edges: [] };
+  const ceg = { version: 1, nodes: {}, edges: [] };
   upsertNode(ceg, 'req:a', { type: 'requirement' });
   upsertNode(ceg, 'design:b', { type: 'design' });
 
@@ -1035,7 +1037,7 @@ section('addEdge semantic deduplication');
 {
   section('validateCoherence — placeholder node warnings (Bug 2)');
 
-  const ceg = { version: '1', nodes: {}, edges: [] };
+  const ceg = { version: 1, nodes: {}, edges: [] };
   // Scanned node (real document)
   upsertNode(ceg, 'req:real', { type: 'requirement', placeholder: false });
   // addEdge auto-creates 'req:ghost' as placeholder
@@ -1057,7 +1059,7 @@ section('addEdge semantic deduplication');
 
   section('validateCoherence — no placeholder warnings when all nodes are real');
 
-  const ceg2 = { version: '1', nodes: {}, edges: [] };
+  const ceg2 = { version: 1, nodes: {}, edges: [] };
   upsertNode(ceg2, 'req:a', { type: 'requirement', placeholder: false });
   upsertNode(ceg2, 'design:b', { type: 'design', placeholder: false });
   addEdge(ceg2, 'req:a', 'design:b', 'depends_on', 'governance', [
