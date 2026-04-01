@@ -401,11 +401,12 @@ function generateImpactReport(impacts, ceg, bands = DEFAULT_BANDS) {
     const node  = ceg.nodes[nodeId];
     const label = escapeMd(node?.name ?? node?.path ?? nodeId);
 
-    // CoDD approach (propagate.py:240-245): classify band from the impacted
-    // node's own outgoing edges — the edges it declared as depends_on.
-    // evidenceCount = number of active dependency edges from this node
+    // CoDD approach (propagate.py:240-245): classify band from the incoming
+    // edges TO the impacted node — edges from nodes that depend ON this node.
+    // This mirrors ceg.get_incoming_edges(target_id) in the upstream implementation.
+    // evidenceCount = number of active incoming edges to this node
     // maxConf       = highest confidence among those edges
-    const nodeEdges    = ceg.edges.filter(e => e.sourceId === nodeId && e.isActive);
+    const nodeEdges    = ceg.edges.filter(e => e.targetId === nodeId && e.isActive);
     const evidenceCount = nodeEdges.length;
     const maxConf       = nodeEdges.length > 0
       ? Math.max(...nodeEdges.map(e => e.confidence))
@@ -685,23 +686,38 @@ function parseMinimalYaml(yamlText) {
         // critical: `coherence:` is a nested map, while `depends_on:` is an
         // array.  Without lookahead the parser would always create an array,
         // causing `node_id`, `type`, etc. to be flattened to the root object.
+        //
+        // Crucially, the next line must also be indented DEEPER than the
+        // current key — if it is a sibling or parent, this key has no
+        // children and should default to an empty array (most array keys
+        // like `depends_on:` with no items are written this way).
         let nextIsArray = false;
+        let nextIsChild = false;
         for (let j = lineIdx + 1; j < lines.length; j++) {
           const next = lines[j].trim();
           if (next === '' || next.startsWith('#')) continue;
-          nextIsArray = next.startsWith('- ');
+          const nextIndent = lines[j].length - lines[j].trimStart().length;
+          nextIsChild = nextIndent > indent;
+          if (nextIsChild) {
+            nextIsArray = next.startsWith('- ');
+          }
           break;
         }
 
-        if (nextIsArray) {
+        if (nextIsChild && nextIsArray) {
           // Array value: create [] and open array scope
           safeSet(targetObj, key, []);
           scopes.push({ obj: targetObj, arrayKey: key, indent });
-        } else {
+        } else if (nextIsChild) {
           // Nested mapping: create {} and open object scope
           const nested = Object.create(null);
           safeSet(targetObj, key, nested);
           scopes.push({ obj: nested, arrayKey: null, indent });
+        } else {
+          // No children (sibling or dedent follows) — emit empty array.
+          // Known list keys (`depends_on`, `depended_by`, `conventions`,
+          // `data_dependencies`, `source_files`) are arrays when empty.
+          safeSet(targetObj, key, []);
         }
       } else {
         safeSet(targetObj, key, parseScalar(value));
