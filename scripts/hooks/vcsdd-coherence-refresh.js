@@ -20,10 +20,20 @@ function resolveEditedPath(payload) {
   return toolInput.file_path || toolInput.filePath || '';
 }
 
+function canonicalPath(filePath) {
+  if (!filePath) return '';
+  const resolved = path.resolve(process.cwd(), filePath);
+  try {
+    return fs.realpathSync.native(resolved);
+  } catch (_err) {
+    return resolved;
+  }
+}
+
 function isMarkdownSpecForFeature(filePath, featurePath) {
   if (!filePath) return false;
-  const resolved = path.resolve(process.cwd(), filePath);
-  const specsRoot = path.join(featurePath, 'specs');
+  const resolved = canonicalPath(filePath);
+  const specsRoot = canonicalPath(path.join(featurePath, 'specs'));
   const relative = path.relative(specsRoot, resolved);
 
   return (
