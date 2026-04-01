@@ -107,6 +107,11 @@ maintaining design coherence when requirements change:
 Coherence is **optional and advisory** — it activates automatically when
 `coherence.json` is present, and is a no-op when absent.
 
+When `coherence.json` exists, **structural validation** (including cycle detection)
+runs at the Phase **2a** gate: a failing validation **blocks** entering 2a until the
+graph is fixed. Unexpected errors while loading or running the coherence module are
+**logged to history only** and do not block the gate.
+
 New commands:
 - `/vcsdd-coherence-scan` — rebuild CEG from spec frontmatter
 - `/vcsdd-coherence-impact` — run change-impact analysis
