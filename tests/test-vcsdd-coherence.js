@@ -26,6 +26,8 @@ const {
   calculateConfidence,
   propagateImpact,
   impactNodeIncomingStats,
+  getConventionEdges,
+  collectConventionAlerts,
   generateImpactReport,
   detectCycles,
   loadCoherenceWithStatus,
@@ -374,6 +376,40 @@ assert(
   'source_files outgoing edges do NOT push band to Green'
 );
 
+section('generateImpactReport — convention alerts are rendered before impact bands');
+
+const reportWithConventions = generateImpactReport(
+  singleEvImpacts,
+  singleEvCeg,
+  DEFAULT_BANDS,
+  {
+    conventionAlerts: [
+      {
+        sourceNode: 'design:db',
+        targetId: 'db:rls',
+        targetName: 'RLS Guardrail',
+        targetType: 'db_object',
+        reason: 'Tenant isolation review',
+        confidence: 0.8,
+        triggeredByNodeId: 'design:db',
+      },
+    ],
+  },
+);
+
+assert(
+  reportWithConventions.includes('Convention Alerts'),
+  'report includes a dedicated convention alert section',
+);
+assert(
+  reportWithConventions.includes('RLS Guardrail'),
+  'report includes convention alert target label',
+);
+assert(
+  reportWithConventions.includes('Tenant isolation review'),
+  'report includes convention alert reason',
+);
+
 // ══════════════════════════════════════════════════════════════════════════════
 // 5. parseMinimalYaml — empty array key followed by sibling key
 // ══════════════════════════════════════════════════════════════════════════════
@@ -492,6 +528,103 @@ section('rebuildFromFrontmatter — conventions targets block list creates must_
     process.chdir(originalCwd);
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
+}
+
+section('getConventionEdges / collectConventionAlerts — direct must_review edges are surfaced');
+
+{
+  const directConventionCeg = makeCeg(
+    [
+      { id: 'design:db', type: 'design', name: 'Database Design' },
+      { id: 'db:rls_policies', type: 'db_object', name: 'RLS Policies' },
+      { id: 'db_table:audit_logs', type: 'db_table', name: 'Audit Logs' },
+    ],
+    [
+      {
+        id: 1,
+        sourceId: 'design:db',
+        targetId: 'db:rls_policies',
+        relation: 'must_review',
+        semantic: 'governance',
+        confidence: 0.8,
+        isActive: true,
+        evidence: [
+          { sourceType: 'frontmatter', method: 'convention', score: 0.8, detail: 'RLS required', isNegative: false },
+        ],
+      },
+      {
+        id: 2,
+        sourceId: 'design:db',
+        targetId: 'db_table:audit_logs',
+        relation: 'must_review',
+        semantic: 'governance',
+        confidence: 0.8,
+        isActive: true,
+        evidence: [
+          { sourceType: 'frontmatter', method: 'convention', score: 0.8, detail: 'Audit logs must be reviewed', isNegative: false },
+        ],
+      },
+    ],
+  );
+
+  const directEdges = getConventionEdges(directConventionCeg, 'design:db');
+  const directAlerts = collectConventionAlerts(directConventionCeg, ['design:db']);
+
+  assertEqual(directEdges.length, 2, 'getConventionEdges returns both direct must_review edges');
+  assertEqual(directAlerts.length, 2, 'collectConventionAlerts surfaces both direct must_review alerts');
+  assert(
+    directAlerts.some(alert => alert.targetId === 'db:rls_policies' && alert.reason === 'RLS required'),
+    'direct convention alert keeps target id and reason',
+  );
+  assert(
+    directAlerts.some(alert => alert.targetId === 'db_table:audit_logs' && alert.triggeredByNodeId === 'design:db'),
+    'direct convention alert records triggering node',
+  );
+}
+
+section('collectConventionAlerts — parent must_review edges are surfaced for changed child nodes');
+
+{
+  const parentConventionCeg = makeCeg(
+    [
+      { id: 'req:tenant-safety', type: 'requirement', name: 'Tenant Safety' },
+      { id: 'design:db', type: 'design', name: 'Database Design' },
+      { id: 'db:rls', type: 'db_object', name: 'RLS Guardrail' },
+    ],
+    [
+      {
+        id: 1,
+        sourceId: 'req:tenant-safety',
+        targetId: 'design:db',
+        relation: 'depends_on',
+        semantic: 'governance',
+        confidence: 0.9,
+        isActive: true,
+        evidence: [
+          { sourceType: 'frontmatter', method: 'frontmatter', score: 0.9, isNegative: false },
+        ],
+      },
+      {
+        id: 2,
+        sourceId: 'req:tenant-safety',
+        targetId: 'db:rls',
+        relation: 'must_review',
+        semantic: 'governance',
+        confidence: 0.8,
+        isActive: true,
+        evidence: [
+          { sourceType: 'frontmatter', method: 'convention', score: 0.8, detail: 'Tenant isolation review', isNegative: false },
+        ],
+      },
+    ],
+  );
+
+  const parentAlerts = collectConventionAlerts(parentConventionCeg, ['design:db']);
+
+  assertEqual(parentAlerts.length, 1, 'parent convention is surfaced for the changed child node');
+  assertEqual(parentAlerts[0].sourceNode, 'req:tenant-safety', 'parent convention keeps parent source node');
+  assertEqual(parentAlerts[0].targetId, 'db:rls', 'parent convention keeps must_review target');
+  assertEqual(parentAlerts[0].triggeredByNodeId, 'design:db', 'parent convention records changed child node');
 }
 
 section('rebuildFromFrontmatter — module targets are concrete nodes, not placeholder errors');

@@ -46,6 +46,15 @@ function writeFile(absRoot, rel, content = 'ok\n') {
   fs.writeFileSync(p, content, 'utf8');
 }
 
+function readHistoryEvents(absRoot) {
+  const historyPath = path.join(absRoot, '.vcsdd', 'history.jsonl');
+  if (!fs.existsSync(historyPath)) return [];
+  return fs.readFileSync(historyPath, 'utf8')
+    .split('\n')
+    .filter(Boolean)
+    .map(line => JSON.parse(line));
+}
+
 function writeFormalHardeningArtifacts(absRoot, featureName, overrides = {}) {
   writeFile(
     absRoot,
@@ -887,6 +896,121 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
   assert(
     state.phaseHistory.some((entry) => entry.from === '3' && entry.to === '4'),
     'feedback routing should explicitly transition through phase 4'
+  );
+}
+
+// ── Feedback routing: coherence history includes must_review convention alerts ──
+{
+  const root = tmpDir();
+  process.chdir(root);
+  const feat = 'feedback-coherence-conventions-feature';
+  initFeature(feat, 'lean');
+
+  transitionPhase(feat, '1a');
+  writeFile(
+    root,
+    `.vcsdd/features/${feat}/specs/behavioral-spec.md`,
+    [
+      '---',
+      'coherence:',
+      '  node_id: "req:tenant-safety"',
+      '  type: requirement',
+      '  depends_on:',
+      '    - id: "design:db"',
+      '  conventions:',
+      '    - targets:',
+      '        - "module:tenant-guard"',
+      '      reason: "Tenant isolation review"',
+      '---',
+      '# Behavioral',
+      '',
+    ].join('\n')
+  );
+  transitionPhase(feat, '1b');
+  writeFile(
+    root,
+    `.vcsdd/features/${feat}/specs/verification-architecture.md`,
+    [
+      '---',
+      'coherence:',
+      '  node_id: "design:db"',
+      '  type: design',
+      '---',
+      '# Verification',
+      '',
+    ].join('\n')
+  );
+  transitionPhase(feat, '1c');
+  recordGate(feat, '1c', 'PASS', 'adversary');
+  transitionPhase(feat, '2a');
+  writeFile(
+    root,
+    `.vcsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
+    'new-feature-tests: FAIL\nregression-baseline: PASS\n'
+  );
+  transitionPhase(feat, '2b');
+  writeFile(
+    root,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    'target-feature-tests: PASS\nregression-baseline: PASS\n'
+  );
+  transitionPhase(feat, '2c');
+  writeFile(
+    root,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    'target-feature-tests: PASS\nregression-baseline: PASS\nafter-refactor: PASS\n'
+  );
+  transitionPhase(feat, '3');
+  writeFailingReviewVerdict(
+    root,
+    feat,
+    'sprint-1',
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`
+  );
+  recordGate(feat, '3', 'FAIL', 'adversary');
+  writeFile(
+    root,
+    `.vcsdd/features/${feat}/reviews/sprint-1/output/findings/FIND-001.json`,
+    JSON.stringify({
+      findingId: 'FIND-001',
+      dimension: 'verification_readiness',
+      category: 'verification_tool_mismatch',
+      severity: 'high',
+      description: 'Database design drift requires a spec-side fix before implementation can proceed.',
+      evidence: {
+        filePath: `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+        lineRange: '1-3',
+      },
+      routeToPhase: '1b',
+    }, null, 2) + '\n'
+  );
+
+  routeFeedback(feat, '1b', 'Revisit design:db after adversary finding');
+
+  const historyEvents = readHistoryEvents(root);
+  const coherenceEvents = historyEvents.filter((event) => event.event === 'coherence_impact');
+  assert(coherenceEvents.length >= 1, 'feedback routing should append a coherence_impact history event');
+
+  const coherenceEvent = coherenceEvents[coherenceEvents.length - 1];
+  assert(
+    Array.isArray(coherenceEvent.startNodes) && coherenceEvent.startNodes.includes('design:db'),
+    'coherence_impact history event should record the inferred start node',
+  );
+  assert(
+    Array.isArray(coherenceEvent.conventionAlerts) && coherenceEvent.conventionAlerts.length === 1,
+    'coherence_impact history event should include one convention alert',
+  );
+  assert(
+    coherenceEvent.conventionAlerts[0].sourceNode === 'req:tenant-safety',
+    'convention alert should retain the parent source node',
+  );
+  assert(
+    coherenceEvent.conventionAlerts[0].targetId === 'module:tenant-guard',
+    'convention alert should retain the must_review target',
+  );
+  assert(
+    coherenceEvent.conventionAlerts[0].reason === 'Tenant isolation review',
+    'convention alert should retain the reason from frontmatter',
   );
 }
 

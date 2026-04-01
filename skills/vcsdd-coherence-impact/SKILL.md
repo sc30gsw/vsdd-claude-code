@@ -4,7 +4,9 @@
 
 Given a set of changed or affected spec nodes, perform BFS forward-impact
 propagation through the CEG to identify all downstream documents that may
-need updating.  Results are classified into Green / Amber / Gray bands.
+need updating. Also surface any CoDD `conventions:` / `must_review` alerts
+attached to the changed node or its immediate parents. Results are classified
+into Green / Amber / Gray bands.
 
 ## When to use
 
@@ -26,12 +28,18 @@ need updating.  Results are classified into Green / Amber / Gray bands.
 2. Load the CEG and run impact analysis:
 
 ```js
-const { loadCoherence, propagateImpact, generateImpactReport } = require('./scripts/lib/vcsdd-coherence');
+const {
+  loadCoherence,
+  propagateImpact,
+  collectConventionAlerts,
+  generateImpactReport,
+} = require('./scripts/lib/vcsdd-coherence');
 const featureName = /* active feature */;
 const ceg = loadCoherence(featureName);
 if (!ceg) { /* coherence not active, skip */ }
 const impacts = propagateImpact(ceg, [changedNodeId], 10, 0);
-const report = generateImpactReport(impacts, ceg);
+const conventionAlerts = collectConventionAlerts(ceg, [changedNodeId]);
+const report = generateImpactReport(impacts, ceg, undefined, { conventionAlerts });
 ```
 
 3. Present the Markdown report to the user.

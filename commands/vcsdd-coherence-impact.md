@@ -1,7 +1,8 @@
 # /vcsdd-coherence-impact
 
 Run BFS forward-impact analysis from changed spec nodes through the CEG.
-Classifies downstream impacts into Green / Amber / Gray bands.
+Also surfaces CoDD `must_review` convention alerts alongside the usual
+Green / Amber / Gray downstream impact bands.
 
 **Usage:** `/vcsdd-coherence-impact [node_id]`
 

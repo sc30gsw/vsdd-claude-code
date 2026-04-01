@@ -1417,7 +1417,12 @@ function routeFeedback(featureName, targetPhase, reason) {
   const coherencePath = path.join(featurePath, 'coherence.json');
   if (fs.existsSync(coherencePath)) {
     try {
-      const { loadCoherence, propagateImpact, impactNodeIncomingStats } = require('./vcsdd-coherence');
+      const {
+        loadCoherence,
+        propagateImpact,
+        impactNodeIncomingStats,
+        collectConventionAlerts,
+      } = require('./vcsdd-coherence');
       const ceg = loadCoherence(featureName);
       if (ceg) {
         // Find start nodes: prefer nodes mentioned in the reason string,
@@ -1436,11 +1441,13 @@ function routeFeedback(featureName, targetPhase, reason) {
             : []);
         if (startNodes.length > 0) {
           const impacts = propagateImpact(ceg, startNodes, 5, 0.5);
-          if (impacts.size > 0) {
+          const conventionAlerts = collectConventionAlerts(ceg, startNodes);
+          if (impacts.size > 0 || conventionAlerts.length > 0) {
             appendHistory({
               event: 'coherence_impact',
               featureName,
               routedToPhase: targetPhase,
+              startNodes,
               impactedNodes: [...impacts.entries()].map(([id, info]) => {
                 const { evidenceCount, maxConfidence } = impactNodeIncomingStats(ceg, id);
                 return {
@@ -1450,6 +1457,15 @@ function routeFeedback(featureName, targetPhase, reason) {
                   evidenceCount,
                 };
               }),
+              conventionAlerts: conventionAlerts.map((alert) => ({
+                sourceNode: alert.sourceNode,
+                targetId: alert.targetId,
+                targetName: alert.targetName,
+                targetType: alert.targetType,
+                reason: alert.reason,
+                confidence: alert.confidence,
+                triggeredByNodeId: alert.triggeredByNodeId,
+              })),
             });
           }
         }

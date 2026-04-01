@@ -483,14 +483,99 @@ function impactNodeIncomingStats(ceg, nodeId) {
   return { evidenceCount, maxConfidence };
 }
 
+function getConventionEdges(ceg, nodeId, minConfidence = 0) {
+  const targetLookup = ceg.nodes ?? {};
+
+  return ceg.edges
+    .filter(edge =>
+      edge.sourceId === nodeId &&
+      edge.relation === 'must_review' &&
+      edge.isActive &&
+      edge.confidence >= minConfidence,
+    )
+    .sort((a, b) => b.confidence - a.confidence)
+    .map(edge => ({
+      ...edge,
+      targetName: targetLookup[edge.targetId]?.name,
+      targetType: targetLookup[edge.targetId]?.type,
+    }));
+}
+
+function firstEvidenceDetail(edge) {
+  for (const evidence of (edge.evidence ?? [])) {
+    if (typeof evidence.detail === 'string' && evidence.detail.trim() !== '') {
+      return evidence.detail;
+    }
+  }
+  return '';
+}
+
+/**
+ * Collect CoDD convention alerts for changed nodes.
+ *
+ * Mirrors upstream CoDD semantics:
+ *   1. direct `must_review` edges from each changed node
+ *   2. `must_review` edges from one-hop parents that depend on the changed node
+ *
+ * @returns {{
+ *   sourceNode: string,
+ *   targetId: string,
+ *   targetName?: string,
+ *   targetType?: string,
+ *   reason: string,
+ *   confidence: number,
+ *   triggeredByNodeId: string,
+ * }[]}
+ */
+function collectConventionAlerts(ceg, startNodeIds, minConfidence = 0) {
+  const alerts = [];
+  const checked = new Set();
+
+  function pushAlert(sourceNode, edge, triggeredByNodeId) {
+    const key = `${sourceNode}\u0000${edge.targetId}`;
+    if (checked.has(key)) return;
+    checked.add(key);
+
+    alerts.push({
+      sourceNode,
+      targetId: edge.targetId,
+      targetName: edge.targetName,
+      targetType: edge.targetType,
+      reason: firstEvidenceDetail(edge),
+      confidence: edge.confidence,
+      triggeredByNodeId,
+    });
+  }
+
+  for (const nodeId of startNodeIds) {
+    for (const edge of getConventionEdges(ceg, nodeId, minConfidence)) {
+      pushAlert(nodeId, edge, nodeId);
+    }
+
+    const incomingEdges = ceg.edges.filter(edge =>
+      edge.targetId === nodeId &&
+      edge.isActive &&
+      edge.confidence >= minConfidence,
+    );
+    for (const incomingEdge of incomingEdges) {
+      const parentId = incomingEdge.sourceId;
+      for (const edge of getConventionEdges(ceg, parentId, minConfidence)) {
+        pushAlert(parentId, edge, nodeId);
+      }
+    }
+  }
+
+  return alerts;
+}
+
 /**
  * Generate a Markdown impact report.
  * Node labels are escaped to prevent Markdown injection.
  */
-function generateImpactReport(impacts, ceg, bands = DEFAULT_BANDS) {
-  if (impacts.size === 0) {
-    return '## Coherence Impact Report\n\nNo impacted nodes found.\n';
-  }
+function generateImpactReport(impacts, ceg, bands = DEFAULT_BANDS, options = {}) {
+  const conventionAlerts = Array.isArray(options.conventionAlerts)
+    ? options.conventionAlerts
+    : [];
 
   const green = [];
   const amber  = [];
@@ -522,6 +607,30 @@ function generateImpactReport(impacts, ceg, bands = DEFAULT_BANDS) {
     `- **${e.label}** (\`${e.nodeId}\`) — depth ${e.depth}, confidence ${(e.confidence * 100).toFixed(0)}%`;
 
   const lines = ['## Coherence Impact Report\n'];
+
+  if (conventionAlerts.length > 0) {
+    lines.push('### Convention Alerts\n');
+    for (const alert of conventionAlerts) {
+      const targetLabel = escapeMd(alert.targetName ?? alert.targetId);
+      const sourceNode = escapeMd(alert.sourceNode);
+      const targetNode = escapeMd(alert.targetId);
+      const triggeredBy = escapeMd(alert.triggeredByNodeId ?? alert.sourceNode);
+      const reason = alert.reason
+        ? ` Reason: ${escapeMd(alert.reason)}.`
+        : '';
+      lines.push(
+        `- **${targetLabel}** (\`${targetNode}\`) — review required because \`${sourceNode}\` was triggered via \`${triggeredBy}\`. Confidence ${(alert.confidence * 100).toFixed(0)}%.${reason}`,
+      );
+    }
+    lines.push('');
+  }
+
+  if (impacts.size === 0) {
+    if (conventionAlerts.length === 0) {
+      lines.push('No impacted nodes found.\n');
+    }
+    return lines.join('\n');
+  }
 
   if (green.length) {
     lines.push('### 🟢 Green — Auto-propagate safe\n');
@@ -1235,6 +1344,8 @@ module.exports = {
   // Impact propagation
   propagateImpact,
   impactNodeIncomingStats,
+  getConventionEdges,
+  collectConventionAlerts,
   generateImpactReport,
 
   // Cycle detection & validation
