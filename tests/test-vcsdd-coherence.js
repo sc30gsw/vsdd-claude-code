@@ -18,6 +18,7 @@ const {
   classifyBand,
   calculateConfidence,
   propagateImpact,
+  impactNodeIncomingStats,
   generateImpactReport,
   detectCycles,
   validateCoherence,
@@ -234,6 +235,30 @@ const deepImpacts = propagateImpact(chainCeg, ['d'], 2);
 assert(deepImpacts.has('c'), 'c (depth 1) included within maxDepth=2');
 assert(deepImpacts.has('b'), 'b (depth 2) included within maxDepth=2');
 assert(!deepImpacts.has('a'), 'a (depth 3) excluded by maxDepth=2');
+
+section('impactNodeIncomingStats — incoming active edges to node');
+
+{
+  const sCeg = {
+    version: '1',
+    nodes: { x: { type: 'design' }, y: { type: 'design' } },
+    edges: [
+      { id: 1, sourceId: 'x', targetId: 'y', relation: 'depends_on', semantic: 'governance',
+        confidence: 0.85, isActive: true, evidence: [] },
+      { id: 2, sourceId: 'x', targetId: 'y', relation: 'depends_on', semantic: 'governance',
+        confidence: 0.95, isActive: true, evidence: [] },
+      { id: 3, sourceId: 'z', targetId: 'y', relation: 'depends_on', semantic: 'governance',
+        confidence: 0.5, isActive: false, evidence: [] },
+    ],
+  };
+  const st = impactNodeIncomingStats(sCeg, 'y');
+  assertEqual(st.evidenceCount, 2, 'only active incoming edges count');
+  assertEqual(st.maxConfidence, 0.95, 'max confidence among active incoming');
+  const st2 = impactNodeIncomingStats(sCeg, 'x');
+  assertEqual(st2.evidenceCount, 0, 'no incoming to x');
+  assertEqual(st2.maxConfidence, 0, 'maxConfidence 0 when no incoming');
+}
+
 
 // ══════════════════════════════════════════════════════════════════════════════
 // 4. generateImpactReport — Bug 3 fix: evidence-based band classification
@@ -650,28 +675,32 @@ assertEqual(sanitizeRelativePath(42),                   null,          'non-stri
 
 section('data_dependencies — intermediate db_column node created (Bug 2 fix)');
 
-// Mirrors CoDD scanner.py:220-229: data_dependencies must create an intermediate
-// db_column:{table}.{column} node and route edges FROM that node to affected targets.
-// Previously, VCSDD created direct edges from the declaring document to affected targets.
+// Creates db_column:{table}.{column} as intermediate node with edges aligned to
+// VCSDD's semantics: edge(A, B) = "A depends_on B".
 //
-// Topology: docNode --behavioral_dependency--> db_column:users.email
-//                       db_column:users.email --behavioral_dependency--> design:api-design
+// Correct topology (Bug 2 fix):
+//   design:user-service --behavioral_dependency--> db_column:users.email
+//   design:api-design   --behavioral_dependency--> db_column:users.email
+//
+// Both declaring doc AND affected items point TO the db_column node,
+// so BFS via incoming edges from db_column surfaces all dependents.
+// Previously, VCSDD created a direct edge from declaring doc to affected targets.
 {
   const depCeg = { version: '1', nodes: {}, edges: [] };
-  // Simulate what rebuildFromFrontmatter does for a data_dependency entry
   const docNodeId = 'design:user-service';
   upsertNode(depCeg, docNodeId, { type: 'design', name: 'User Service' });
 
-  // Manually replicate the fixed data_dependencies logic
   const dep   = { table: 'users', column: 'email', affects: ['design:api-design'], condition: '' };
   const depId = `db_column:${dep.table}.${dep.column}`;
   upsertNode(depCeg, depId, { type: 'db_column', name: `${dep.table}.${dep.column}` });
+  // edge(docNodeId, depId): declaring doc depends_on db_column
   addEdge(depCeg, docNodeId, depId, 'behavioral_dependency', 'behavioral', [{
     sourceType: 'frontmatter', method: 'data_dependency', score: 0.75, isNegative: false,
   }]);
   for (const targetId of dep.affects) {
     upsertNode(depCeg, targetId, { type: 'design', name: targetId });
-    addEdge(depCeg, depId, targetId, 'behavioral_dependency', 'behavioral', [{
+    // edge(targetId, depId): affected item depends_on db_column (Bug 2 fix)
+    addEdge(depCeg, targetId, depId, 'behavioral_dependency', 'behavioral', [{
       sourceType: 'frontmatter', method: 'data_dependency', score: 0.75, isNegative: false,
     }]);
   }
@@ -680,15 +709,17 @@ section('data_dependencies — intermediate db_column node created (Bug 2 fix)')
     'intermediate db_column:users.email node exists (Bug 2 fix)');
   assert(depCeg.edges.some(e => e.sourceId === docNodeId && e.targetId === 'db_column:users.email'),
     'declaring doc → db_column edge exists');
-  assert(depCeg.edges.some(e => e.sourceId === 'db_column:users.email' && e.targetId === 'design:api-design'),
-    'db_column → affected target edge exists');
+  assert(depCeg.edges.some(e => e.sourceId === 'design:api-design' && e.targetId === 'db_column:users.email'),
+    'affected item → db_column edge exists (correct direction for BFS)');
   assert(!depCeg.edges.some(e => e.sourceId === docNodeId && e.targetId === 'design:api-design'),
     'no direct declaring doc → affected target edge (topology fix)');
 
-  // Impact propagation: when db_column:users.email changes, api-design is impacted
+  // BFS from db_column (following incoming edges) finds all dependents
   const depImpacts = propagateImpact(depCeg, ['db_column:users.email']);
+  assert(depImpacts.has(docNodeId),
+    'impact propagates to declaring doc when db_column changes');
   assert(depImpacts.has('design:api-design'),
-    'impact propagates from db_column node to affected target');
+    'impact propagates to affected item when db_column changes (Bug 2 fix)');
 }
 
 // ══════════════════════════════════════════════════════════════════════════════

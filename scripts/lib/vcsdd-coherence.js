@@ -853,14 +853,17 @@ function rebuildFromFrontmatter(featureName) {
     }
 
     // data_dependencies: intermediate db_column node + behavioral_dependency edges
-    // Mirrors CoDD scanner.py: creates db_column:{table}.{column} as intermediate node
-    // and edges FROM that node to each affected target (not directly from declaring doc).
+    // Creates db_column:{table}.{column} as intermediate node.
+    // Edge direction matches VCSDD semantics: edge(A, B) = "A depends_on B".
+    //   - Declaring doc depends_on db_column
+    //   - Each affected item depends_on db_column (when column changes, BFS via incoming
+    //     edges surfaces all affected docs)
     for (const dep of (coherence.data_dependencies ?? [])) {
       const table  = dep.table  ?? '?';
       const column = dep.column ?? '?';
       const depId  = `db_column:${table}.${column}`;
       upsertNode(ceg, depId, { type: 'db_column', name: `${table}.${column}` });
-      // Link declaring document to the intermediate column node
+      // edge(nodeId, depId): declaring doc depends_on db_column
       addEdge(ceg, nodeId, depId, 'behavioral_dependency', 'behavioral', [{
         sourceType: 'frontmatter', method: 'data_dependency',
         score: FRONTMATTER_SCORES.data_dependencies,
@@ -870,7 +873,9 @@ function rebuildFromFrontmatter(featureName) {
       const affects = Array.isArray(dep.affects) ? dep.affects : [];
       for (const targetId of affects) {
         if (!targetId) continue;
-        addEdge(ceg, depId, targetId, 'behavioral_dependency', 'behavioral', [{
+        // edge(targetId, depId): affected item depends_on db_column
+        // BFS from depId (following incoming edges) surfaces targetId when column changes
+        addEdge(ceg, targetId, depId, 'behavioral_dependency', 'behavioral', [{
           sourceType: 'frontmatter', method: 'data_dependency',
           score: FRONTMATTER_SCORES.data_dependencies,
           detail: dep.condition ?? `Data dependency on ${table}.${column}`,
