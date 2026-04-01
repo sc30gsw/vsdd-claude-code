@@ -601,7 +601,6 @@ function validateCoherence(ceg) {
   const warnings = [];
 
   // 1. Reference integrity
-  const knownIds = new Set(Object.keys(ceg.nodes));
   for (const edge of ceg.edges) {
     if (!edge.isActive) continue;
     const src = ceg.nodes[edge.sourceId];
@@ -702,16 +701,63 @@ function parseMinimalYaml(yamlText) {
     if (trimmed.startsWith('- ')) {
       // ── Array item ──────────────────────────────────────────────────────
       const rest   = trimmed.slice(2).trim();
-      const kvMatch = rest.match(/^([^:]+):\s*(.*)$/);
+      // If this array item is a quoted scalar, it may contain ':' (e.g. "module:auth").
+      // In that case it must be treated as a scalar, not as an inline mapping.
+      const kvMatch = (rest.startsWith('"') || rest.startsWith("'"))
+        ? null
+        : rest.match(/^([^:]+):\s*(.*)$/);
 
       if (scope.arrayKey !== null && Array.isArray(scope.obj[scope.arrayKey])) {
         if (kvMatch) {
           // Object item: start a new mapping and push it onto the array
           const item = Object.create(null);
-          safeSet(item, kvMatch[1].trim(), parseScalar(kvMatch[2].trim()));
+          const key   = kvMatch[1].trim();
+          const value = kvMatch[2].trim();
+
+          if (value === '') {
+            // Empty value within an array item — mirror the lookahead logic
+            // used by the key:value branch below so nested arrays like:
+            //
+            //   - targets:
+            //       - "module:auth"
+            //
+            // are parsed correctly.
+            let nextIsArray = false;
+            let nextIsChild = false;
+            for (let j = lineIdx + 1; j < lines.length; j++) {
+              const next = lines[j].trim();
+              if (next === '' || next.startsWith('#')) continue;
+              const nextIndent = lines[j].length - lines[j].trimStart().length;
+              nextIsChild = nextIndent > indent;
+              if (nextIsChild) {
+                nextIsArray = next.startsWith('- ');
+              }
+              break;
+            }
+
+            if (nextIsChild && nextIsArray) {
+              safeSet(item, key, []);
+            } else if (nextIsChild) {
+              safeSet(item, key, Object.create(null));
+            } else {
+              safeSet(item, key, []);
+            }
+          } else {
+            safeSet(item, key, parseScalar(value));
+          }
+
           scope.obj[scope.arrayKey].push(item);
           // Open a scope for further key: value lines in this same array item
           scopes.push({ obj: item, arrayKey: null, indent });
+
+          if (value === '') {
+            const currentValue = item[key];
+            if (Array.isArray(currentValue)) {
+              scopes.push({ obj: item, arrayKey: key, indent });
+            } else if (currentValue && typeof currentValue === 'object') {
+              scopes.push({ obj: currentValue, arrayKey: null, indent });
+            }
+          }
         } else {
           // Scalar item
           scope.obj[scope.arrayKey].push(parseScalar(rest));
@@ -765,8 +811,9 @@ function parseMinimalYaml(yamlText) {
           scopes.push({ obj: nested, arrayKey: null, indent });
         } else {
           // No children (sibling or dedent follows) — emit empty array.
-          // Known list keys (`depends_on`, `depended_by`, `conventions`,
-          // `data_dependencies`, `source_files`) are arrays when empty.
+          // In coherence frontmatter, list keys are often written with no items
+          // and should default to an empty list. If a scalar key is left empty,
+          // it will also default to [] under this minimal parser.
           safeSet(targetObj, key, []);
         }
       } else {

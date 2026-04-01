@@ -95,7 +95,7 @@ Canonical VCSDD defines four roles: Human Architect, Builder, Tracker (Chainlink
 
 Agents communicate exclusively through files under `.vcsdd/features/<feature-name>/`. There is no shared conversational context between the builder and the adversary.
 
-### 16 Slash Commands
+### 17 Slash Commands
 
 | Command | Phase | Purpose |
 |---|---|---|
@@ -109,6 +109,7 @@ Agents communicate exclusively through files under `.vcsdd/features/<feature-nam
 | `/vcsdd-feedback` | 4 | Route adversary findings to the correct phase |
 | `/vcsdd-harden` | 5 | Execute formal verification tier |
 | `/vcsdd-converge` | 6 | Check four-dimensional convergence |
+| `/vcsdd-escalate` | -- | Record an architect escalation approval |
 | `/vcsdd-status` | -- | Display current pipeline state |
 | `/vcsdd-trace` | -- | Display full traceability chain for a bead |
 | `/vcsdd-commit` | -- | Commit with phase tag and bead summary |

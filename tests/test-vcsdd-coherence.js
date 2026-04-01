@@ -420,6 +420,77 @@ assert(Array.isArray(fm4.depends_on),    'depends_on empty at EOF → []');
 assert(Array.isArray(fm4.depended_by),   'depended_by empty at EOF → []');
 assert(Array.isArray(fm4.source_files),  'source_files empty at EOF → []');
 
+section('extractFrontmatter — conventions targets: block list inside array item');
+
+// Regression: conventions supports block-style targets list as documented in
+// skills/vcsdd-coherence-scan/SKILL.md.
+const conventionsDoc = `---
+coherence:
+  node_id: "design:conv-doc"
+  type: design
+  conventions:
+    - targets:
+        - "module:auth"
+        - "module:billing"
+      reason: "Policy applies"
+---
+`;
+
+const fmConv = extractFrontmatter(conventionsDoc);
+assert(fmConv !== null, 'conventions frontmatter parsed (not null)');
+assert(Array.isArray(fmConv.conventions), 'conventions is an array');
+assertEqual(fmConv.conventions.length, 1, 'conventions has 1 item');
+assert(Array.isArray(fmConv.conventions[0].targets), 'conventions[0].targets is an array (block list parsed)');
+assertEqual(
+  fmConv.conventions[0].targets,
+  ['module:auth', 'module:billing'],
+  'conventions[0].targets preserves list items',
+);
+assertEqual(
+  fmConv.conventions[0].reason,
+  'Policy applies',
+  'conventions[0].reason is parsed as sibling key',
+);
+
+section('rebuildFromFrontmatter — conventions targets block list creates must_review edges');
+
+{
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vcsdd-coherence-test-'));
+  const originalCwd = process.cwd();
+  try {
+    process.chdir(tmpDir);
+    const featureName = 'conv-edge-test';
+    const featureDir = path.join(tmpDir, '.vcsdd', 'features', featureName);
+    const specsDir = path.join(featureDir, 'specs');
+    fs.mkdirSync(specsDir, { recursive: true });
+
+    fs.writeFileSync(path.join(specsDir, 'conv.md'), [
+      '---',
+      'coherence:',
+      '  node_id: "design:conv-doc"',
+      '  type: design',
+      '  conventions:',
+      '    - targets:',
+      '        - "module:auth"',
+      '      reason: "Policy applies"',
+      '---',
+      '# Conv',
+    ].join('\n'));
+
+    const ceg = rebuildFromFrontmatter(featureName);
+    const mustReviewEdges = ceg.edges.filter(e =>
+      e.sourceId === 'design:conv-doc' &&
+      e.targetId === 'module:auth' &&
+      e.relation === 'must_review' &&
+      e.semantic === 'governance',
+    );
+    assert(mustReviewEdges.length === 1, 'conventions targets → must_review edge is created');
+  } finally {
+    process.chdir(originalCwd);
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 // 6. calculateConfidence — Noisy-OR formula (mirrors CoDD _noisy_or)
 // ══════════════════════════════════════════════════════════════════════════════
