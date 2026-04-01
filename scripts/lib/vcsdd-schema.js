@@ -4,12 +4,13 @@ const fs = require('fs');
 const path = require('path');
 
 const SCHEMA_FILE_MAP = {
-  state: 'vsdd-state.schema.json',
-  index: 'vsdd-index.schema.json',
-  contract: 'vsdd-contract.schema.json',
-  grading: 'vsdd-grading.schema.json',
-  finding: 'vsdd-finding.schema.json',
-  bead: 'vsdd-bead.schema.json',
+  state: 'vcsdd-state.schema.json',
+  index: 'vcsdd-index.schema.json',
+  contract: 'vcsdd-contract.schema.json',
+  grading: 'vcsdd-grading.schema.json',
+  finding: 'vcsdd-finding.schema.json',
+  bead: 'vcsdd-bead.schema.json',
+  coherence: 'vcsdd-coherence.schema.json',
 };
 
 const schemaCache = new Map();
@@ -42,7 +43,7 @@ const FINDING_CATEGORY_DIMENSIONS = {
 function getSchemaPath(name) {
   const fileName = SCHEMA_FILE_MAP[name];
   if (!fileName) {
-    throw new Error(`Unknown VSDD schema: ${name}`);
+    throw new Error(`Unknown VCSDD schema: ${name}`);
   }
   return path.join(__dirname, '..', '..', 'schemas', fileName);
 }

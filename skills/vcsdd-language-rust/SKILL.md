@@ -1,10 +1,10 @@
 ---
-name: vsdd-language-rust
-description: Use this skill when applying VSDD to Rust projects. Provides Kani proof harness patterns, proptest strategies, cargo-fuzz integration, and cargo-mutants mutation testing guidance.
-origin: VSDD
+name: vcsdd-language-rust
+description: Use this skill when applying VCSDD to Rust projects. Provides Kani proof harness patterns, proptest strategies, cargo-fuzz integration, and cargo-mutants mutation testing guidance.
+origin: VCSDD
 ---
 
-# VSDD Language Profile: Rust
+# VCSDD Language Profile: Rust
 
 ## Verification Toolset
 

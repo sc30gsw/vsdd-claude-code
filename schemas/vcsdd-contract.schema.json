@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "vsdd.contract.v1",
-  "title": "VSDD Sprint Contract",
+  "$id": "vcsdd.contract.v1",
+  "title": "VCSDD Sprint Contract",
   "type": "object",
   "required": ["sprintNumber", "feature", "criteria"],
   "additionalProperties": false,

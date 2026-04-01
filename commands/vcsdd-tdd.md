@@ -1,5 +1,5 @@
 ---
-description: Run Phase 2a (test generation, Red phase) for the active VSDD feature. Invokes vsdd-builder to generate failing tests for all spec requirements. Records red phase evidence.
+description: Run Phase 2a (test generation, Red phase) for the active VCSDD feature. Invokes vcsdd-builder to generate failing tests for all spec requirements. Records red phase evidence.
 ---
 
 ## What
@@ -11,7 +11,7 @@ Run after spec review gate (Phase 1c) passes. Requires active feature at phase `
 ## How
 
 1. **Read behavioral spec**: extract all REQ-XXX requirements
-2. **Invoke vsdd-builder agent** to generate tests:
+2. **Invoke vcsdd-builder agent** to generate tests:
    - One test function per requirement minimum
    - Additional tests for each edge case in spec
    - Tests for error conditions and boundary values
@@ -19,7 +19,7 @@ Run after spec review gate (Phase 1c) passes. Requires active feature at phase `
 4. **Transition to 2a**: this starts sprint `N` for the current implementation cycle (`transitionPhase(feature, '2a')`)
 5. **Run tests** and verify they FAIL:
    ```bash
-   npm test 2>&1 | tee .vsdd/features/<name>/evidence/sprint-N-red-phase.log
+   npm test 2>&1 | tee .vcsdd/features/<name>/evidence/sprint-N-red-phase.log
    ```
 6. **Verify regression baseline**: run existing tests separately to confirm they still pass
 7. **Record red phase evidence** in the active sprint with explicit markers at the top of the log:
@@ -45,7 +45,7 @@ If ANY new test passes before implementation, STOP. The test is invalid (it's te
 ## Examples
 
 ```bash
-/vsdd-tdd
-/vsdd-tdd --framework vitest    # specify test framework
-/vsdd-tdd --framework pytest
+/vcsdd-tdd
+/vcsdd-tdd --framework vitest    # specify test framework
+/vcsdd-tdd --framework pytest
 ```

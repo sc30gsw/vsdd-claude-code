@@ -1,10 +1,10 @@
 ---
-name: vsdd-language-typescript
-description: Use this skill when applying VSDD to TypeScript/JavaScript projects. Provides fast-check property testing patterns, Stryker mutation testing, and vitest/jest integration for the VSDD pipeline.
-origin: VSDD
+name: vcsdd-language-typescript
+description: Use this skill when applying VCSDD to TypeScript/JavaScript projects. Provides fast-check property testing patterns, Stryker mutation testing, and vitest/jest integration for the VCSDD pipeline.
+origin: VCSDD
 ---
 
-# VSDD Language Profile: TypeScript
+# VCSDD Language Profile: TypeScript
 
 ## Verification Toolset
 

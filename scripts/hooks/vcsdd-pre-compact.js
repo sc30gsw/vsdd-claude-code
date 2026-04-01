@@ -1,12 +1,12 @@
 'use strict';
 
 const { run } = require('./run-with-flags');
-const { getActiveFeature, readState, appendHistory, getVsddRoot } = require('../lib/vsdd-state');
+const { getActiveFeature, readState, appendHistory, getVcsddRoot } = require('../lib/vcsdd-state');
 const fs = require('fs');
 
-run('vsdd-pre-compact', async (_payload) => {
-  const vsddRoot = getVsddRoot();
-  if (!fs.existsSync(vsddRoot)) {
+run('vcsdd-pre-compact', async (_payload) => {
+  const vcsddRoot = getVcsddRoot();
+  if (!fs.existsSync(vcsddRoot)) {
     return { blocked: false };
   }
 
@@ -39,11 +39,11 @@ run('vsdd-pre-compact', async (_payload) => {
     }[state.currentPhase] || state.currentPhase;
 
     process.stdout.write(
-      `\n[VSDD Context Checkpoint] Feature: ${activeFeature} | Phase: ${state.currentPhase} (${phaseDesc}) | ` +
+      `\n[VCSDD Context Checkpoint] Feature: ${activeFeature} | Phase: ${state.currentPhase} (${phaseDesc}) | ` +
       `Sprint: ${state.sprintCount} | Mode: ${state.mode}\n\n`
     );
   } catch (err) {
-    process.stderr.write(`[vsdd-pre-compact] Warning: ${err.message}\n`);
+    process.stderr.write(`[vcsdd-pre-compact] Warning: ${err.message}\n`);
   }
 
   return { blocked: false };

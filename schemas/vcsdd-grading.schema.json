@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "vsdd.grading.v1",
-  "title": "VSDD Grading Result",
+  "$id": "vcsdd.grading.v1",
+  "title": "VCSDD Grading Result",
   "type": "object",
   "required": ["sprintNumber", "feature", "dimensions", "overallVerdict", "timestamp"],
   "additionalProperties": false,

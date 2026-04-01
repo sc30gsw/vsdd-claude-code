@@ -1,15 +1,15 @@
-# VSDD - Verified Spec-Driven Development
+# VCSDD - Verified Coherence Spec-Driven Development
 
-VSDD is a methodology that fuses Spec-Driven Development (SDD), Test-Driven Development (TDD), and Verification-Driven Development (VDD) into a unified workflow with adversarial quality gates.
+VCSDD is a methodology that fuses Spec-Driven Development (SDD), Test-Driven Development (TDD), Verification-Driven Development (VDD), and Coherence-Driven Development (CoDD) into a unified workflow with adversarial quality gates and dependency-aware change propagation.
 
 ## Overview
 
-VSDD enforces structured quality gates through 6 phases, 4 roles, and 8 principles. It is designed for AI-assisted development where the risk of "AI slop" (code that looks correct but harbors hidden deficiencies) requires systematic countermeasures.
+VCSDD enforces structured quality gates through 6 phases, 4 roles, and 8 principles. It is designed for AI-assisted development where the risk of "AI slop" (code that looks correct but harbors hidden deficiencies) requires systematic countermeasures.
 
 ## Operating Modes
 
 ### Strict Mode
-Full VSDD ceremony for high-assurance work:
+Full VCSDD ceremony for high-assurance work:
 - Sprint contracts required per sprint
 - Contract review PASS required before Phase 3, and the verdict must still match the approved contract snapshot
 - Multiple adversary review rounds (Phase 3 capped at 5)
@@ -19,7 +19,7 @@ Full VSDD ceremony for high-assurance work:
 
 ### Lean Mode
 Streamlined flow for product work and prototyping:
-- Full 6-phase VSDD flow with lighter approvals and contract requirements
+- Full 6-phase VCSDD flow with lighter approvals and contract requirements
 - Sprint contracts only for risky work
 - Phase 3 review loops are capped lower (3)
 - Phase 5 still runs, but required proof obligations are often zero
@@ -89,6 +89,34 @@ Exit only when all convergence conditions are satisfied:
 | Adversary | LLM (opus, fresh context) | Hyper-critical review, zero tolerance |
 | Verifier | LLM (sonnet) | Formal verification coordination |
 
+## Coherence Engine (CoDD integration)
+
+VCSDD includes a native implementation of CoDD's core mechanisms for
+maintaining design coherence when requirements change:
+
+- **CEG (Conditioned Evidence Graph)**: dependency graph between spec docs,
+  stored in `.vcsdd/features/<name>/coherence.json`
+- **Noisy-OR confidence scoring**: evidence-based edge confidence with
+  Green (≥90%) / Amber (≥50%) / Gray (<50%) band classification
+- **BFS forward impact propagation**: traces all downstream specs when a
+  node changes
+- **DFS cycle detection**: prevents circular dependencies in the spec graph
+- **Frontmatter-driven**: declare dependencies via `coherence:` blocks in
+  Markdown spec files (no separate config)
+
+Coherence is **optional and advisory** — it activates automatically when
+`coherence.json` is present, and is a no-op when absent.
+
+New commands:
+- `/vcsdd-coherence-scan` — rebuild CEG from spec frontmatter
+- `/vcsdd-coherence-impact` — run change-impact analysis
+- `/vcsdd-coherence-validate` — check reference integrity and cycles
+
+Install the coherence module:
+```bash
+bash install.sh --profile standard --modules vcsdd-coherence
+```
+
 ## Traceability
 
 Every artifact is tracked via the Chainlink bead system:
@@ -103,39 +131,39 @@ Every artifact is tracked via the Chainlink bead system:
 ## Getting Started
 
 1. Install: `bash install.sh --profile standard`
-2. Initialize: `/vsdd-init <feature-name> --mode lean`
-3. Write spec: `/vsdd-spec`
-4. Review spec: `/vsdd-spec-review`
-5. Generate tests: `/vsdd-tdd`
-6. Implement and refactor: `/vsdd-impl`
-7. Strict mode only: `/vsdd-contract-review`
-8. Review implementation: `/vsdd-adversary`
-9. Harden: `/vsdd-harden`
-10. Converge: `/vsdd-converge`
-11. Check status: `/vsdd-status`
+2. Initialize: `/vcsdd-init <feature-name> --mode lean`
+3. Write spec: `/vcsdd-spec`
+4. Review spec: `/vcsdd-spec-review`
+5. Generate tests: `/vcsdd-tdd`
+6. Implement and refactor: `/vcsdd-impl`
+7. Strict mode only: `/vcsdd-contract-review`
+8. Review implementation: `/vcsdd-adversary`
+9. Harden: `/vcsdd-harden`
+10. Converge: `/vcsdd-converge`
+11. Check status: `/vcsdd-status`
 
 ## Plugin Installation (Claude Code Plugin System)
 
 Install via the Claude Code plugin system:
 
 ```bash
-# Add the VSDD marketplace
-/plugin marketplace add sc30gsw/vsdd-claude-code
+# Add the VCSDD marketplace
+/plugin marketplace add sc30gsw/vcsdd-claude-code
 
 # Install the plugin
-/plugin install vsdd@sc30gsw-vsdd-claude-code
+/plugin install vcsdd@sc30gsw-vcsdd-claude-code
 ```
 
 After installation, skills are available as:
-- `/vsdd:init` — Initialize a feature pipeline
-- `/vsdd:spec` — Write behavioral specification
-- `/vsdd:spec-review` — Adversarial spec review
-- `/vsdd:tdd` — Generate tests (red phase)
-- `/vsdd:impl` — Implement and refactor (green + refactor)
-- `/vsdd:adversary` — Adversarial implementation review
-- `/vsdd:feedback` — Route findings to correct phase
-- `/vsdd:harden` — Formal hardening (Phase 5)
-- `/vsdd:converge` — Convergence check (Phase 6)
-- `/vsdd:escalate` — Architect escalation approval
-- `/vsdd:status` — Pipeline status
-- `/vsdd:trace` — Traceability chain
+- `/vcsdd:init` — Initialize a feature pipeline
+- `/vcsdd:spec` — Write behavioral specification
+- `/vcsdd:spec-review` — Adversarial spec review
+- `/vcsdd:tdd` — Generate tests (red phase)
+- `/vcsdd:impl` — Implement and refactor (green + refactor)
+- `/vcsdd:adversary` — Adversarial implementation review
+- `/vcsdd:feedback` — Route findings to correct phase
+- `/vcsdd:harden` — Formal hardening (Phase 5)
+- `/vcsdd:converge` — Convergence check (Phase 6)
+- `/vcsdd:escalate` — Architect escalation approval
+- `/vcsdd:status` — Pipeline status
+- `/vcsdd:trace` — Traceability chain

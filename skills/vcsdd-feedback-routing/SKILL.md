@@ -1,10 +1,10 @@
 ---
-name: vsdd-feedback-routing
+name: vcsdd-feedback-routing
 description: Use this skill when routing adversary findings in Phase 4. Provides routing logic, iteration limit enforcement, and escalation protocols.
-origin: VSDD
+origin: VCSDD
 ---
 
-# VSDD Feedback Routing
+# VCSDD Feedback Routing
 
 ## When to Activate
 - Phase 4 (feedback integration loop)
@@ -46,7 +46,7 @@ origin: VSDD
 ## Escalation Protocol
 
 When iteration limit exceeded:
-1. Write to `.vsdd/features/<name>/escalations/escalation-<timestamp>.md`
+1. Write to `.vcsdd/features/<name>/escalations/escalation-<timestamp>.md`
 2. Include: phase, iteration count, limit, all open findings
 3. Surface to human: "Human review required. N findings remain after M iterations."
 4. Pause pipeline - do not auto-advance

@@ -1,13 +1,13 @@
 ---
-name: vsdd-spec-crystallization
-description: Use this skill when writing Phase 1a behavioral specifications in VSDD. Provides EARS format requirements writing, purity boundary analysis, edge case enumeration, and spec quality validation patterns.
-origin: VSDD
+name: vcsdd-spec-crystallization
+description: Use this skill when writing Phase 1a behavioral specifications in VCSDD. Provides EARS format requirements writing, purity boundary analysis, edge case enumeration, and spec quality validation patterns.
+origin: VCSDD
 ---
 
-# VSDD Spec Crystallization
+# VCSDD Spec Crystallization
 
 ## When to Activate
-- Phase 1a of VSDD pipeline (behavioral specification)
+- Phase 1a of VCSDD pipeline (behavioral specification)
 - Writing EARS-format requirements
 - Identifying edge cases for a feature
 - Reviewing a behavioral spec for completeness

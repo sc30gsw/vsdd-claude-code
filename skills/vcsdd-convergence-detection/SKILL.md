@@ -1,10 +1,10 @@
 ---
-name: vsdd-convergence-detection
+name: vcsdd-convergence-detection
 description: Use this skill during Phase 6 convergence checks. Provides four-dimensional convergence analysis, hallucination detection, and duplicate finding identification.
-origin: VSDD
+origin: VCSDD
 ---
 
-# VSDD Convergence Detection
+# VCSDD Convergence Detection
 
 ## When to Activate
 - Phase 6 (convergence check)
@@ -25,7 +25,7 @@ Convergent when: monotonically decreasing OR zero findings.
 ### 2. Finding Specificity (Hallucination Detection)
 For every finding, verify `evidence.filePath` is a real file:
 ```bash
-for finding in .vsdd/features/<name>/reviews/sprint-*/output/findings/*.json; do
+for finding in .vcsdd/features/<name>/reviews/sprint-*/output/findings/*.json; do
   filepath=$(jq -r '.evidence.filePath' "$finding")
   ls "$filepath" 2>/dev/null || echo "HALLUCINATED: $filepath in $finding"
 done

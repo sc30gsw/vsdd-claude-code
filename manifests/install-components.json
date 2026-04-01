@@ -1,34 +1,34 @@
 {
   "components": {
     "baseline": [
-      {"id": "vsdd-core", "modules": ["vsdd-rules", "vsdd-runtime", "vsdd-schemas", "vsdd-manifests", "vsdd-docs", "vsdd-commands"]},
-      {"id": "vsdd-full", "modules": ["vsdd-rules", "vsdd-runtime", "vsdd-schemas", "vsdd-manifests", "vsdd-docs", "vsdd-contexts", "vsdd-commands", "vsdd-agents", "vsdd-skills"]},
-      {"id": "vsdd-strict", "modules": ["vsdd-rules", "vsdd-runtime", "vsdd-schemas", "vsdd-manifests", "vsdd-docs", "vsdd-contexts", "vsdd-commands", "vsdd-agents", "vsdd-skills", "vsdd-hooks"]}
+      {"id": "vcsdd-core", "modules": ["vcsdd-rules", "vcsdd-runtime", "vcsdd-schemas", "vcsdd-manifests", "vcsdd-docs", "vcsdd-commands"]},
+      {"id": "vcsdd-full", "modules": ["vcsdd-rules", "vcsdd-runtime", "vcsdd-schemas", "vcsdd-manifests", "vcsdd-docs", "vcsdd-contexts", "vcsdd-commands", "vcsdd-agents", "vcsdd-skills"]},
+      {"id": "vcsdd-strict", "modules": ["vcsdd-rules", "vcsdd-runtime", "vcsdd-schemas", "vcsdd-manifests", "vcsdd-docs", "vcsdd-contexts", "vcsdd-commands", "vcsdd-agents", "vcsdd-skills", "vcsdd-hooks"]}
     ],
     "language": [
-      {"id": "lang:rust", "modules": ["vsdd-language-rust"]},
-      {"id": "lang:python", "modules": ["vsdd-language-python"]},
-      {"id": "lang:typescript", "modules": ["vsdd-language-typescript"]},
-      {"id": "lang:go", "modules": ["vsdd-language-go-profile"]},
-      {"id": "lang:cpp", "modules": ["vsdd-language-cpp-profile"]}
+      {"id": "lang:rust", "modules": ["vcsdd-language-rust"]},
+      {"id": "lang:python", "modules": ["vcsdd-language-python"]},
+      {"id": "lang:typescript", "modules": ["vcsdd-language-typescript"]},
+      {"id": "lang:go", "modules": ["vcsdd-language-go-profile"]},
+      {"id": "lang:cpp", "modules": ["vcsdd-language-cpp-profile"]}
     ],
     "agent": [
-      {"id": "agent:orchestrator", "modules": ["vsdd-agents"], "path": "agents/vsdd-orchestrator.md"},
-      {"id": "agent:builder", "modules": ["vsdd-agents"], "path": "agents/vsdd-builder.md"},
-      {"id": "agent:adversary", "modules": ["vsdd-agents"], "path": "agents/vsdd-adversary.md"},
-      {"id": "agent:verifier", "modules": ["vsdd-agents"], "path": "agents/vsdd-verifier.md"}
+      {"id": "agent:orchestrator", "modules": ["vcsdd-agents"], "path": "agents/vcsdd-orchestrator.md"},
+      {"id": "agent:builder", "modules": ["vcsdd-agents"], "path": "agents/vcsdd-builder.md"},
+      {"id": "agent:adversary", "modules": ["vcsdd-agents"], "path": "agents/vcsdd-adversary.md"},
+      {"id": "agent:verifier", "modules": ["vcsdd-agents"], "path": "agents/vcsdd-verifier.md"}
     ],
     "skill": [
-      {"id": "skill:spec-crystallization", "modules": ["vsdd-skills"]},
-      {"id": "skill:sprint-contracts", "modules": ["vsdd-skills"]},
-      {"id": "skill:adversarial-refinement", "modules": ["vsdd-skills"]},
-      {"id": "skill:grading-criteria", "modules": ["vsdd-skills"]},
-      {"id": "skill:feedback-routing", "modules": ["vsdd-skills"]},
-      {"id": "skill:convergence-detection", "modules": ["vsdd-skills"]},
-      {"id": "skill:formal-hardening", "modules": ["vsdd-skills"]},
-      {"id": "skill:verification-architecture", "modules": ["vsdd-skills"]},
-      {"id": "skill:traceability", "modules": ["vsdd-skills"]},
-      {"id": "skill:git-integration", "modules": ["vsdd-skills"]}
+      {"id": "skill:spec-crystallization", "modules": ["vcsdd-skills"]},
+      {"id": "skill:sprint-contracts", "modules": ["vcsdd-skills"]},
+      {"id": "skill:adversarial-refinement", "modules": ["vcsdd-skills"]},
+      {"id": "skill:grading-criteria", "modules": ["vcsdd-skills"]},
+      {"id": "skill:feedback-routing", "modules": ["vcsdd-skills"]},
+      {"id": "skill:convergence-detection", "modules": ["vcsdd-skills"]},
+      {"id": "skill:formal-hardening", "modules": ["vcsdd-skills"]},
+      {"id": "skill:verification-architecture", "modules": ["vcsdd-skills"]},
+      {"id": "skill:traceability", "modules": ["vcsdd-skills"]},
+      {"id": "skill:git-integration", "modules": ["vcsdd-skills"]}
     ]
   }
 }

@@ -1,8 +1,8 @@
-# VSDD Gate Enforcement Rules
+# VCSDD Gate Enforcement Rules
 
 ## Phase Ordering
 
-The VSDD pipeline enforces strict phase ordering. No phase can be entered without completing its prerequisites.
+The VCSDD pipeline enforces strict phase ordering. No phase can be entered without completing its prerequisites.
 
 ## Gate Prerequisites
 

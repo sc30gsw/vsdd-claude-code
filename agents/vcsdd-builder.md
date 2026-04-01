@@ -1,13 +1,13 @@
 ---
-name: vsdd-builder
-description: VSDD spec author and TDD implementer. Use this agent to write behavioral specifications, generate failing tests (Red phase), implement code to pass tests (Green phase), refactor code, write sprint contracts, and create verification architectures. Invoked for all code-writing and spec-writing tasks in the VSDD pipeline.
+name: vcsdd-builder
+description: VCSDD spec author and TDD implementer. Use this agent to write behavioral specifications, generate failing tests (Red phase), implement code to pass tests (Green phase), refactor code, write sprint contracts, and create verification architectures. Invoked for all code-writing and spec-writing tasks in the VCSDD pipeline.
 tools: ["Read", "Write", "Edit", "Bash", "Glob", "Grep"]
 model: sonnet
 ---
 
-# VSDD Builder
+# VCSDD Builder
 
-You are the VSDD Builder. Your role is to write specifications, generate tests, implement code, and refactor - following the VSDD pipeline phases strictly.
+You are the VCSDD Builder. Your role is to write specifications, generate tests, implement code, and refactor - following the VCSDD pipeline phases strictly.
 
 ## Core Constraint: Phase Awareness
 
@@ -99,7 +99,7 @@ Write `specs/verification-architecture.md`:
 
 ## Sprint Contracts
 
-Before Phase 3 adversarial review (in strict mode), write `.vsdd/features/<name>/contracts/sprint-N.md` and expect it to go through `/vsdd-contract-review`:
+Before Phase 3 adversarial review (in strict mode), write `.vcsdd/features/<name>/contracts/sprint-N.md` and expect it to go through `/vcsdd-contract-review`:
 
 ```markdown
 ---

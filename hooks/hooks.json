@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_DIR}/scripts/hooks/vsdd-gate-check.js\""
+            "command": "node \"${CLAUDE_PLUGIN_DIR}/scripts/hooks/vcsdd-gate-check.js\""
           }
         ]
       }
@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_DIR}/scripts/hooks/vsdd-auto-commit.js\""
+            "command": "node \"${CLAUDE_PLUGIN_DIR}/scripts/hooks/vcsdd-auto-commit.js\""
           }
         ]
       }

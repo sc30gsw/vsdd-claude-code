@@ -1,24 +1,24 @@
 {
   "profiles": {
     "minimal": {
-      "description": "Core VSDD commands, rules, and runtime libraries. No hooks, no agents.",
-      "modules": ["vsdd-rules", "vsdd-runtime", "vsdd-schemas", "vsdd-manifests", "vsdd-docs", "vsdd-commands"],
+      "description": "Core VCSDD commands, rules, and runtime libraries. No hooks, no agents.",
+      "modules": ["vcsdd-rules", "vcsdd-runtime", "vcsdd-schemas", "vcsdd-manifests", "vcsdd-docs", "vcsdd-commands"],
       "hookProfile": "minimal"
     },
     "standard": {
-      "description": "Full VSDD workflow: rules, commands, agents, skills, and standard hooks.",
-      "modules": ["vsdd-rules", "vsdd-runtime", "vsdd-schemas", "vsdd-manifests", "vsdd-docs", "vsdd-contexts", "vsdd-commands", "vsdd-agents", "vsdd-skills", "vsdd-hooks"],
+      "description": "Full VCSDD workflow: rules, commands, agents, skills, and standard hooks.",
+      "modules": ["vcsdd-rules", "vcsdd-runtime", "vcsdd-schemas", "vcsdd-manifests", "vcsdd-docs", "vcsdd-contexts", "vcsdd-commands", "vcsdd-agents", "vcsdd-skills", "vcsdd-hooks"],
       "hookProfile": "standard"
     },
     "strict": {
-      "description": "Full VSDD with gate enforcement and auto-commit. For high-assurance work.",
-      "modules": ["vsdd-rules", "vsdd-runtime", "vsdd-schemas", "vsdd-manifests", "vsdd-docs", "vsdd-contexts", "vsdd-commands", "vsdd-agents", "vsdd-skills", "vsdd-hooks"],
+      "description": "Full VCSDD with gate enforcement and auto-commit. For high-assurance work.",
+      "modules": ["vcsdd-rules", "vcsdd-runtime", "vcsdd-schemas", "vcsdd-manifests", "vcsdd-docs", "vcsdd-contexts", "vcsdd-commands", "vcsdd-agents", "vcsdd-skills", "vcsdd-hooks"],
       "hookProfile": "strict"
     }
   },
   "languageProfiles": {
     "rust": {
-      "modules": ["vsdd-rules", "vsdd-commands", "vsdd-agents", "vsdd-skills", "vsdd-hooks", "vsdd-language-rust"],
+      "modules": ["vcsdd-rules", "vcsdd-commands", "vcsdd-agents", "vcsdd-skills", "vcsdd-hooks", "vcsdd-language-rust"],
       "verificationToolset": {
         "formalVerification": ["kani", "cbmc"],
         "propertyTesting": ["proptest"],
@@ -28,7 +28,7 @@
       }
     },
     "python": {
-      "modules": ["vsdd-rules", "vsdd-commands", "vsdd-agents", "vsdd-skills", "vsdd-hooks", "vsdd-language-python"],
+      "modules": ["vcsdd-rules", "vcsdd-commands", "vcsdd-agents", "vcsdd-skills", "vcsdd-hooks", "vcsdd-language-python"],
       "verificationToolset": {
         "formalVerification": [],
         "propertyTesting": ["hypothesis"],
@@ -38,7 +38,7 @@
       }
     },
     "typescript": {
-      "modules": ["vsdd-rules", "vsdd-commands", "vsdd-agents", "vsdd-skills", "vsdd-hooks", "vsdd-language-typescript"],
+      "modules": ["vcsdd-rules", "vcsdd-commands", "vcsdd-agents", "vcsdd-skills", "vcsdd-hooks", "vcsdd-language-typescript"],
       "verificationToolset": {
         "formalVerification": [],
         "propertyTesting": ["fast-check"],
@@ -48,7 +48,7 @@
       }
     },
     "go": {
-      "modules": ["vsdd-rules", "vsdd-runtime", "vsdd-commands", "vsdd-agents", "vsdd-skills", "vsdd-hooks", "vsdd-language-go-profile"],
+      "modules": ["vcsdd-rules", "vcsdd-runtime", "vcsdd-commands", "vcsdd-agents", "vcsdd-skills", "vcsdd-hooks", "vcsdd-language-go-profile"],
       "verificationToolset": {
         "formalVerification": [],
         "propertyTesting": ["rapid"],
@@ -58,7 +58,7 @@
       }
     },
     "cpp": {
-      "modules": ["vsdd-rules", "vsdd-runtime", "vsdd-commands", "vsdd-agents", "vsdd-skills", "vsdd-hooks", "vsdd-language-cpp-profile"],
+      "modules": ["vcsdd-rules", "vcsdd-runtime", "vcsdd-commands", "vcsdd-agents", "vcsdd-skills", "vcsdd-hooks", "vcsdd-language-cpp-profile"],
       "verificationToolset": {
         "formalVerification": ["cbmc"],
         "propertyTesting": [],

@@ -28,7 +28,7 @@ Run after `transitionPhase` throws an "Iteration limit exceeded" error. Check `e
 ## Examples
 
 ```bash
-/vsdd-escalate
-/vsdd-escalate --phase 3
-/vsdd-escalate --phase 3 --reason "All prior findings were minor structural issues; core logic is correct"
+/vcsdd-escalate
+/vcsdd-escalate --phase 3
+/vcsdd-escalate --phase 3 --reason "All prior findings were minor structural issues; core logic is correct"
 ```

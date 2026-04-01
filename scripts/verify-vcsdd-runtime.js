@@ -5,14 +5,14 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const { validateDocument } = require('./lib/vsdd-schema');
+const { validateDocument } = require('./lib/vcsdd-schema');
 const { resolveInstallPlan } = require('./install/resolve-install-plan');
 const {
   initFeature,
   transitionPhase,
   recordGate,
   computeSprintContractReviewDigest,
-} = require('./lib/vsdd-state');
+} = require('./lib/vcsdd-state');
 const CANONICAL_DIMENSIONS = [
   'spec_fidelity',
   'edge_case_coverage',
@@ -51,7 +51,7 @@ function writeFile(root, relativePath, content) {
 }
 
 function tmpDir() {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'vsdd-runtime-verify-'));
+  return fs.mkdtempSync(path.join(os.tmpdir(), 'vcsdd-runtime-verify-'));
 }
 
 function createPassingVerdict(feature, evidenceLocation, options = {}) {
@@ -212,21 +212,21 @@ assertThrows(
   const feat = 'schema-feature';
   initFeature(feat, 'strict');
   transitionPhase(feat, '1a');
-  writeFile(root, `.vsdd/features/${feat}/specs/behavioral-spec.md`, '# Behavioral\n');
+  writeFile(root, `.vcsdd/features/${feat}/specs/behavioral-spec.md`, '# Behavioral\n');
   transitionPhase(feat, '1b');
-  writeFile(root, `.vsdd/features/${feat}/specs/verification-architecture.md`, '# Verification\n');
+  writeFile(root, `.vcsdd/features/${feat}/specs/verification-architecture.md`, '# Verification\n');
   transitionPhase(feat, '1c');
   recordGate(feat, '1c', 'PASS', 'adversary');
   recordGate(feat, '1c', 'PASS', 'human', { approvedBasedOn: 'adversary' });
   transitionPhase(feat, '2a');
-  writeFile(root, `.vsdd/features/${feat}/evidence/sprint-1-red-phase.log`, 'new-feature-tests: FAIL\nregression-baseline: PASS\n');
+  writeFile(root, `.vcsdd/features/${feat}/evidence/sprint-1-red-phase.log`, 'new-feature-tests: FAIL\nregression-baseline: PASS\n');
   transitionPhase(feat, '2b');
-  writeFile(root, `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`, 'target-feature-tests: PASS\nregression-baseline: PASS\n');
+  writeFile(root, `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`, 'target-feature-tests: PASS\nregression-baseline: PASS\n');
   transitionPhase(feat, '2c');
-  writeFile(root, `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`, 'target-feature-tests: PASS\nregression-baseline: PASS\n');
+  writeFile(root, `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`, 'target-feature-tests: PASS\nregression-baseline: PASS\n');
   writeFile(
     root,
-    `.vsdd/features/${feat}/contracts/sprint-1.md`,
+    `.vcsdd/features/${feat}/contracts/sprint-1.md`,
     [
       '---',
       'sprintNumber: 1',
@@ -256,21 +256,21 @@ assertThrows(
   const feat = 'contract-review-feature';
   initFeature(feat, 'strict');
   transitionPhase(feat, '1a');
-  writeFile(root, `.vsdd/features/${feat}/specs/behavioral-spec.md`, '# Behavioral\n');
+  writeFile(root, `.vcsdd/features/${feat}/specs/behavioral-spec.md`, '# Behavioral\n');
   transitionPhase(feat, '1b');
-  writeFile(root, `.vsdd/features/${feat}/specs/verification-architecture.md`, '# Verification\n');
+  writeFile(root, `.vcsdd/features/${feat}/specs/verification-architecture.md`, '# Verification\n');
   transitionPhase(feat, '1c');
   recordGate(feat, '1c', 'PASS', 'adversary');
   recordGate(feat, '1c', 'PASS', 'human', { approvedBasedOn: 'adversary' });
   transitionPhase(feat, '2a');
-  writeFile(root, `.vsdd/features/${feat}/evidence/sprint-1-red-phase.log`, 'new-feature-tests: FAIL\nregression-baseline: PASS\n');
+  writeFile(root, `.vcsdd/features/${feat}/evidence/sprint-1-red-phase.log`, 'new-feature-tests: FAIL\nregression-baseline: PASS\n');
   transitionPhase(feat, '2b');
-  writeFile(root, `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`, 'target-feature-tests: PASS\nregression-baseline: PASS\n');
+  writeFile(root, `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`, 'target-feature-tests: PASS\nregression-baseline: PASS\n');
   transitionPhase(feat, '2c');
-  writeFile(root, `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`, 'target-feature-tests: PASS\nregression-baseline: PASS\nafter-refactor: PASS\n');
+  writeFile(root, `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`, 'target-feature-tests: PASS\nregression-baseline: PASS\nafter-refactor: PASS\n');
   writeFile(
     root,
-    `.vsdd/features/${feat}/contracts/sprint-1.md`,
+    `.vcsdd/features/${feat}/contracts/sprint-1.md`,
     [
       '---',
       'sprintNumber: 1',
@@ -289,7 +289,7 @@ assertThrows(
     ].join('\n')
   );
   const contractContent = fs.readFileSync(
-    path.join(root, `.vsdd/features/${feat}/contracts/sprint-1.md`),
+    path.join(root, `.vcsdd/features/${feat}/contracts/sprint-1.md`),
     'utf8'
   );
   const reviewContext = {
@@ -305,9 +305,9 @@ assertThrows(
 
   writeFile(
     root,
-    `.vsdd/features/${feat}/reviews/contracts/sprint-1/output/verdict.json`,
+    `.vcsdd/features/${feat}/reviews/contracts/sprint-1/output/verdict.json`,
     JSON.stringify(
-      createPassingVerdict(feat, `.vsdd/features/${feat}/contracts/sprint-1.md`, {
+      createPassingVerdict(feat, `.vcsdd/features/${feat}/contracts/sprint-1.md`, {
         reviewContext,
       }),
       null,
@@ -320,21 +320,21 @@ assertThrows(
 // ── Install plan resolution follows manifests and dependencies ──
 {
   const minimal = resolveInstallPlan('minimal', null);
-  assert(minimal.modules.includes('vsdd-docs'), 'minimal profile should include docs module');
+  assert(minimal.modules.includes('vcsdd-docs'), 'minimal profile should include docs module');
   assert(minimal.paths.includes('schemas/'), 'minimal profile should include schemas path');
-  assert(!minimal.modules.includes('vsdd-hooks'), 'minimal profile should not include hooks');
+  assert(!minimal.modules.includes('vcsdd-hooks'), 'minimal profile should not include hooks');
 
   const standard = resolveInstallPlan('standard', null);
-  assert(standard.modules.includes('vsdd-contexts'), 'standard profile should include contexts');
+  assert(standard.modules.includes('vcsdd-contexts'), 'standard profile should include contexts');
   assert(standard.paths.includes('contexts/'), 'standard profile should install context files');
 
   const strictTs = resolveInstallPlan('strict', 'typescript');
-  assert(strictTs.modules.includes('vsdd-hooks'), 'strict profile should include hooks');
-  assert(strictTs.modules.includes('vsdd-contexts'), 'strict profile should include contexts');
-  assert(strictTs.modules.includes('vsdd-language-typescript'), 'typescript language module should be resolved');
-  assert(strictTs.paths.includes('skills/vsdd-language-typescript/'), 'typescript skill path should be installed');
-  assert(strictTs.paths.includes('VSDD.md'), 'docs should be installed from manifests');
+  assert(strictTs.modules.includes('vcsdd-hooks'), 'strict profile should include hooks');
+  assert(strictTs.modules.includes('vcsdd-contexts'), 'strict profile should include contexts');
+  assert(strictTs.modules.includes('vcsdd-language-typescript'), 'typescript language module should be resolved');
+  assert(strictTs.paths.includes('skills/vcsdd-language-typescript/'), 'typescript skill path should be installed');
+  assert(strictTs.paths.includes('VCSDD.md'), 'docs should be installed from manifests');
 }
 
 // eslint-disable-next-line no-console
-console.log('verify-vsdd-runtime: OK');
+console.log('verify-vcsdd-runtime: OK');

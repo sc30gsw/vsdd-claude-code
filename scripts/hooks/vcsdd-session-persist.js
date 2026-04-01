@@ -1,12 +1,12 @@
 'use strict';
 
 const { run } = require('./run-with-flags');
-const { getActiveFeature, readState, readIndex, writeIndex, appendHistory, getVsddRoot } = require('../lib/vsdd-state');
+const { getActiveFeature, readState, readIndex, writeIndex, appendHistory, getVcsddRoot } = require('../lib/vcsdd-state');
 const fs = require('fs');
 
-run('vsdd-session-persist', async (_payload) => {
-  const vsddRoot = getVsddRoot();
-  if (!fs.existsSync(vsddRoot)) {
+run('vcsdd-session-persist', async (_payload) => {
+  const vcsddRoot = getVcsddRoot();
+  if (!fs.existsSync(vcsddRoot)) {
     return { blocked: false };
   }
 
@@ -39,7 +39,7 @@ run('vsdd-session-persist', async (_payload) => {
       sprintCount: state.sprintCount,
     });
   } catch (err) {
-    process.stderr.write(`[vsdd-session-persist] Warning: ${err.message}\n`);
+    process.stderr.write(`[vcsdd-session-persist] Warning: ${err.message}\n`);
   }
 
   return { blocked: false };

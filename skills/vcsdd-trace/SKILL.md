@@ -1,6 +1,6 @@
 ---
-name: vsdd-trace
-description: Display the full traceability chain for a VSDD bead. Traverses the Chainlink graph from the given bead ID and shows all connected artifacts with status.
+name: vcsdd-trace
+description: Display the full traceability chain for a VCSDD bead. Traverses the Chainlink graph from the given bead ID and shows all connected artifacts with status.
 ---
 
 ## What
@@ -35,8 +35,8 @@ Run at any time to understand why a piece of code exists or to check spec-to-tes
 ## Examples
 
 ```bash
-/vsdd-trace BEAD-001
-/vsdd-trace REQ-001
-/vsdd-trace PROP-002
-/vsdd-trace --check-completeness    # validate full chain integrity
+/vcsdd-trace BEAD-001
+/vcsdd-trace REQ-001
+/vcsdd-trace PROP-002
+/vcsdd-trace --check-completeness    # validate full chain integrity
 ```

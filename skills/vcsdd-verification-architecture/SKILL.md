@@ -1,10 +1,10 @@
 ---
-name: vsdd-verification-architecture
+name: vcsdd-verification-architecture
 description: Use this skill when writing Phase 1b verification architecture documents. Provides purity boundary mapping, proof obligation design, and tier assignment guidance.
-origin: VSDD
+origin: VCSDD
 ---
 
-# VSDD Verification Architecture
+# VCSDD Verification Architecture
 
 ## When to Activate
 - Phase 1b (verification architecture)

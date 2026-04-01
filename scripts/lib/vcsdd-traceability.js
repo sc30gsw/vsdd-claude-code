@@ -1,6 +1,6 @@
 'use strict';
 
-const { readState, writeState, appendHistory } = require('./vsdd-state');
+const { readState, writeState, appendHistory } = require('./vcsdd-state');
 
 // ── Bead ID Generation ──
 

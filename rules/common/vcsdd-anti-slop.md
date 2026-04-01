@@ -1,8 +1,8 @@
-# VSDD Anti-Slop Bias Rules
+# VCSDD Anti-Slop Bias Rules
 
 ## What is "Slop"?
 
-Slop is AI-generated code that appears correct but contains hidden deficiencies. It passes surface-level review but fails under scrutiny. VSDD assumes ALL first-pass AI output is slop until proven otherwise.
+Slop is AI-generated code that appears correct but contains hidden deficiencies. It passes surface-level review but fails under scrutiny. VCSDD assumes ALL first-pass AI output is slop until proven otherwise.
 
 ## Detection Signals
 

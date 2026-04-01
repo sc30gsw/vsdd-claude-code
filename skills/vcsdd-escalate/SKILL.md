@@ -1,5 +1,5 @@
 ---
-name: vsdd-escalate
+name: vcsdd-escalate
 description: Architect escalation approval — extend iteration limit for a phase that has hit its cap. Records the approval decision in state and allows the blocked transition to proceed.
 ---
 
@@ -29,7 +29,7 @@ Run after `transitionPhase` throws an "Iteration limit exceeded" error. Check `e
 ## Examples
 
 ```bash
-/vsdd-escalate
-/vsdd-escalate --phase 3
-/vsdd-escalate --phase 3 --reason "All prior findings were minor structural issues; core logic is correct"
+/vcsdd-escalate
+/vcsdd-escalate --phase 3
+/vcsdd-escalate --phase 3 --reason "All prior findings were minor structural issues; core logic is correct"
 ```

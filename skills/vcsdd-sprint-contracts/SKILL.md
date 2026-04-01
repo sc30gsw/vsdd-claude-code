@@ -1,10 +1,10 @@
 ---
-name: vsdd-sprint-contracts
-description: Use this skill when writing sprint contracts in VSDD strict mode. Provides grading criteria patterns, dimension weight guidelines, and pass threshold formulation for the 5 review dimensions.
-origin: VSDD
+name: vcsdd-sprint-contracts
+description: Use this skill when writing sprint contracts in VCSDD strict mode. Provides grading criteria patterns, dimension weight guidelines, and pass threshold formulation for the 5 review dimensions.
+origin: VCSDD
 ---
 
-# VSDD Sprint Contracts
+# VCSDD Sprint Contracts
 
 ## When to Activate
 - Phase 2c in strict mode (after refactor, before adversarial review)
@@ -38,7 +38,7 @@ Pass thresholds MUST be binary-evaluable (yes/no), NOT numeric:
 ## Negotiation Protocol
 
 1. Builder proposes contract → sets `status: draft`
-2. Orchestrator runs `/vsdd-contract-review` → adversary reviews criteria against spec/tests/source
+2. Orchestrator runs `/vcsdd-contract-review` → adversary reviews criteria against spec/tests/source
 3. Maximum 2 negotiation rounds (`negotiationRound` field)
 4. Human approves final contract before Phase 3 by setting `status: approved`
 

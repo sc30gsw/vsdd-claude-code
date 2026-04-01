@@ -1,6 +1,6 @@
-# VSDD Methodology Overview
+# VCSDD Methodology Overview
 
-VSDD stands for Verified Spec-Driven Development.
+VCSDD stands for Verified Spec-Driven Development.
 
 It combines four constraints into one workflow:
 
@@ -59,4 +59,4 @@ A feature is complete only when:
 
 ## Traceability
 
-Every requirement, test, implementation change, finding, and proof can be linked through the bead graph in `.vsdd/features/<feature>/state.json`.
+Every requirement, test, implementation change, finding, and proof can be linked through the bead graph in `.vcsdd/features/<feature>/state.json`.

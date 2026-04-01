@@ -1,15 +1,15 @@
 'use strict';
 
 const { run } = require('./run-with-flags');
-const { getActiveFeature, readState, readIndex, getVsddRoot } = require('../lib/vsdd-state');
+const { getActiveFeature, readState, readIndex, getVcsddRoot } = require('../lib/vcsdd-state');
 const fs = require('fs');
 const path = require('path');
 
-run('vsdd-session-start', async (_payload) => {
-  const vsddRoot = getVsddRoot();
+run('vcsdd-session-start', async (_payload) => {
+  const vcsddRoot = getVcsddRoot();
 
-  // If no .vsdd directory, this is not a VSDD project - silently exit
-  if (!fs.existsSync(vsddRoot)) {
+  // If no .vcsdd directory, this is not a VCSDD project - silently exit
+  if (!fs.existsSync(vcsddRoot)) {
     return { blocked: false };
   }
 
@@ -19,7 +19,7 @@ run('vsdd-session-start', async (_payload) => {
 
     if (!activeFeature) {
       process.stdout.write(
-        '\n📋 **VSDD**: No active feature. Use `/vsdd-init <name>` to start a feature pipeline.\n\n'
+        '\n📋 **VCSDD**: No active feature. Use `/vcsdd-init <name>` to start a feature pipeline.\n\n'
       );
       return { blocked: false };
     }
@@ -58,7 +58,7 @@ run('vsdd-session-start', async (_payload) => {
 
     const lines = [
       '',
-      `📋 **VSDD Active**: \`${activeFeature}\` | Mode: ${state.mode}${langLine} | ${phaseDesc}`,
+      `📋 **VCSDD Active**: \`${activeFeature}\` | Mode: ${state.mode}${langLine} | ${phaseDesc}`,
       `   Sprint: ${state.sprintCount} | Iteration: ${state.iterations[state.currentPhase] || 0}`,
     ];
 
@@ -77,7 +77,7 @@ run('vsdd-session-start', async (_payload) => {
     lines.push('');
     process.stdout.write(lines.join('\n') + '\n');
   } catch (err) {
-    process.stderr.write(`[vsdd-session-start] Warning: ${err.message}\n`);
+    process.stderr.write(`[vcsdd-session-start] Warning: ${err.message}\n`);
   }
 
   return { blocked: false };
@@ -88,21 +88,21 @@ function getNextAction(state) {
   const mode = state && state.mode;
 
   const actions = {
-    'init': 'Run `/vsdd-spec` to begin behavioral specification',
-    '1a': 'Complete behavioral spec, then run `/vsdd-spec` for verification architecture',
-    '1b': 'Complete verification architecture, then run `/vsdd-spec-review`',
+    'init': 'Run `/vcsdd-spec` to begin behavioral specification',
+    '1a': 'Complete behavioral spec, then run `/vcsdd-spec` for verification architecture',
+    '1b': 'Complete verification architecture, then run `/vcsdd-spec-review`',
     '1c': mode === 'strict'
-      ? 'Run `/vsdd-spec-review`; after adversary PASS, record explicit human approval'
-      : 'Awaiting spec review gate - run `/vsdd-spec-review`',
-    '2a': 'Generate failing tests with `/vsdd-tdd`',
-    '2b': 'Implement to pass tests with `/vsdd-impl`',
+      ? 'Run `/vcsdd-spec-review`; after adversary PASS, record explicit human approval'
+      : 'Awaiting spec review gate - run `/vcsdd-spec-review`',
+    '2a': 'Generate failing tests with `/vcsdd-tdd`',
+    '2b': 'Implement to pass tests with `/vcsdd-impl`',
     '2c': mode === 'strict'
-      ? 'Finish refactor, update `contracts/sprint-N.md`, then run `/vsdd-contract-review`'
-      : 'Refactor and run `/vsdd-impl` to finish',
-    '3': 'Run adversarial review with `/vsdd-adversary`',
-    '4': 'Route feedback with `/vsdd-feedback`',
-    '5': 'Run formal verification with `/vsdd-harden`',
-    '6': 'Check convergence with `/vsdd-converge`',
+      ? 'Finish refactor, update `contracts/sprint-N.md`, then run `/vcsdd-contract-review`'
+      : 'Refactor and run `/vcsdd-impl` to finish',
+    '3': 'Run adversarial review with `/vcsdd-adversary`',
+    '4': 'Route feedback with `/vcsdd-feedback`',
+    '5': 'Run formal verification with `/vcsdd-harden`',
+    '6': 'Check convergence with `/vcsdd-converge`',
     'complete': null,
   };
   return actions[phase] || null;

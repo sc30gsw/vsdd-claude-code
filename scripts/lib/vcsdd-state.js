@@ -3,10 +3,10 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { assertValidDocument } = require('./vsdd-schema');
+const { assertValidDocument } = require('./vcsdd-schema');
 
 // ── Constants ──
-const VSDD_DIR = '.vsdd';
+const VCSDD_DIR = '.vcsdd';
 const INDEX_FILE = 'index.json';
 const STATE_FILE = 'state.json';
 const HISTORY_FILE = 'history.jsonl';
@@ -92,7 +92,7 @@ const GATE_PREREQUISITES = {
     }
     return { ok: true };
   },
-  '2a': (state) => {
+  '2a': (state, featurePath) => {
     const gate = state.gates['1c'];
     if (!gate) return { ok: false, reason: 'Spec review gate (1c) must be completed before phase 2a' };
 
@@ -103,17 +103,30 @@ const GATE_PREREQUISITES = {
       if (gate.humanApproved !== true) {
         return { ok: false, reason: 'Strict mode requires explicit human approval for phase 1c before phase 2a' };
       }
-      return { ok: true };
+    } else if (gate.verdict !== 'PASS') {
+      return { ok: false, reason: 'Spec review gate must PASS before phase 2a' };
     }
 
-    if (gate.verdict === 'PASS') {
-      return { ok: true };
+    // Coherence validation (optional — only when coherence.json exists)
+    const coherencePath = path.join(featurePath, 'coherence.json');
+    if (fs.existsSync(coherencePath)) {
+      try {
+        const { validateCoherence } = require('./vcsdd-coherence');
+        const ceg = JSON.parse(fs.readFileSync(coherencePath, 'utf8'));
+        const result = validateCoherence(ceg);
+        if (!result.ok) {
+          return { ok: false, reason: `Coherence validation failed: ${result.reason}` };
+        }
+      } catch {
+        // If coherence module fails to load, do not block the gate
+      }
     }
-    return { ok: false, reason: 'Spec review gate must PASS before phase 2a' };
+
+    return { ok: true };
   },
   '2b': (state, featurePath) => {
     if (!state.sprintCount || state.sprintCount < 1) {
-      return { ok: false, reason: 'No sprint started yet. Run /vsdd-tdd to start sprint 1 and generate red phase evidence.' };
+      return { ok: false, reason: 'No sprint started yet. Run /vcsdd-tdd to start sprint 1 and generate red phase evidence.' };
     }
     const sprint = state.sprintCount;
     const redLog = path.join(featurePath, 'evidence', `sprint-${sprint}-red-phase.log`);
@@ -144,7 +157,7 @@ const GATE_PREREQUISITES = {
   },
   '2c': (state, featurePath) => {
     if (!state.sprintCount || state.sprintCount < 1) {
-      return { ok: false, reason: 'No sprint started yet. Run /vsdd-tdd to start sprint 1.' };
+      return { ok: false, reason: 'No sprint started yet. Run /vcsdd-tdd to start sprint 1.' };
     }
     const sprint = state.sprintCount;
     const greenLog = path.join(featurePath, 'evidence', `sprint-${sprint}-green-phase.log`);
@@ -277,12 +290,12 @@ function getIterationLimit(stateOrMode, phase) {
 
 // ── Path Helpers ──
 
-function getVsddRoot() {
-  return path.resolve(process.cwd(), VSDD_DIR);
+function getVcsddRoot() {
+  return path.resolve(process.cwd(), VCSDD_DIR);
 }
 
 function getFeaturePath(featureName) {
-  return path.join(getVsddRoot(), 'features', featureName);
+  return path.join(getVcsddRoot(), 'features', featureName);
 }
 
 function getStatePath(featureName) {
@@ -290,15 +303,15 @@ function getStatePath(featureName) {
 }
 
 function getIndexPath() {
-  return path.join(getVsddRoot(), INDEX_FILE);
+  return path.join(getVcsddRoot(), INDEX_FILE);
 }
 
 function getActiveFeaturePath() {
-  return path.join(getVsddRoot(), ACTIVE_FEATURE_FILE);
+  return path.join(getVcsddRoot(), ACTIVE_FEATURE_FILE);
 }
 
 function getHistoryPath() {
-  return path.join(getVsddRoot(), HISTORY_FILE);
+  return path.join(getVcsddRoot(), HISTORY_FILE);
 }
 
 // ── Atomic Write ──
@@ -751,7 +764,7 @@ function validateFormalHardeningArtifacts(featurePath, state) {
     if (!fs.existsSync(artifactPath)) {
       return {
         ok: false,
-        reason: `${artifact.label} not found. Create it at: .vsdd/features/<feature>/verification/${artifact.relativePath.replace(/\\/g, '/')} (not at project root verification/)`,
+        reason: `${artifact.label} not found. Create it at: .vcsdd/features/<feature>/verification/${artifact.relativePath.replace(/\\/g, '/')} (not at project root verification/)`,
       };
     }
 
@@ -1151,7 +1164,7 @@ function validateState(state) {
   }
 
   if (errors.length > 0) {
-    throw new Error(`Invalid VSDD state: ${errors.join('; ')}`);
+    throw new Error(`Invalid VCSDD state: ${errors.join('; ')}`);
   }
 }
 
@@ -1167,7 +1180,7 @@ function validateIndex(index) {
   }
 
   if (errors.length > 0) {
-    throw new Error(`Invalid VSDD index: ${errors.join('; ')}`);
+    throw new Error(`Invalid VCSDD index: ${errors.join('; ')}`);
   }
 }
 
@@ -1352,11 +1365,48 @@ function routeFeedback(featureName, targetPhase, reason) {
     );
   }
 
-  return transitionPhase(
+  const result = transitionPhase(
     featureName,
     targetPhase,
     reason || `Feedback routing target selected: phase ${targetPhase}`
   );
+
+  // Coherence impact analysis (advisory — only when coherence.json exists)
+  const featurePath = getFeaturePath(featureName);
+  const coherencePath = path.join(featurePath, 'coherence.json');
+  if (fs.existsSync(coherencePath)) {
+    try {
+      const { loadCoherence, propagateImpact } = require('./vcsdd-coherence');
+      const ceg = loadCoherence(featureName);
+      if (ceg) {
+        // Find spec nodes affected by this routing — heuristic: nodes whose
+        // path starts with 'specs/' and whose type is 'design' or 'requirement'
+        const specNodes = Object.keys(ceg.nodes).filter(id => {
+          const n = ceg.nodes[id];
+          return n.path && n.path.startsWith('specs/');
+        });
+        if (specNodes.length > 0) {
+          const impacts = propagateImpact(ceg, specNodes, 5, 0.5);
+          if (impacts.size > 0) {
+            appendHistory({
+              event: 'coherence_impact',
+              featureName,
+              routedToPhase: targetPhase,
+              impactedNodes: [...impacts.entries()].map(([id, info]) => ({
+                nodeId: id,
+                depth: info.depth,
+                confidence: info.confidence,
+              })),
+            });
+          }
+        }
+      }
+    } catch {
+      // Coherence impact is advisory — do not block routing on errors
+    }
+  }
+
+  return result;
 }
 
 // ── Index CRUD ──
@@ -1371,13 +1421,13 @@ function readIndex() {
   const raw = fs.readFileSync(indexPath, 'utf8');
   const index = JSON.parse(raw);
   validateIndex(index);
-  assertValidDocument('index', index, 'VSDD index');
+  assertValidDocument('index', index, 'VCSDD index');
   return index;
 }
 
 function writeIndex(index) {
   validateIndex(index);
-  assertValidDocument('index', index, 'VSDD index');
+  assertValidDocument('index', index, 'VCSDD index');
   atomicWriteJson(getIndexPath(), index);
   syncActiveFeatureFile(index.activeFeature);
 }
@@ -1571,7 +1621,7 @@ function initFeature(featureName, mode = 'lean', language = null) {
     iterations: {},
     proofObligations: [],
     traceability: {
-      epicId: `VSDD-${featureName}-${timestamp}`,
+      epicId: `VCSDD-${featureName}-${timestamp}`,
       beads: [],
     },
     gates: {},
@@ -1668,7 +1718,7 @@ function startSprint(featureName) {
 
 module.exports = {
   // Constants
-  VSDD_DIR,
+  VCSDD_DIR,
   VALID_PHASES,
   VALID_LANGUAGES,
   STRICT_TRANSITION_MAP,
@@ -1678,7 +1728,7 @@ module.exports = {
   getAllowedTransitions,
 
   // Path helpers
-  getVsddRoot,
+  getVcsddRoot,
   getFeaturePath,
   getStatePath,
   getIndexPath,

@@ -1,5 +1,5 @@
 {
-  "name": "vsdd-claude-code",
+  "name": "vcsdd-claude-code",
   "owner": {
     "name": "sc30gsw"
   },
@@ -8,13 +8,13 @@
   },
   "plugins": [
     {
-      "name": "vsdd",
+      "name": "vcsdd",
       "source": "./",
       "description": "Verified Spec-Driven Development — adversarial quality gates for AI-assisted development",
       "author": {
         "name": "sc30gsw"
       },
-      "repository": "https://github.com/sc30gsw/vsdd-claude-code"
+      "repository": "https://github.com/sc30gsw/vcsdd-claude-code"
     }
   ]
 }

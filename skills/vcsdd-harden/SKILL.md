@@ -1,10 +1,10 @@
 ---
-name: vsdd-harden
-description: Run Phase 5 (formal hardening) for the active VSDD feature. Invokes vsdd-verifier to execute proof obligations, security hardening, and a purity-boundary audit before convergence.
+name: vcsdd-harden
+description: Run Phase 5 (formal hardening) for the active VCSDD feature. Invokes vcsdd-verifier to execute proof obligations, security hardening, and a purity-boundary audit before convergence.
 ---
 
 ## What
-Runs formal hardening (Phase 5). Invokes the vsdd-verifier agent to execute language-appropriate verification tools against the proof obligations defined in Phase 1b, run security hardening checks, and audit the purity boundary. Produces `verification-report.md`, `security-report.md`, and `purity-audit.md`.
+Runs formal hardening (Phase 5). Invokes the vcsdd-verifier agent to execute language-appropriate verification tools against the proof obligations defined in Phase 1b, run security hardening checks, and audit the purity boundary. Produces `verification-report.md`, `security-report.md`, and `purity-audit.md`.
 
 ## When
 Run once the feature is already at phase `5`. This happens either after adversarial review PASS (`3 -> 5`) or after Phase 4 explicitly routes the current sprint's findings to Phase `5` (`3 -> 4 -> 5`) for proof-gap / invariant-only hardening work.
@@ -21,7 +21,7 @@ Run once the feature is already at phase `5`. This happens either after adversar
    - compare the implemented core/shell split against `specs/verification-architecture.md`
    - write findings and residual risks to `verification/purity-audit.md`
 5. **If no required obligations**: still write a lightweight verification report that documents the absence of required proofs, the security sweep, and the purity audit
-6. **Invoke vsdd-verifier agent** for each obligation:
+6. **Invoke vcsdd-verifier agent** for each obligation:
    - Write proof harness to `verification/proof-harnesses/`
    - Run appropriate tool (Kani, hypothesis, fast-check)
    - Capture results to `verification/fuzz-results/` or `verification/mutation-results/`
@@ -42,18 +42,18 @@ Run once the feature is already at phase `5`. This happens either after adversar
 
 ## Language profile resolution
 
-1. **`state.json.language`** (canonical; set by `initFeature(..., language)` at `/vsdd-init`)
-2. Else **`.vsdd/index.json` → `features.<name>.language`** (denormalized cache)
+1. **`state.json.language`** (canonical; set by `initFeature(..., language)` at `/vcsdd-init`)
+2. Else **`.vcsdd/index.json` → `features.<name>.language`** (denormalized cache)
 3. Else treat as **unspecified** — verifier should infer from the repo (lockfiles, extensions) or ask the human.
 
-Use `getLanguageForFeature(featureName)` from `scripts/lib/vsdd-state.js` for (1)+(2).
+Use `getLanguageForFeature(featureName)` from `scripts/lib/vcsdd-state.js` for (1)+(2).
 
 Load tool hints from the installed plugin copy of `manifests/language-profiles.json` (tiers, install commands, red/green/coverage commands) for the resolved language.
 
 ## Examples
 
 ```bash
-/vsdd-harden
-/vsdd-harden --tier 1    # run only Tier 1 tools (property tests/fuzzing)
-/vsdd-harden --skip-optional    # skip non-required obligations
+/vcsdd-harden
+/vcsdd-harden --tier 1    # run only Tier 1 tools (property tests/fuzzing)
+/vcsdd-harden --skip-optional    # skip non-required obligations
 ```

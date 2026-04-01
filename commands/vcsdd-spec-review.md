@@ -1,12 +1,12 @@
 ---
-description: Run Phase 1c (spec review gate) for the active VSDD feature. Spawns a fresh vsdd-adversary instance to review the behavioral spec and verification architecture. Records PASS/FAIL gate verdict.
+description: Run Phase 1c (spec review gate) for the active VCSDD feature. Spawns a fresh vcsdd-adversary instance to review the behavioral spec and verification architecture. Records PASS/FAIL gate verdict.
 ---
 
 ## What
-Runs the spec review gate (Phase 1c). Spawns a fresh vsdd-adversary agent to review the behavioral specification and verification architecture for completeness, correctness, and verification readiness. Records the gate verdict.
+Runs the spec review gate (Phase 1c). Spawns a fresh vcsdd-adversary agent to review the behavioral specification and verification architecture for completeness, correctness, and verification readiness. Records the gate verdict.
 
 ## When
-Run after `/vsdd-spec` completes Phase 1a and 1b. Requires active feature at phase `1b`.
+Run after `/vcsdd-spec` completes Phase 1a and 1b. Requires active feature at phase `1b`.
 
 ## How
 
@@ -18,7 +18,7 @@ Run after `/vsdd-spec` completes Phase 1a and 1b. Requires active feature at pha
      "reviewDimensions": ["spec_fidelity", "verification_readiness"]
    }
    ```
-2. **Spawn fresh vsdd-adversary agent** (new context, no Builder history)
+2. **Spawn fresh vcsdd-adversary agent** (new context, no Builder history)
 3. **Adversary reads and reviews** spec files only (no source code yet)
 4. **Collect verdict** from `reviews/spec/iteration-N/output/verdict.json`
 5. **Record adversary verdict**: `recordGate(feature, '1c', verdict, 'adversary')`
@@ -30,6 +30,6 @@ Run after `/vsdd-spec` completes Phase 1a and 1b. Requires active feature at pha
 ## Examples
 
 ```bash
-/vsdd-spec-review
-/vsdd-spec-review --auto-approve    # strict mode: record the human approval immediately after a PASS
+/vcsdd-spec-review
+/vcsdd-spec-review --auto-approve    # strict mode: record the human approval immediately after a PASS
 ```

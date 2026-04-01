@@ -1,6 +1,6 @@
-# VSDD Core Principles
+# VCSDD Core Principles
 
-These principles govern all VSDD pipeline operations. They are non-negotiable and always active.
+These principles govern all VCSDD pipeline operations. They are non-negotiable and always active.
 
 ## 1. Spec Supremacy
 

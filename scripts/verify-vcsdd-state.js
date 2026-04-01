@@ -3,7 +3,7 @@
 
 /**
  * Smoke-test the state machine and gate enforcement.
- * Run from repo root: node scripts/verify-vsdd-state.js
+ * Run from repo root: node scripts/verify-vcsdd-state.js
  */
 
 const fs = require('fs');
@@ -11,8 +11,8 @@ const path = require('path');
 const os = require('os');
 const { spawnSync } = require('child_process');
 
-const vsdd = require('./lib/vsdd-state');
-const traceability = require('./lib/vsdd-traceability');
+const vcsdd = require('./lib/vcsdd-state');
+const traceability = require('./lib/vcsdd-traceability');
 const {
   initFeature,
   readState,
@@ -24,9 +24,9 @@ const {
   getActiveFeaturePath,
   getIterationLimit,
   computeSprintContractReviewDigest,
-} = vsdd;
+} = vcsdd;
 
-const gateHookPath = path.join(__dirname, 'hooks', 'vsdd-gate-check.js');
+const gateHookPath = path.join(__dirname, 'hooks', 'vcsdd-gate-check.js');
 const CANONICAL_DIMENSIONS = [
   'spec_fidelity',
   'edge_case_coverage',
@@ -36,7 +36,7 @@ const CANONICAL_DIMENSIONS = [
 ];
 
 function tmpDir() {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'vsdd-verify-'));
+  return fs.mkdtempSync(path.join(os.tmpdir(), 'vcsdd-verify-'));
 }
 
 function writeFile(absRoot, rel, content = 'ok\n') {
@@ -48,7 +48,7 @@ function writeFile(absRoot, rel, content = 'ok\n') {
 function writeFormalHardeningArtifacts(absRoot, featureName, overrides = {}) {
   writeFile(
     absRoot,
-    `.vsdd/features/${featureName}/verification/verification-report.md`,
+    `.vcsdd/features/${featureName}/verification/verification-report.md`,
     overrides.verificationReport || [
       '# Verification Report',
       '',
@@ -67,7 +67,7 @@ function writeFormalHardeningArtifacts(absRoot, featureName, overrides = {}) {
   );
   writeFile(
     absRoot,
-    `.vsdd/features/${featureName}/verification/security-report.md`,
+    `.vcsdd/features/${featureName}/verification/security-report.md`,
     overrides.securityReport || [
       '# Security Hardening Report',
       '',
@@ -83,7 +83,7 @@ function writeFormalHardeningArtifacts(absRoot, featureName, overrides = {}) {
   );
   writeFile(
     absRoot,
-    `.vsdd/features/${featureName}/verification/purity-audit.md`,
+    `.vcsdd/features/${featureName}/verification/purity-audit.md`,
     overrides.purityAudit || [
       '# Purity Boundary Audit',
       '',
@@ -103,7 +103,7 @@ function writeFormalHardeningArtifacts(absRoot, featureName, overrides = {}) {
   );
   writeFile(
     absRoot,
-    `.vsdd/features/${featureName}/verification/security-results/tooling.log`,
+    `.vcsdd/features/${featureName}/verification/security-results/tooling.log`,
     overrides.securityResults || 'semgrep: not_applicable\nwycheproof: not_applicable\n'
   );
 }
@@ -188,7 +188,7 @@ function createContractReviewContext(root, feature, sprintNumber = 1) {
   const contractRelativePath = `contracts/sprint-${sprintNumber}.md`;
   const contractAbsolutePath = path.join(
     root,
-    `.vsdd/features/${feature}`,
+    `.vcsdd/features/${feature}`,
     contractRelativePath
   );
   const contractContent = fs.readFileSync(contractAbsolutePath, 'utf8');
@@ -215,7 +215,7 @@ function writePassingReviewVerdict(root, feature, reviewScope, evidenceLocation,
 
   writeFile(
     root,
-    `.vsdd/features/${feature}/reviews/${reviewScope}/output/verdict.json`,
+    `.vcsdd/features/${feature}/reviews/${reviewScope}/output/verdict.json`,
     JSON.stringify(
       createPassingVerdict(
         feature,
@@ -265,7 +265,7 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
 
   writeFile(
     root,
-    `.vsdd/features/${feature}/reviews/${reviewScope}/output/verdict.json`,
+    `.vcsdd/features/${feature}/reviews/${reviewScope}/output/verdict.json`,
     JSON.stringify(verdict, null, 2) + '\n'
   );
 }
@@ -312,7 +312,7 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
 
   const blocked = runGateHook(root, {
     tool_name: 'Write',
-    tool_input: { file_path: path.join(root, `.vsdd/features/${feat}/state.json`) },
+    tool_input: { file_path: path.join(root, `.vcsdd/features/${feat}/state.json`) },
   });
   assert(blocked.status === 2, 'direct state.json edits should be blocked in every phase');
 }
@@ -324,9 +324,9 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
   const feat = 'spec-review-feature';
   initFeature(feat, 'lean');
   transitionPhase(feat, '1a');
-  writeFile(root, `.vsdd/features/${feat}/specs/behavioral-spec.md`, '# Behavioral\n');
+  writeFile(root, `.vcsdd/features/${feat}/specs/behavioral-spec.md`, '# Behavioral\n');
   transitionPhase(feat, '1b');
-  writeFile(root, `.vsdd/features/${feat}/specs/verification-architecture.md`, '# Verification\n');
+  writeFile(root, `.vcsdd/features/${feat}/specs/verification-architecture.md`, '# Verification\n');
   transitionPhase(feat, '1c');
 
   const blocked = runGateHook(root, {
@@ -347,40 +347,40 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
   assert(fs.readFileSync(getActiveFeaturePath(), 'utf8').trim() === feat, 'active-feature.txt should match feature');
 
   transitionPhase(feat, '1a');
-  writeFile(root, `.vsdd/features/${feat}/specs/behavioral-spec.md`, '# Behavioral\n');
+  writeFile(root, `.vcsdd/features/${feat}/specs/behavioral-spec.md`, '# Behavioral\n');
   transitionPhase(feat, '1b');
-  writeFile(root, `.vsdd/features/${feat}/specs/verification-architecture.md`, '# Verification\n');
+  writeFile(root, `.vcsdd/features/${feat}/specs/verification-architecture.md`, '# Verification\n');
   transitionPhase(feat, '1c');
   recordGate(feat, '1c', 'PASS', 'adversary');
   transitionPhase(feat, '2a');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
     'new-feature-tests: FAIL\nregression-baseline: PASS\n'
   );
   transitionPhase(feat, '2b');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
     'target-feature-tests: PASS\nregression-baseline: PASS\n'
   );
   transitionPhase(feat, '2c');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
     'target-feature-tests: PASS\nregression-baseline: PASS\nafter-refactor: PASS\n'
   );
   transitionPhase(feat, '3');
   recordGate(feat, '3', 'PASS', 'adversary');
   writeFile(
     root,
-    `.vsdd/features/${feat}/reviews/sprint-1/output/verdict.json`,
+    `.vcsdd/features/${feat}/reviews/sprint-1/output/verdict.json`,
     JSON.stringify(
       createPassingVerdict(
         feat,
         1,
         1,
-        `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+        `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
         {
           findingCount: 0,
           previousFindingCount: 1,
@@ -414,7 +414,7 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
   const st = readState(feat);
   assert(st.currentPhase === 'complete', 'lean should end at complete');
   assert(
-    fs.existsSync(path.join(root, `.vsdd/features/${feat}/verification/security-results`)),
+    fs.existsSync(path.join(root, `.vcsdd/features/${feat}/verification/security-results`)),
     'initFeature should create verification/security-results'
   );
 }
@@ -427,23 +427,23 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
   initFeature(feat, 'lean');
 
   transitionPhase(feat, '1a');
-  writeFile(root, `.vsdd/features/${feat}/specs/behavioral-spec.md`, '# Behavioral\n');
+  writeFile(root, `.vcsdd/features/${feat}/specs/behavioral-spec.md`, '# Behavioral\n');
   transitionPhase(feat, '1b');
-  writeFile(root, `.vsdd/features/${feat}/specs/verification-architecture.md`, '# Verification\n');
+  writeFile(root, `.vcsdd/features/${feat}/specs/verification-architecture.md`, '# Verification\n');
   transitionPhase(feat, '1c');
   recordGate(feat, '1c', 'PASS', 'adversary');
   transitionPhase(feat, '2a');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
     'new-feature-tests: FAIL\nregression-baseline: PASS\n'
   );
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
     'target-feature-tests: PASS\nregression-baseline: PASS\n'
   );
-  const staleGreenLog = path.join(root, `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`);
+  const staleGreenLog = path.join(root, `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`);
   const staleDate = new Date(Date.now() - 5000);
   fs.utimesSync(staleGreenLog, staleDate, staleDate);
   transitionPhase(feat, '2b');
@@ -462,13 +462,13 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
   initFeature(feat, 'lean');
 
   transitionPhase(feat, '1a');
-  writeFile(root, `.vsdd/features/${feat}/specs/behavioral-spec.md`, '# Behavioral\n');
+  writeFile(root, `.vcsdd/features/${feat}/specs/behavioral-spec.md`, '# Behavioral\n');
   transitionPhase(feat, '1b');
-  writeFile(root, `.vsdd/features/${feat}/specs/verification-architecture.md`, '# Verification\n');
+  writeFile(root, `.vcsdd/features/${feat}/specs/verification-architecture.md`, '# Verification\n');
   transitionPhase(feat, '1c');
   recordGate(feat, '1c', 'PASS', 'adversary');
   transitionPhase(feat, '2a');
-  writeFile(root, `.vsdd/features/${feat}/evidence/sprint-1-red-phase.log`, 'new-feature-tests: FAIL\n');
+  writeFile(root, `.vcsdd/features/${feat}/evidence/sprint-1-red-phase.log`, 'new-feature-tests: FAIL\n');
 
   assertThrows(
     () => transitionPhase(feat, '2b'),
@@ -484,25 +484,25 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
   initFeature(feat, 'lean');
 
   transitionPhase(feat, '1a');
-  writeFile(root, `.vsdd/features/${feat}/specs/behavioral-spec.md`, '# Behavioral\n');
+  writeFile(root, `.vcsdd/features/${feat}/specs/behavioral-spec.md`, '# Behavioral\n');
   transitionPhase(feat, '1b');
-  writeFile(root, `.vsdd/features/${feat}/specs/verification-architecture.md`, '# Verification\n');
+  writeFile(root, `.vcsdd/features/${feat}/specs/verification-architecture.md`, '# Verification\n');
   transitionPhase(feat, '1c');
   recordGate(feat, '1c', 'PASS', 'adversary');
   transitionPhase(feat, '2a');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
     'new-feature-tests: FAIL\nregression-baseline: PASS\n'
   );
   transitionPhase(feat, '2b');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
     'target-feature-tests: PASS\nregression-baseline: PASS\n'
   );
   transitionPhase(feat, '2c');
-  writeFile(root, `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`, 'target-feature-tests: PASS\n');
+  writeFile(root, `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`, 'target-feature-tests: PASS\n');
 
   assertThrows(
     () => transitionPhase(feat, '3'),
@@ -518,9 +518,9 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
   initFeature(feat, 'strict');
 
   transitionPhase(feat, '1a');
-  writeFile(root, `.vsdd/features/${feat}/specs/behavioral-spec.md`, '# B\n');
+  writeFile(root, `.vcsdd/features/${feat}/specs/behavioral-spec.md`, '# B\n');
   transitionPhase(feat, '1b');
-  writeFile(root, `.vsdd/features/${feat}/specs/verification-architecture.md`, '# V\n');
+  writeFile(root, `.vcsdd/features/${feat}/specs/verification-architecture.md`, '# V\n');
   transitionPhase(feat, '1c');
   recordGate(feat, '1c', 'PASS', 'adversary');
   assertThrows(
@@ -532,24 +532,24 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
   transitionPhase(feat, '2a');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
     'new-feature-tests: FAIL\nregression-baseline: PASS\n'
   );
   transitionPhase(feat, '2b');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
     'target-feature-tests: PASS\nregression-baseline: PASS\n'
   );
   transitionPhase(feat, '2c');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
     'target-feature-tests: PASS\nregression-baseline: PASS\nafter-refactor: PASS\n'
   );
   writeFile(
     root,
-    `.vsdd/features/${feat}/contracts/sprint-1.md`,
+    `.vcsdd/features/${feat}/contracts/sprint-1.md`,
     [
       '---',
       'sprintNumber: 1',
@@ -571,7 +571,7 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
     root,
     feat,
     'contracts/sprint-1',
-    `.vsdd/features/${feat}/contracts/sprint-1.md`,
+    `.vcsdd/features/${feat}/contracts/sprint-1.md`,
     {
       reviewContext: createContractReviewContext(root, feat),
     }
@@ -583,7 +583,7 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
     root,
     feat,
     'sprint-1',
-    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
     {
       convergenceSignals: createStrictConvergenceSignals(['CRIT-001']),
     }
@@ -611,22 +611,22 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
   initFeature(feat, 'strict');
 
   transitionPhase(feat, '1a');
-  writeFile(root, `.vsdd/features/${feat}/specs/behavioral-spec.md`, '# B\n');
+  writeFile(root, `.vcsdd/features/${feat}/specs/behavioral-spec.md`, '# B\n');
   transitionPhase(feat, '1b');
-  writeFile(root, `.vsdd/features/${feat}/specs/verification-architecture.md`, '# V\n');
+  writeFile(root, `.vcsdd/features/${feat}/specs/verification-architecture.md`, '# V\n');
   transitionPhase(feat, '1c');
   recordGate(feat, '1c', 'PASS', 'adversary');
   recordGate(feat, '1c', 'PASS', 'human', { approvedBasedOn: 'adversary' });
   transitionPhase(feat, '2a');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
     'new-feature-tests: FAIL\nregression-baseline: PASS\n'
   );
   transitionPhase(feat, '2b');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
     'target-feature-tests: PASS\nregression-baseline: PASS\n'
   );
   transitionPhase(feat, '2c');
@@ -634,7 +634,7 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
   const contractReviewAllowed = runGateHook(root, {
     tool_name: 'Write',
     tool_input: {
-      file_path: path.join(root, `.vsdd/features/${feat}/reviews/contracts/sprint-1/output/verdict.json`),
+      file_path: path.join(root, `.vcsdd/features/${feat}/reviews/contracts/sprint-1/output/verdict.json`),
     },
   });
   assert(contractReviewAllowed.status === 0, 'contract review verdict should be writable during phase 2c');
@@ -642,7 +642,7 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
   const sprintReviewBlocked = runGateHook(root, {
     tool_name: 'Write',
     tool_input: {
-      file_path: path.join(root, `.vsdd/features/${feat}/reviews/sprint-1/output/verdict.json`),
+      file_path: path.join(root, `.vcsdd/features/${feat}/reviews/sprint-1/output/verdict.json`),
     },
   });
   assert(sprintReviewBlocked.status === 2, 'sprint review verdict should stay blocked during phase 2c');
@@ -656,27 +656,27 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
   initFeature(feat, 'lean');
 
   transitionPhase(feat, '1a');
-  writeFile(root, `.vsdd/features/${feat}/specs/behavioral-spec.md`, '# Behavioral\n');
+  writeFile(root, `.vcsdd/features/${feat}/specs/behavioral-spec.md`, '# Behavioral\n');
   transitionPhase(feat, '1b');
-  writeFile(root, `.vsdd/features/${feat}/specs/verification-architecture.md`, '# Verification\n');
+  writeFile(root, `.vcsdd/features/${feat}/specs/verification-architecture.md`, '# Verification\n');
   transitionPhase(feat, '1c');
   recordGate(feat, '1c', 'PASS', 'adversary');
   transitionPhase(feat, '2a');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
     'new-feature-tests: FAIL\nregression-baseline: PASS\n'
   );
   transitionPhase(feat, '2b');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
     'target-feature-tests: PASS\nregression-baseline: PASS\n'
   );
   transitionPhase(feat, '2c');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
     'target-feature-tests: PASS\nregression-baseline: PASS\nafter-refactor: PASS\n'
   );
   transitionPhase(feat, '3');
@@ -684,12 +684,12 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
     root,
     feat,
     'sprint-1',
-    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`
   );
   recordGate(feat, '3', 'FAIL', 'adversary');
   writeFile(
     root,
-    `.vsdd/features/${feat}/reviews/sprint-1/output/findings/FIND-001.json`,
+    `.vcsdd/features/${feat}/reviews/sprint-1/output/findings/FIND-001.json`,
     JSON.stringify({
       findingId: 'FIND-001',
       dimension: 'verification_readiness',
@@ -697,7 +697,7 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
       severity: 'high',
       description: 'The verification architecture no longer matches the implementation shape, so the feedback loop must return to Phase 1b.',
       evidence: {
-        filePath: `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+        filePath: `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
         lineRange: '1-3',
       },
       routeToPhase: '1b',
@@ -721,27 +721,27 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
   initFeature(feat, 'lean');
 
   transitionPhase(feat, '1a');
-  writeFile(root, `.vsdd/features/${feat}/specs/behavioral-spec.md`, '# Behavioral\n');
+  writeFile(root, `.vcsdd/features/${feat}/specs/behavioral-spec.md`, '# Behavioral\n');
   transitionPhase(feat, '1b');
-  writeFile(root, `.vsdd/features/${feat}/specs/verification-architecture.md`, '# Verification\n');
+  writeFile(root, `.vcsdd/features/${feat}/specs/verification-architecture.md`, '# Verification\n');
   transitionPhase(feat, '1c');
   recordGate(feat, '1c', 'PASS', 'adversary');
   transitionPhase(feat, '2a');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
     'new-feature-tests: FAIL\nregression-baseline: PASS\n'
   );
   transitionPhase(feat, '2b');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
     'target-feature-tests: PASS\nregression-baseline: PASS\n'
   );
   transitionPhase(feat, '2c');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
     'target-feature-tests: PASS\nregression-baseline: PASS\nafter-refactor: PASS\n'
   );
 
@@ -765,27 +765,27 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
   initFeature(feat, 'lean');
 
   transitionPhase(feat, '1a');
-  writeFile(root, `.vsdd/features/${feat}/specs/behavioral-spec.md`, '# Behavioral\n');
+  writeFile(root, `.vcsdd/features/${feat}/specs/behavioral-spec.md`, '# Behavioral\n');
   transitionPhase(feat, '1b');
-  writeFile(root, `.vsdd/features/${feat}/specs/verification-architecture.md`, '# Verification\n');
+  writeFile(root, `.vcsdd/features/${feat}/specs/verification-architecture.md`, '# Verification\n');
   transitionPhase(feat, '1c');
   recordGate(feat, '1c', 'PASS', 'adversary');
   transitionPhase(feat, '2a');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
     'new-feature-tests: FAIL\nregression-baseline: PASS\n'
   );
   transitionPhase(feat, '2b');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
     'target-feature-tests: PASS\nregression-baseline: PASS\n'
   );
   transitionPhase(feat, '2c');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
     'target-feature-tests: PASS\nregression-baseline: PASS\nafter-refactor: PASS\n'
   );
   transitionPhase(feat, '3');
@@ -793,12 +793,12 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
     root,
     feat,
     'sprint-1',
-    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`
   );
   recordGate(feat, '3', 'FAIL', 'adversary');
   writeFile(
     root,
-    `.vsdd/features/${feat}/reviews/sprint-1/output/findings/FIND-001.json`,
+    `.vcsdd/features/${feat}/reviews/sprint-1/output/findings/FIND-001.json`,
     JSON.stringify({
       findingId: 'FIND-001',
       dimension: 'verification_readiness',
@@ -806,7 +806,7 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
       severity: 'high',
       description: 'A required proof harness is missing for the parser invariant, so the current hardening plan cannot establish the claimed safety property.',
       evidence: {
-        filePath: `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+        filePath: `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
         lineRange: '1-3',
       },
       routeToPhase: '5',
@@ -831,27 +831,27 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
   initFeature(feat, 'lean');
 
   transitionPhase(feat, '1a');
-  writeFile(root, `.vsdd/features/${feat}/specs/behavioral-spec.md`, '# Behavioral\n');
+  writeFile(root, `.vcsdd/features/${feat}/specs/behavioral-spec.md`, '# Behavioral\n');
   transitionPhase(feat, '1b');
-  writeFile(root, `.vsdd/features/${feat}/specs/verification-architecture.md`, '# Verification\n');
+  writeFile(root, `.vcsdd/features/${feat}/specs/verification-architecture.md`, '# Verification\n');
   transitionPhase(feat, '1c');
   recordGate(feat, '1c', 'PASS', 'adversary');
   transitionPhase(feat, '2a');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
     'new-feature-tests: FAIL\nregression-baseline: PASS\n'
   );
   transitionPhase(feat, '2b');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
     'target-feature-tests: PASS\nregression-baseline: PASS\n'
   );
   transitionPhase(feat, '2c');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
     'target-feature-tests: PASS\nregression-baseline: PASS\nafter-refactor: PASS\n'
   );
   transitionPhase(feat, '3');
@@ -859,12 +859,12 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
     root,
     feat,
     'sprint-1',
-    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`
   );
   recordGate(feat, '3', 'FAIL', 'adversary');
   writeFile(
     root,
-    `.vsdd/features/${feat}/reviews/sprint-1/output/findings/FIND-001.json`,
+    `.vcsdd/features/${feat}/reviews/sprint-1/output/findings/FIND-001.json`,
     JSON.stringify({
       findingId: 'FIND-001',
       dimension: 'verification_readiness',
@@ -872,7 +872,7 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
       severity: 'high',
       description: 'The selected verification tool cannot prove the property currently claimed by the verification architecture, so the routing must return to Phase 1b.',
       evidence: {
-        filePath: `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+        filePath: `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
         lineRange: '1-3',
       },
       routeToPhase: '1b',
@@ -894,27 +894,27 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
   initFeature(feat, 'lean');
 
   transitionPhase(feat, '1a');
-  writeFile(root, `.vsdd/features/${feat}/specs/behavioral-spec.md`, '# Behavioral\n');
+  writeFile(root, `.vcsdd/features/${feat}/specs/behavioral-spec.md`, '# Behavioral\n');
   transitionPhase(feat, '1b');
-  writeFile(root, `.vsdd/features/${feat}/specs/verification-architecture.md`, '# Verification\n');
+  writeFile(root, `.vcsdd/features/${feat}/specs/verification-architecture.md`, '# Verification\n');
   transitionPhase(feat, '1c');
   recordGate(feat, '1c', 'PASS', 'adversary');
   transitionPhase(feat, '2a');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
     'new-feature-tests: FAIL\nregression-baseline: PASS\n'
   );
   transitionPhase(feat, '2b');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
     'target-feature-tests: PASS\nregression-baseline: PASS\n'
   );
   transitionPhase(feat, '2c');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
     'target-feature-tests: PASS\nregression-baseline: PASS\nafter-refactor: PASS\n'
   );
   transitionPhase(feat, '3');
@@ -922,12 +922,12 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
     root,
     feat,
     'sprint-1',
-    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`
   );
   recordGate(feat, '3', 'FAIL', 'adversary');
   writeFile(
     root,
-    `.vsdd/features/${feat}/reviews/sprint-1/output/findings/FIND-001.json`,
+    `.vcsdd/features/${feat}/reviews/sprint-1/output/findings/FIND-001.json`,
     JSON.stringify({
       findingId: 'FIND-001',
       dimension: 'verification_readiness',
@@ -935,7 +935,7 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
       severity: 'high',
       description: 'The verification architecture itself is wrong, so feedback must return to Phase 1b before any later phase can proceed.',
       evidence: {
-        filePath: `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+        filePath: `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
         lineRange: '1-3',
       },
       routeToPhase: '1b',
@@ -958,27 +958,27 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
   initFeature(feat, 'lean');
 
   transitionPhase(feat, '1a');
-  writeFile(root, `.vsdd/features/${feat}/specs/behavioral-spec.md`, '# Behavioral\n');
+  writeFile(root, `.vcsdd/features/${feat}/specs/behavioral-spec.md`, '# Behavioral\n');
   transitionPhase(feat, '1b');
-  writeFile(root, `.vsdd/features/${feat}/specs/verification-architecture.md`, '# Verification\n');
+  writeFile(root, `.vcsdd/features/${feat}/specs/verification-architecture.md`, '# Verification\n');
   transitionPhase(feat, '1c');
   recordGate(feat, '1c', 'PASS', 'adversary');
   transitionPhase(feat, '2a');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
     'new-feature-tests: FAIL\nregression-baseline: PASS\n'
   );
   transitionPhase(feat, '2b');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
     'target-feature-tests: PASS\nregression-baseline: PASS\n'
   );
   transitionPhase(feat, '2c');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
     'target-feature-tests: PASS\nregression-baseline: PASS\nafter-refactor: PASS\n'
   );
   transitionPhase(feat, '3');
@@ -987,12 +987,12 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
 
   writeFile(
     root,
-    `.vsdd/features/${feat}/verification/verification-report.md`,
+    `.vcsdd/features/${feat}/verification/verification-report.md`,
     '# Verification Report\n\n## Proof Obligations\n\n| ID | Tier | Required | Status | Tool | Artifact |\n|----|------|----------|--------|------|----------|\n\n## Summary\n\n- Required obligations: 0\n'
   );
   writeFile(
     root,
-    `.vsdd/features/${feat}/verification/purity-audit.md`,
+    `.vcsdd/features/${feat}/verification/purity-audit.md`,
     '# Purity Boundary Audit\n\n## Declared Boundaries\n\n- Pure core: parser core\n\n## Observed Boundaries\n\n- No drift detected.\n\n## Summary\n\n- Overall status: PASS\n'
   );
   assertThrows(
@@ -1002,7 +1002,7 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
 
   writeFile(
     root,
-    `.vsdd/features/${feat}/verification/security-report.md`,
+    `.vcsdd/features/${feat}/verification/security-report.md`,
     '# Security Hardening Report\n\n## Tooling\n\n- Semgrep: not_applicable\n\n## Summary\n\n- Overall status: PASS\n'
   );
   assertThrows(
@@ -1010,8 +1010,8 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
     'security-results/ must contain at least one captured output artifact'
   );
 
-  writeFile(root, `.vsdd/features/${feat}/verification/security-results/tooling.log`, 'semgrep: not_applicable\n');
-  fs.rmSync(path.join(root, `.vsdd/features/${feat}/verification/purity-audit.md`), { force: true });
+  writeFile(root, `.vcsdd/features/${feat}/verification/security-results/tooling.log`, 'semgrep: not_applicable\n');
+  fs.rmSync(path.join(root, `.vcsdd/features/${feat}/verification/purity-audit.md`), { force: true });
   assertThrows(
     () => transitionPhase(feat, '6'),
     'purity-audit.md required for phase 6'
@@ -1026,27 +1026,27 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
   initFeature(feat, 'lean');
 
   transitionPhase(feat, '1a');
-  writeFile(root, `.vsdd/features/${feat}/specs/behavioral-spec.md`, '# Behavioral\n');
+  writeFile(root, `.vcsdd/features/${feat}/specs/behavioral-spec.md`, '# Behavioral\n');
   transitionPhase(feat, '1b');
-  writeFile(root, `.vsdd/features/${feat}/specs/verification-architecture.md`, '# Verification\n');
+  writeFile(root, `.vcsdd/features/${feat}/specs/verification-architecture.md`, '# Verification\n');
   transitionPhase(feat, '1c');
   recordGate(feat, '1c', 'PASS', 'adversary');
   transitionPhase(feat, '2a');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
     'new-feature-tests: FAIL\nregression-baseline: PASS\n'
   );
   transitionPhase(feat, '2b');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
     'target-feature-tests: PASS\nregression-baseline: PASS\n'
   );
   transitionPhase(feat, '2c');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
     'target-feature-tests: PASS\nregression-baseline: PASS\nafter-refactor: PASS\n'
   );
   transitionPhase(feat, '3');
@@ -1054,10 +1054,10 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
   writeFormalHardeningArtifacts(root, feat);
   const staleTimestamp = new Date('2000-01-01T00:00:00.000Z');
   for (const artifactPath of [
-    `.vsdd/features/${feat}/verification/verification-report.md`,
-    `.vsdd/features/${feat}/verification/security-report.md`,
-    `.vsdd/features/${feat}/verification/purity-audit.md`,
-    `.vsdd/features/${feat}/verification/security-results/tooling.log`,
+    `.vcsdd/features/${feat}/verification/verification-report.md`,
+    `.vcsdd/features/${feat}/verification/security-report.md`,
+    `.vcsdd/features/${feat}/verification/purity-audit.md`,
+    `.vcsdd/features/${feat}/verification/security-results/tooling.log`,
   ]) {
     fs.utimesSync(path.join(root, artifactPath), staleTimestamp, staleTimestamp);
   }
@@ -1077,37 +1077,37 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
   initFeature(feat, 'lean');
 
   transitionPhase(feat, '1a');
-  writeFile(root, `.vsdd/features/${feat}/specs/behavioral-spec.md`, '# Behavioral\n');
+  writeFile(root, `.vcsdd/features/${feat}/specs/behavioral-spec.md`, '# Behavioral\n');
   transitionPhase(feat, '1b');
-  writeFile(root, `.vsdd/features/${feat}/specs/verification-architecture.md`, '# Verification\n');
+  writeFile(root, `.vcsdd/features/${feat}/specs/verification-architecture.md`, '# Verification\n');
   transitionPhase(feat, '1c');
   recordGate(feat, '1c', 'PASS', 'adversary');
   transitionPhase(feat, '2a');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
     'new-feature-tests: FAIL\nregression-baseline: PASS\n'
   );
   transitionPhase(feat, '2b');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
     'target-feature-tests: PASS\nregression-baseline: PASS\n'
   );
   transitionPhase(feat, '2c');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
     'target-feature-tests: PASS\nregression-baseline: PASS\nafter-refactor: PASS\n'
   );
   transitionPhase(feat, '3');
   recordGate(feat, '3', 'PASS', 'adversary');
   transitionPhase(feat, '5');
 
-  writeFile(root, `.vsdd/features/${feat}/verification/verification-report.md`, '# Verification Report\n');
-  writeFile(root, `.vsdd/features/${feat}/verification/security-report.md`, '# Security Hardening Report\n\n## Tooling\n');
-  writeFile(root, `.vsdd/features/${feat}/verification/purity-audit.md`, '# Purity Boundary Audit\n');
-  writeFile(root, `.vsdd/features/${feat}/verification/security-results/tooling.log`, 'semgrep: not_applicable\n');
+  writeFile(root, `.vcsdd/features/${feat}/verification/verification-report.md`, '# Verification Report\n');
+  writeFile(root, `.vcsdd/features/${feat}/verification/security-report.md`, '# Security Hardening Report\n\n## Tooling\n');
+  writeFile(root, `.vcsdd/features/${feat}/verification/purity-audit.md`, '# Purity Boundary Audit\n');
+  writeFile(root, `.vcsdd/features/${feat}/verification/security-results/tooling.log`, 'semgrep: not_applicable\n');
 
   assertThrows(
     () => transitionPhase(feat, '6'),
@@ -1123,27 +1123,27 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
   initFeature(feat, 'lean');
 
   transitionPhase(feat, '1a');
-  writeFile(root, `.vsdd/features/${feat}/specs/behavioral-spec.md`, '# Behavioral\n');
+  writeFile(root, `.vcsdd/features/${feat}/specs/behavioral-spec.md`, '# Behavioral\n');
   transitionPhase(feat, '1b');
-  writeFile(root, `.vsdd/features/${feat}/specs/verification-architecture.md`, '# Verification\n');
+  writeFile(root, `.vcsdd/features/${feat}/specs/verification-architecture.md`, '# Verification\n');
   transitionPhase(feat, '1c');
   recordGate(feat, '1c', 'PASS', 'adversary');
   transitionPhase(feat, '2a');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
     'new-feature-tests: FAIL\nregression-baseline: PASS\n'
   );
   transitionPhase(feat, '2b');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
     'target-feature-tests: PASS\nregression-baseline: PASS\n'
   );
   transitionPhase(feat, '2c');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
     'target-feature-tests: PASS\nregression-baseline: PASS\nafter-refactor: PASS\n'
   );
   transitionPhase(feat, '3');
@@ -1171,33 +1171,33 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
   initFeature(feat, 'strict');
 
   transitionPhase(feat, '1a');
-  writeFile(root, `.vsdd/features/${feat}/specs/behavioral-spec.md`, '# B\n');
+  writeFile(root, `.vcsdd/features/${feat}/specs/behavioral-spec.md`, '# B\n');
   transitionPhase(feat, '1b');
-  writeFile(root, `.vsdd/features/${feat}/specs/verification-architecture.md`, '# V\n');
+  writeFile(root, `.vcsdd/features/${feat}/specs/verification-architecture.md`, '# V\n');
   transitionPhase(feat, '1c');
   recordGate(feat, '1c', 'PASS', 'adversary');
   recordGate(feat, '1c', 'PASS', 'human', { approvedBasedOn: 'adversary' });
   transitionPhase(feat, '2a');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
     'new-feature-tests: FAIL\nregression-baseline: PASS\n'
   );
   transitionPhase(feat, '2b');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
     'target-feature-tests: PASS\nregression-baseline: PASS\n'
   );
   transitionPhase(feat, '2c');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
     'target-feature-tests: PASS\nregression-baseline: PASS\n'
   );
   writeFile(
     root,
-    `.vsdd/features/${feat}/contracts/sprint-1.md`,
+    `.vcsdd/features/${feat}/contracts/sprint-1.md`,
     [
       '---',
       'sprintNumber: 1',
@@ -1219,7 +1219,7 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
     root,
     feat,
     'contracts/sprint-1',
-    `.vsdd/features/${feat}/contracts/sprint-1.md`,
+    `.vcsdd/features/${feat}/contracts/sprint-1.md`,
     {
       reviewContext: createContractReviewContext(root, feat),
     }
@@ -1231,7 +1231,7 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
     root,
     feat,
     'sprint-1',
-    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
     {
       iteration: 2,
       convergenceSignals: createStrictConvergenceSignals(['CRIT-001'], {
@@ -1256,33 +1256,33 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
   initFeature(feat, 'strict');
 
   transitionPhase(feat, '1a');
-  writeFile(root, `.vsdd/features/${feat}/specs/behavioral-spec.md`, '# B\n');
+  writeFile(root, `.vcsdd/features/${feat}/specs/behavioral-spec.md`, '# B\n');
   transitionPhase(feat, '1b');
-  writeFile(root, `.vsdd/features/${feat}/specs/verification-architecture.md`, '# V\n');
+  writeFile(root, `.vcsdd/features/${feat}/specs/verification-architecture.md`, '# V\n');
   transitionPhase(feat, '1c');
   recordGate(feat, '1c', 'PASS', 'adversary');
   recordGate(feat, '1c', 'PASS', 'human', { approvedBasedOn: 'adversary' });
   transitionPhase(feat, '2a');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
     'new-feature-tests: FAIL\nregression-baseline: PASS\n'
   );
   transitionPhase(feat, '2b');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
     'target-feature-tests: PASS\nregression-baseline: PASS\n'
   );
   transitionPhase(feat, '2c');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
     'target-feature-tests: PASS\nregression-baseline: PASS\n'
   );
   writeFile(
     root,
-    `.vsdd/features/${feat}/contracts/sprint-1.md`,
+    `.vcsdd/features/${feat}/contracts/sprint-1.md`,
     [
       '---',
       'sprintNumber: 1',
@@ -1304,7 +1304,7 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
     root,
     feat,
     'contracts/sprint-1',
-    `.vsdd/features/${feat}/contracts/sprint-1.md`,
+    `.vcsdd/features/${feat}/contracts/sprint-1.md`,
     {
       reviewContext: createContractReviewContext(root, feat),
     }
@@ -1316,7 +1316,7 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
     root,
     feat,
     'sprint-1',
-    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
     {
       iteration: 2,
       convergenceSignals: createStrictConvergenceSignals(['CRIT-001']),
@@ -1325,7 +1325,7 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
   writeFormalHardeningArtifacts(root, feat);
   traceability.createBead(feat, {
     type: 'adversary-finding',
-    artifactPath: `.vsdd/features/${feat}/reviews/sprint-1/output/findings/FIND-001.json`,
+    artifactPath: `.vcsdd/features/${feat}/reviews/sprint-1/output/findings/FIND-001.json`,
     status: 'open',
     externalId: 'FIND-001',
   });
@@ -1345,27 +1345,27 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
   initFeature(feat, 'lean');
 
   transitionPhase(feat, '1a');
-  writeFile(root, `.vsdd/features/${feat}/specs/behavioral-spec.md`, '# B\n');
+  writeFile(root, `.vcsdd/features/${feat}/specs/behavioral-spec.md`, '# B\n');
   transitionPhase(feat, '1b');
-  writeFile(root, `.vsdd/features/${feat}/specs/verification-architecture.md`, '# V\n');
+  writeFile(root, `.vcsdd/features/${feat}/specs/verification-architecture.md`, '# V\n');
   transitionPhase(feat, '1c');
   recordGate(feat, '1c', 'PASS', 'adversary');
   transitionPhase(feat, '2a');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
     'new-feature-tests: FAIL\nregression-baseline: PASS\n'
   );
   transitionPhase(feat, '2b');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
     'target-feature-tests: PASS\nregression-baseline: PASS\n'
   );
   transitionPhase(feat, '2c');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
     'target-feature-tests: PASS\nregression-baseline: PASS\nafter-refactor: PASS\n'
   );
   transitionPhase(feat, '3');
@@ -1375,7 +1375,7 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
     root,
     feat,
     'sprint-1',
-    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
     {
       iteration: 2,
       convergenceSignals: {
@@ -1388,7 +1388,7 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
   );
   writeFile(
     root,
-    `.vsdd/features/${feat}/reviews/sprint-1/output/findings/FIND-001.json`,
+    `.vcsdd/features/${feat}/reviews/sprint-1/output/findings/FIND-001.json`,
     JSON.stringify({
       findingId: 'FIND-001',
       dimension: 'edge_case_coverage',
@@ -1396,7 +1396,7 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
       severity: 'medium',
       description: 'The current test suite asserts implementation details instead of behavior in the parser regression path.',
       evidence: {
-        filePath: `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+        filePath: `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
         lineRange: '1-2',
       },
       routeToPhase: '2a',
@@ -1419,27 +1419,27 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
   initFeature(feat, 'lean');
 
   transitionPhase(feat, '1a');
-  writeFile(root, `.vsdd/features/${feat}/specs/behavioral-spec.md`, '# B\n');
+  writeFile(root, `.vcsdd/features/${feat}/specs/behavioral-spec.md`, '# B\n');
   transitionPhase(feat, '1b');
-  writeFile(root, `.vsdd/features/${feat}/specs/verification-architecture.md`, '# V\n');
+  writeFile(root, `.vcsdd/features/${feat}/specs/verification-architecture.md`, '# V\n');
   transitionPhase(feat, '1c');
   recordGate(feat, '1c', 'PASS', 'adversary');
   transitionPhase(feat, '2a');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
     'new-feature-tests: FAIL\nregression-baseline: PASS\n'
   );
   transitionPhase(feat, '2b');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
     'target-feature-tests: PASS\nregression-baseline: PASS\n'
   );
   transitionPhase(feat, '2c');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
     'target-feature-tests: PASS\nregression-baseline: PASS\nafter-refactor: PASS\n'
   );
   transitionPhase(feat, '3');
@@ -1449,7 +1449,7 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
     root,
     feat,
     'sprint-1',
-    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
     {
       iteration: 2,
       convergenceSignals: {
@@ -1464,7 +1464,7 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
   transitionPhase(feat, '6');
   writeFile(
     root,
-    `.vsdd/features/${feat}/reviews/sprint-2/output/findings/FIND-777.json`,
+    `.vcsdd/features/${feat}/reviews/sprint-2/output/findings/FIND-777.json`,
     JSON.stringify({
       findingId: 'FIND-777',
       dimension: 'edge_case_coverage',
@@ -1472,7 +1472,7 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
       severity: 'medium',
       description: 'A persisted adversary finding from an earlier review cycle still cites a hallucinated location, so convergence must remain blocked until the evidence is corrected.',
       evidence: {
-        filePath: `.vsdd/features/${feat}/src/nonexistent.js`,
+        filePath: `.vcsdd/features/${feat}/src/nonexistent.js`,
         lineRange: '1-2',
       },
       routeToPhase: '2a',
@@ -1480,7 +1480,7 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
   );
   traceability.createBead(feat, {
     type: 'adversary-finding',
-    artifactPath: `.vsdd/features/${feat}/reviews/sprint-2/output/findings/FIND-777.json`,
+    artifactPath: `.vcsdd/features/${feat}/reviews/sprint-2/output/findings/FIND-777.json`,
     status: 'resolved',
     externalId: 'FIND-777',
   });
@@ -1499,27 +1499,27 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
   initFeature(feat, 'lean');
 
   transitionPhase(feat, '1a');
-  writeFile(root, `.vsdd/features/${feat}/specs/behavioral-spec.md`, '# B\n');
+  writeFile(root, `.vcsdd/features/${feat}/specs/behavioral-spec.md`, '# B\n');
   transitionPhase(feat, '1b');
-  writeFile(root, `.vsdd/features/${feat}/specs/verification-architecture.md`, '# V\n');
+  writeFile(root, `.vcsdd/features/${feat}/specs/verification-architecture.md`, '# V\n');
   transitionPhase(feat, '1c');
   recordGate(feat, '1c', 'PASS', 'adversary');
   transitionPhase(feat, '2a');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
     'new-feature-tests: FAIL\nregression-baseline: PASS\n'
   );
   transitionPhase(feat, '2b');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
     'target-feature-tests: PASS\nregression-baseline: PASS\n'
   );
   transitionPhase(feat, '2c');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
     'target-feature-tests: PASS\nregression-baseline: PASS\nafter-refactor: PASS\n'
   );
   transitionPhase(feat, '3');
@@ -1529,7 +1529,7 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
     root,
     feat,
     'sprint-1',
-    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
     {
       iteration: 2,
       convergenceSignals: {
@@ -1557,33 +1557,33 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
   initFeature(feat, 'strict');
 
   transitionPhase(feat, '1a');
-  writeFile(root, `.vsdd/features/${feat}/specs/behavioral-spec.md`, '# B\n');
+  writeFile(root, `.vcsdd/features/${feat}/specs/behavioral-spec.md`, '# B\n');
   transitionPhase(feat, '1b');
-  writeFile(root, `.vsdd/features/${feat}/specs/verification-architecture.md`, '# V\n');
+  writeFile(root, `.vcsdd/features/${feat}/specs/verification-architecture.md`, '# V\n');
   transitionPhase(feat, '1c');
   recordGate(feat, '1c', 'PASS', 'adversary');
   recordGate(feat, '1c', 'PASS', 'human', { approvedBasedOn: 'adversary' });
   transitionPhase(feat, '2a');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
     'new-feature-tests: FAIL\nregression-baseline: PASS\n'
   );
   transitionPhase(feat, '2b');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
     'target-feature-tests: PASS\nregression-baseline: PASS\n'
   );
   transitionPhase(feat, '2c');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
     'target-feature-tests: PASS\nregression-baseline: PASS\nafter-refactor: PASS\n'
   );
   writeFile(
     root,
-    `.vsdd/features/${feat}/contracts/sprint-1.md`,
+    `.vcsdd/features/${feat}/contracts/sprint-1.md`,
     [
       '---',
       'sprintNumber: 1',
@@ -1611,7 +1611,7 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
     root,
     feat,
     'contracts/sprint-1',
-    `.vsdd/features/${feat}/contracts/sprint-1.md`,
+    `.vcsdd/features/${feat}/contracts/sprint-1.md`,
     {
       reviewContext: createContractReviewContext(root, feat),
     }
@@ -1630,33 +1630,33 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
   initFeature(feat, 'strict');
 
   transitionPhase(feat, '1a');
-  writeFile(root, `.vsdd/features/${feat}/specs/behavioral-spec.md`, '# B\n');
+  writeFile(root, `.vcsdd/features/${feat}/specs/behavioral-spec.md`, '# B\n');
   transitionPhase(feat, '1b');
-  writeFile(root, `.vsdd/features/${feat}/specs/verification-architecture.md`, '# V\n');
+  writeFile(root, `.vcsdd/features/${feat}/specs/verification-architecture.md`, '# V\n');
   transitionPhase(feat, '1c');
   recordGate(feat, '1c', 'PASS', 'adversary');
   recordGate(feat, '1c', 'PASS', 'human', { approvedBasedOn: 'adversary' });
   transitionPhase(feat, '2a');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
     'new-feature-tests: FAIL\nregression-baseline: PASS\n'
   );
   transitionPhase(feat, '2b');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
     'target-feature-tests: PASS\nregression-baseline: PASS\n'
   );
   transitionPhase(feat, '2c');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
     'target-feature-tests: PASS\nregression-baseline: PASS\nafter-refactor: PASS\n'
   );
   writeFile(
     root,
-    `.vsdd/features/${feat}/contracts/sprint-1.md`,
+    `.vcsdd/features/${feat}/contracts/sprint-1.md`,
     [
       '---',
       'sprintNumber: 1',
@@ -1679,14 +1679,14 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
     root,
     feat,
     'contracts/sprint-1',
-    `.vsdd/features/${feat}/contracts/sprint-1.md`,
+    `.vcsdd/features/${feat}/contracts/sprint-1.md`,
     {
       reviewContext: createContractReviewContext(root, feat),
     }
   );
   writeFile(
     root,
-    `.vsdd/features/${feat}/contracts/sprint-1.md`,
+    `.vcsdd/features/${feat}/contracts/sprint-1.md`,
     [
       '---',
       'sprintNumber: 1',
@@ -1719,33 +1719,33 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
   initFeature(feat, 'strict');
 
   transitionPhase(feat, '1a');
-  writeFile(root, `.vsdd/features/${feat}/specs/behavioral-spec.md`, '# B\n');
+  writeFile(root, `.vcsdd/features/${feat}/specs/behavioral-spec.md`, '# B\n');
   transitionPhase(feat, '1b');
-  writeFile(root, `.vsdd/features/${feat}/specs/verification-architecture.md`, '# V\n');
+  writeFile(root, `.vcsdd/features/${feat}/specs/verification-architecture.md`, '# V\n');
   transitionPhase(feat, '1c');
   recordGate(feat, '1c', 'PASS', 'adversary');
   recordGate(feat, '1c', 'PASS', 'human', { approvedBasedOn: 'adversary' });
   transitionPhase(feat, '2a');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
     'new-feature-tests: FAIL\nregression-baseline: PASS\n'
   );
   transitionPhase(feat, '2b');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
     'target-feature-tests: PASS\nregression-baseline: PASS\n'
   );
   transitionPhase(feat, '2c');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
     'target-feature-tests: PASS\nregression-baseline: PASS\nafter-refactor: PASS\n'
   );
   writeFile(
     root,
-    `.vsdd/features/${feat}/contracts/sprint-1.md`,
+    `.vcsdd/features/${feat}/contracts/sprint-1.md`,
     [
       '---',
       'sprintNumber: 1',
@@ -1772,7 +1772,7 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
     root,
     feat,
     'contracts/sprint-1',
-    `.vsdd/features/${feat}/contracts/sprint-1.md`,
+    `.vcsdd/features/${feat}/contracts/sprint-1.md`,
     {
       reviewContext: createContractReviewContext(root, feat),
     }
@@ -1784,7 +1784,7 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
     root,
     feat,
     'sprint-1',
-    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
     {
       convergenceSignals: createStrictConvergenceSignals(['CRIT-001']),
     }
@@ -1805,33 +1805,33 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
   initFeature(feat, 'strict');
 
   transitionPhase(feat, '1a');
-  writeFile(root, `.vsdd/features/${feat}/specs/behavioral-spec.md`, '# B\n');
+  writeFile(root, `.vcsdd/features/${feat}/specs/behavioral-spec.md`, '# B\n');
   transitionPhase(feat, '1b');
-  writeFile(root, `.vsdd/features/${feat}/specs/verification-architecture.md`, '# V\n');
+  writeFile(root, `.vcsdd/features/${feat}/specs/verification-architecture.md`, '# V\n');
   transitionPhase(feat, '1c');
   recordGate(feat, '1c', 'PASS', 'adversary');
   recordGate(feat, '1c', 'PASS', 'human', { approvedBasedOn: 'adversary' });
   transitionPhase(feat, '2a');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
     'new-feature-tests: FAIL\nregression-baseline: PASS\n'
   );
   transitionPhase(feat, '2b');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
     'target-feature-tests: PASS\nregression-baseline: PASS\n'
   );
   transitionPhase(feat, '2c');
   writeFile(
     root,
-    `.vsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
     'target-feature-tests: PASS\nregression-baseline: PASS\nafter-refactor: PASS\n'
   );
   writeFile(
     root,
-    `.vsdd/features/${feat}/contracts/sprint-1.md`,
+    `.vcsdd/features/${feat}/contracts/sprint-1.md`,
     [
       '---',
       'sprintNumber: 1',
@@ -1854,7 +1854,7 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
     root,
     feat,
     'contracts/sprint-1',
-    `.vsdd/features/${feat}/contracts/sprint-1.md`,
+    `.vcsdd/features/${feat}/contracts/sprint-1.md`,
     {
       iteration: 3,
       reviewContext: createContractReviewContext(root, feat),
@@ -1865,10 +1865,10 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
     () => transitionPhase(feat, '3'),
     'negotiation limit exceeded'
   );
-  const escalationDir = path.join(root, `.vsdd/features/${feat}/escalations`);
+  const escalationDir = path.join(root, `.vcsdd/features/${feat}/escalations`);
   assert(fs.existsSync(escalationDir), 'contract review escalation should be written after exceeding negotiation limit');
   assert(fs.readdirSync(escalationDir).length > 0, 'contract review escalation directory should contain an escalation record');
 }
 
 // eslint-disable-next-line no-console
-console.log('verify-vsdd-state: OK');
+console.log('verify-vcsdd-state: OK');

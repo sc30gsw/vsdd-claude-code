@@ -6,7 +6,7 @@ description: Run Phase 4 (feedback routing) after an adversarial review FAIL. Ro
 Runs the feedback integration loop (Phase 4). Reads adversary findings from the latest verdict, routes each to the appropriate phase, explicitly enters Phase `4`, and then transitions the pipeline back for rework.
 
 ## When
-Run after `/vsdd-adversary` returns a FAIL verdict. Normally starts from phase `3`; if routing was already started, phase `4` is also valid.
+Run after `/vcsdd-adversary` returns a FAIL verdict. Normally starts from phase `3`; if routing was already started, phase `4` is also valid.
 
 ## How
 
@@ -28,7 +28,7 @@ Run after `/vsdd-adversary` returns a FAIL verdict. Normally starts from phase `
 7. **Advance through explicit feedback routing**:
    - if current phase is `3`, transition `3 -> 4`
    - from phase `4`, transition to the selected target phase
-   - use `routeFeedback(featureName, targetPhase, reason)` from `scripts/lib/vsdd-state.js` instead of hand-rolling `transitionPhase()` calls
+   - use `routeFeedback(featureName, targetPhase, reason)` from `scripts/lib/vcsdd-state.js` instead of hand-rolling `transitionPhase()` calls
    - `routeFeedback()` only proceeds when the latest sprint verdict is `FAIL`
 8. **Display routing summary**: "Routing 5 findings. 2 -> Phase 1a, 3 -> Phase 2b"
 9. **Next action**: prompt user to run appropriate command for the target phase
@@ -60,6 +60,6 @@ Run after `/vsdd-adversary` returns a FAIL verdict. Normally starts from phase `
 ## Examples
 
 ```bash
-/vsdd-feedback
-/vsdd-feedback --show-routing    # display full routing table before applying
+/vcsdd-feedback
+/vcsdd-feedback --show-routing    # display full routing table before applying
 ```

@@ -1,5 +1,5 @@
 ---
-description: Run Phase 6 (convergence check) for the active VSDD feature. Validates four-dimensional convergence: finding diminishment, finding specificity, criteria coverage, and duplicate detection.
+description: Run Phase 6 (convergence check) for the active VCSDD feature. Validates four-dimensional convergence: finding diminishment, finding specificity, criteria coverage, and duplicate detection.
 ---
 
 ## What
@@ -43,7 +43,7 @@ Run after Phase 5 (formal hardening) completes. Requires active feature at phase
 
 Display upon completion:
 ```
-VSDD Feature Complete: my-feature
+VCSDD Feature Complete: my-feature
    Sprint: 2 | Iterations: 3 | Mode: strict
 
    Convergence Dimensions:
@@ -61,6 +61,6 @@ VSDD Feature Complete: my-feature
 ## Examples
 
 ```bash
-/vsdd-converge
-/vsdd-converge --force-complete    # override convergence (human sign-off)
+/vcsdd-converge
+/vcsdd-converge --force-complete    # override convergence (human sign-off)
 ```

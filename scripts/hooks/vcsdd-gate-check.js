@@ -2,7 +2,7 @@
 
 const path = require('path');
 const { run } = require('./run-with-flags');
-const { getActiveFeature, readState } = require('../lib/vsdd-state');
+const { getActiveFeature, readState } = require('../lib/vcsdd-state');
 const SOURCE_FILE_EXTENSION_RE = /\.(ts|tsx|js|jsx|mjs|cjs|py|rs|go|java|cpp|c|cc|cxx|h|hpp|hh|hxx|rb|swift|kt)$/i;
 
 // Phase-to-allowed-paths mapping
@@ -22,7 +22,7 @@ const WRITE_RESTRICTIONS = [
         (SOURCE_FILE_EXTENSION_RE.test(norm) &&
          !norm.includes('test') &&
          !norm.includes('spec') &&
-         !norm.includes('.vsdd/') &&
+         !norm.includes('.vcsdd/') &&
          !norm.includes('scripts/'))
       );
     },
@@ -49,7 +49,7 @@ const WRITE_RESTRICTIONS = [
     blockedInPhases: new Set(['init', '2a', '2b', '2c', '3', '5', '6', 'complete']),
     matches: (filePath) => {
       const norm = filePath.replace(/\\/g, '/');
-      return norm.includes('.vsdd/') && norm.includes('/specs/');
+      return norm.includes('.vcsdd/') && norm.includes('/specs/');
     },
   },
   {
@@ -58,7 +58,7 @@ const WRITE_RESTRICTIONS = [
     blockedInPhases: new Set(['init', '1a', '1b', '1c', '2a', '2b', '2c', '3', '4', '6', 'complete']),
     matches: (filePath) => {
       const norm = filePath.replace(/\\/g, '/');
-      return norm.includes('.vsdd/') && norm.includes('/verification/');
+      return norm.includes('.vcsdd/') && norm.includes('/verification/');
     },
   },
   {
@@ -67,7 +67,7 @@ const WRITE_RESTRICTIONS = [
     blockedInPhases: new Set(['init', '1a', '1b', '1c', '2b', '2c', '3', '4', '5', '6', 'complete']),
     matches: (filePath) => {
       const norm = filePath.replace(/\\/g, '/');
-      return norm.includes('.vsdd/') && /\/evidence\/sprint-\d+-red-phase\.log$/i.test(norm);
+      return norm.includes('.vcsdd/') && /\/evidence\/sprint-\d+-red-phase\.log$/i.test(norm);
     },
   },
   {
@@ -76,7 +76,7 @@ const WRITE_RESTRICTIONS = [
     blockedInPhases: new Set(['init', '1a', '1b', '1c', '2a', '3', '4', '5', '6', 'complete']),
     matches: (filePath) => {
       const norm = filePath.replace(/\\/g, '/');
-      return norm.includes('.vsdd/') && /\/evidence\/sprint-\d+-green-phase\.log$/i.test(norm);
+      return norm.includes('.vcsdd/') && /\/evidence\/sprint-\d+-green-phase\.log$/i.test(norm);
     },
   },
   {
@@ -85,17 +85,17 @@ const WRITE_RESTRICTIONS = [
     blockedInPhases: new Set(['init', '1a', '1b', '1c', '3', '4', '6', 'complete']),
     matches: (filePath) => {
       const norm = filePath.replace(/\\/g, '/');
-      return norm.includes('.vsdd/') && /\/evidence\/sprint-\d+-coverage\.json$/i.test(norm);
+      return norm.includes('.vcsdd/') && /\/evidence\/sprint-\d+-coverage\.json$/i.test(norm);
     },
   },
   {
     // Pipeline state must flow through the state library, not direct edits
-    name: 'VSDD control files',
+    name: 'VCSDD control files',
     blockedInPhases: new Set(['init', '1a', '1b', '1c', '2a', '2b', '2c', '3', '4', '5', '6', 'complete']),
     matches: (filePath) => {
       const norm = filePath.replace(/\\/g, '/');
       return (
-        norm.includes('/.vsdd/') && (
+        norm.includes('/.vcsdd/') && (
           norm.endsWith('/index.json') ||
           norm.endsWith('/history.jsonl') ||
           norm.endsWith('/active-feature.txt') ||
@@ -110,7 +110,7 @@ const WRITE_RESTRICTIONS = [
     blockedInPhases: new Set(['init', '1a', '1b', '2a', '2b', '2c', '3', '4', '5', '6', 'complete']),
     matches: (filePath) => {
       const norm = filePath.replace(/\\/g, '/');
-      return norm.includes('/.vsdd/') && norm.includes('/reviews/spec/');
+      return norm.includes('/.vcsdd/') && norm.includes('/reviews/spec/');
     },
   },
   {
@@ -119,7 +119,7 @@ const WRITE_RESTRICTIONS = [
     blockedInPhases: new Set(['init', '1a', '1b', '1c', '2a', '2b', '3', '4', '5', '6', 'complete']),
     matches: (filePath) => {
       const norm = filePath.replace(/\\/g, '/');
-      return norm.includes('/.vsdd/') && norm.includes('/reviews/contracts/');
+      return norm.includes('/.vcsdd/') && norm.includes('/reviews/contracts/');
     },
   },
   {
@@ -128,7 +128,7 @@ const WRITE_RESTRICTIONS = [
     blockedInPhases: new Set(['init', '1a', '1b', '1c', '2a', '2b', '2c', '4', '5', '6', 'complete']),
     matches: (filePath) => {
       const norm = filePath.replace(/\\/g, '/');
-      return norm.includes('/.vsdd/') && /\/reviews\/sprint-\d+\//i.test(norm);
+      return norm.includes('/.vcsdd/') && /\/reviews\/sprint-\d+\//i.test(norm);
     },
   },
   {
@@ -137,7 +137,7 @@ const WRITE_RESTRICTIONS = [
     blockedInPhases: new Set(['init', '1a', '1b', '1c', '3', '5', '6', 'complete']),
     matches: (filePath) => {
       const norm = filePath.replace(/\\/g, '/');
-      return norm.includes('/.vsdd/') && /\/contracts\/sprint-\d+\.md$/i.test(norm);
+      return norm.includes('/.vcsdd/') && /\/contracts\/sprint-\d+\.md$/i.test(norm);
     },
   },
   {
@@ -146,7 +146,7 @@ const WRITE_RESTRICTIONS = [
     blockedInPhases: new Set(['init', '1a', '1b', '1c', '2a', '2b', '2c', '3', '4', '5', '6', 'complete']),
     matches: (filePath) => {
       const norm = filePath.replace(/\\/g, '/');
-      return norm.includes('/.vsdd/') && norm.includes('/escalations/');
+      return norm.includes('/.vcsdd/') && norm.includes('/escalations/');
     },
   },
 ];
@@ -206,7 +206,7 @@ function looksLikePathToken(token) {
   return (
     value.includes('/') ||
     value.startsWith('.') ||
-    /^(src|lib|app|core|test|tests|__tests__|specs|verification|\.vsdd)(\/|$)/.test(value) ||
+    /^(src|lib|app|core|test|tests|__tests__|specs|verification|\.vcsdd)(\/|$)/.test(value) ||
     /\.(ts|tsx|js|jsx|mjs|cjs|py|rs|go|java|cpp|c|cc|cxx|h|hpp|hh|hxx|rb|swift|kt|json|md|log)$/i.test(value)
   );
 }
@@ -269,17 +269,17 @@ function checkRestrictionsForPath(filePath, currentPhase, activeFeature) {
   for (const restriction of WRITE_RESTRICTIONS) {
     if (restriction.blockedInPhases.has(currentPhase) && restriction.matches(filePath)) {
       return (
-        `[VSDD Gate] Cannot write ${restriction.name} during phase ${currentPhase}.\n` +
+        `[VCSDD Gate] Cannot write ${restriction.name} during phase ${currentPhase}.\n` +
         `File: ${filePath}\n` +
         `Feature: ${activeFeature} | Phase: ${currentPhase}\n` +
-        `Run /vsdd-status to see required phase progression.`
+        `Run /vcsdd-status to see required phase progression.`
       );
     }
   }
   return null;
 }
 
-run('vsdd-gate-check', async (payload) => {
+run('vcsdd-gate-check', async (payload) => {
   const toolName = payload.tool_name || payload.toolName || '';
   const toolInput = payload.tool_input || payload.toolInput || {};
   const filePath = toolInput.file_path || toolInput.filePath || '';
@@ -330,7 +330,7 @@ run('vsdd-gate-check', async (payload) => {
           message:
             msg +
             `\n(Bash heuristic; command referenced path: ${raw})\n` +
-            `If this is a false positive, adjust the command or use VSDD_HOOK_PROFILE=minimal.`,
+            `If this is a false positive, adjust the command or use VCSDD_HOOK_PROFILE=minimal.`,
         };
       }
     }

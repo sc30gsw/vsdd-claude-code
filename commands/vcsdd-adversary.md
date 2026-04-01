@@ -1,12 +1,12 @@
 ---
-description: Run Phase 3 (adversarial review) for the active VSDD feature. Spawns a fresh vsdd-adversary agent with zero Builder context to review implementation against spec. Produces binary PASS/FAIL verdict per dimension.
+description: Run Phase 3 (adversarial review) for the active VCSDD feature. Spawns a fresh vcsdd-adversary agent with zero Builder context to review implementation against spec. Produces binary PASS/FAIL verdict per dimension.
 ---
 
 ## What
-Runs the adversarial review (Phase 3). Spawns a fresh vsdd-adversary agent (opus model, review-output-only, zero Builder context) to review the implementation against the spec across 5 dimensions.
+Runs the adversarial review (Phase 3). Spawns a fresh vcsdd-adversary agent (opus model, review-output-only, zero Builder context) to review the implementation against the spec across 5 dimensions.
 
 ## When
-Run after `/vsdd-impl` completes Phases 2b and 2c. Requires active feature at phase `2c`. In strict mode, `/vsdd-contract-review` must already have produced a PASS verdict for the current sprint contract.
+Run after `/vcsdd-impl` completes Phases 2b and 2c. Requires active feature at phase `2c`. In strict mode, `/vcsdd-contract-review` must already have produced a PASS verdict for the current sprint contract.
 
 ## How
 
@@ -35,13 +35,13 @@ Run after `/vsdd-impl` completes Phases 2b and 2c. Requires active feature at ph
    }
    ```
 4. **Create output directories**: `reviews/sprint-N/output/findings/`
-5. **Spawn FRESH vsdd-adversary agent**: this MUST be a new agent with no Builder context
+5. **Spawn FRESH vcsdd-adversary agent**: this MUST be a new agent with no Builder context
 6. **Collect outputs** after adversary completes:
    - `reviews/sprint-N/output/verdict.json`
    - `reviews/sprint-N/output/findings/FIND-NNN.json` (one per finding)
 7. **Record gate**: `recordGate(feature, '3', overallVerdict, 'adversary')`
 8. **If PASS**: transition to Phase 5 in all modes, display summary
-9. **If FAIL**: display findings grouped by dimension/category, proceed to `/vsdd-feedback`
+9. **If FAIL**: display findings grouped by dimension/category, proceed to `/vcsdd-feedback`
 
 ## Fresh Context Requirement
 
@@ -55,6 +55,6 @@ The adversary reads ONLY from disk (review manifest + source files).
 ## Examples
 
 ```bash
-/vsdd-adversary
-/vsdd-adversary --sprint 2    # specify sprint number explicitly
+/vcsdd-adversary
+/vcsdd-adversary --sprint 2    # specify sprint number explicitly
 ```

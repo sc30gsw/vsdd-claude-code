@@ -1,7 +1,7 @@
 'use strict';
 
 const { run } = require('./run-with-flags');
-const { getActiveFeature, readState, appendHistory, getVsddRoot } = require('../lib/vsdd-state');
+const { getActiveFeature, readState, appendHistory, getVcsddRoot } = require('../lib/vcsdd-state');
 const { execSync, execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
@@ -40,14 +40,14 @@ function parsePorcelainPath(line) {
   return renamed[renamed.length - 1];
 }
 
-function phaseArtifactHints(state, activeFeature, vsddRelative) {
+function phaseArtifactHints(state, activeFeature, vcsddRelative) {
   const sprint = state.sprintCount || 1;
-  const featureRoot = toPosix(path.join(vsddRelative, 'features', activeFeature));
+  const featureRoot = toPosix(path.join(vcsddRelative, 'features', activeFeature));
   const hints = new Set([
     `${featureRoot}/`,
-    `${vsddRelative}/index.json`,
-    `${vsddRelative}/history.jsonl`,
-    `${vsddRelative}/active-feature.txt`,
+    `${vcsddRelative}/index.json`,
+    `${vcsddRelative}/history.jsonl`,
+    `${vcsddRelative}/active-feature.txt`,
   ]);
 
   const byPhase = {
@@ -103,14 +103,14 @@ function matchesHint(filePath, hints) {
   return hints.some(hint => normalized === hint || normalized.startsWith(hint));
 }
 
-run('vsdd-auto-commit', async (payload) => {
+run('vcsdd-auto-commit', async (payload) => {
   // Auto-commit is disabled by default - must opt in explicitly
-  if (!process.env.VSDD_AUTO_COMMIT || process.env.VSDD_AUTO_COMMIT.toLowerCase() !== 'true') {
+  if (!process.env.VCSDD_AUTO_COMMIT || process.env.VCSDD_AUTO_COMMIT.toLowerCase() !== 'true') {
     return { blocked: false };
   }
 
-  const vsddRoot = getVsddRoot();
-  if (!fs.existsSync(vsddRoot)) {
+  const vcsddRoot = getVcsddRoot();
+  if (!fs.existsSync(vcsddRoot)) {
     return { blocked: false };
   }
 
@@ -123,7 +123,7 @@ run('vsdd-auto-commit', async (payload) => {
     const state = readState(activeFeature);
 
     // Check if this is a phase completion event (phase changed since last commit)
-    const lastCommitPhaseFile = path.join(vsddRoot, '.last-commit-phase');
+    const lastCommitPhaseFile = path.join(vcsddRoot, '.last-commit-phase');
     const lastCommitPhase = fs.existsSync(lastCommitPhaseFile)
       ? fs.readFileSync(lastCommitPhaseFile, 'utf8').trim()
       : null;
@@ -141,8 +141,8 @@ run('vsdd-auto-commit', async (payload) => {
     }
 
     const dirtyFiles = status.trim().split('\n').filter(Boolean);
-    const vsddRelative = vsddRoot.replace(process.cwd() + '/', '');
-    const hints = phaseArtifactHints(state, activeFeature, vsddRelative);
+    const vcsddRelative = vcsddRoot.replace(process.cwd() + '/', '');
+    const hints = phaseArtifactHints(state, activeFeature, vcsddRelative);
     const parsedDirtyFiles = dirtyFiles.map(parsePorcelainPath).filter(Boolean);
     const isImplementationPath = (filePath) => (
       /^(src|tests?|lib|app|core|__tests__)\//.test(filePath) ||
@@ -157,7 +157,7 @@ run('vsdd-auto-commit', async (payload) => {
       appendHistory({
         event: 'auto_commit_skipped',
         featureName: activeFeature,
-        reason: 'dirty changes outside current VSDD artifact scope',
+        reason: 'dirty changes outside current VCSDD artifact scope',
         phase: state.currentPhase,
       });
       return { blocked: false };
@@ -167,7 +167,7 @@ run('vsdd-auto-commit', async (payload) => {
       appendHistory({
         event: 'auto_commit_skipped',
         featureName: activeFeature,
-        reason: 'no dirty files matched current VSDD artifact scope',
+        reason: 'no dirty files matched current VCSDD artifact scope',
         phase: state.currentPhase,
       });
       return { blocked: false };
@@ -191,7 +191,7 @@ run('vsdd-auto-commit', async (payload) => {
       .join(', ') || 'none';
 
     const commitMsg = [
-      `vsdd(${state.currentPhase}): ${activeFeature} - ${phaseDesc}`,
+      `vcsdd(${state.currentPhase}): ${activeFeature} - ${phaseDesc}`,
       '',
       `Phase: ${state.currentPhase}`,
       `Feature: ${activeFeature}`,
@@ -210,7 +210,7 @@ run('vsdd-auto-commit', async (payload) => {
       execSync(`git commit -m "${commitMsg.replace(/"/g, '\\"')}"`, {
         cwd: process.cwd(), encoding: 'utf8',
       });
-      const tag = `vsdd/${activeFeature}/phase-${state.currentPhase}`;
+      const tag = `vcsdd/${activeFeature}/phase-${state.currentPhase}`;
       let tagExists = false;
       try {
         execFileSync('git', ['rev-parse', '-q', '--verify', `refs/tags/${tag}`], {
@@ -236,10 +236,10 @@ run('vsdd-auto-commit', async (payload) => {
         tag,
       });
     } catch (commitErr) {
-      process.stderr.write(`[vsdd-auto-commit] Commit failed: ${commitErr.message}\n`);
+      process.stderr.write(`[vcsdd-auto-commit] Commit failed: ${commitErr.message}\n`);
     }
   } catch (err) {
-    process.stderr.write(`[vsdd-auto-commit] Error: ${err.message}\n`);
+    process.stderr.write(`[vcsdd-auto-commit] Error: ${err.message}\n`);
   }
 
   return { blocked: false };

@@ -1,9 +1,9 @@
 ---
-description: Display the current VSDD pipeline status for the active (or specified) feature. Shows phase, mode, sprint count, open findings, pending proofs, and the traceability summary.
+description: Display the current VCSDD pipeline status for the active (or specified) feature. Shows phase, mode, sprint count, open findings, pending proofs, and the traceability summary.
 ---
 
 ## What
-Displays a comprehensive status view of the active VSDD feature pipeline.
+Displays a comprehensive status view of the active VCSDD feature pipeline.
 
 ## When
 Run at any time to check pipeline state. No phase restrictions.
@@ -15,7 +15,7 @@ Run at any time to check pipeline state. No phase restrictions.
 3. **Display status panel**:
    ```
    ================================================
-   VSDD Status: my-feature
+   VCSDD Status: my-feature
    ================================================
    Phase:    2b (Implementation - Green)
    Mode:     strict
@@ -33,14 +33,14 @@ Run at any time to check pipeline state. No phase restrictions.
    12 test cases (10 green, 2 red)
    8 implementations
 
-   Next: Run /vsdd-adversary (Phase 3)
+   Next: Run /vcsdd-adversary (Phase 3)
    ================================================
    ```
 
 ## Examples
 
 ```bash
-/vsdd-status
-/vsdd-status --all-features    # show all features, not just active
-/vsdd-status --json            # machine-readable output
+/vcsdd-status
+/vcsdd-status --all-features    # show all features, not just active
+/vcsdd-status --json            # machine-readable output
 ```

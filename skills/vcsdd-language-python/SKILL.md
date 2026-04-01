@@ -1,10 +1,10 @@
 ---
-name: vsdd-language-python
-description: Use this skill when applying VSDD to Python projects. Provides hypothesis property testing patterns, mutmut mutation testing, and pytest integration for the VSDD pipeline.
-origin: VSDD
+name: vcsdd-language-python
+description: Use this skill when applying VCSDD to Python projects. Provides hypothesis property testing patterns, mutmut mutation testing, and pytest integration for the VCSDD pipeline.
+origin: VCSDD
 ---
 
-# VSDD Language Profile: Python
+# VCSDD Language Profile: Python
 
 ## Verification Toolset
 
@@ -57,7 +57,7 @@ mutmut html
 
 ```bash
 # Run tests and capture output
-pytest tests/ -v 2>&1 | tee .vsdd/features/<name>/evidence/sprint-1-red-phase.log
+pytest tests/ -v 2>&1 | tee .vcsdd/features/<name>/evidence/sprint-1-red-phase.log
 # Verify failure
-grep -q "FAILED" .vsdd/features/<name>/evidence/sprint-1-red-phase.log
+grep -q "FAILED" .vcsdd/features/<name>/evidence/sprint-1-red-phase.log
 ```

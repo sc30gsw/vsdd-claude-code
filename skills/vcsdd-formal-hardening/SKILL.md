@@ -1,10 +1,10 @@
 ---
-name: vsdd-formal-hardening
+name: vcsdd-formal-hardening
 description: Use this skill during Phase 5 formal hardening. Provides tool selection, proof harness patterns, security/purity audit expectations, and verification result interpretation for Rust (Kani), Python (hypothesis), and TypeScript (fast-check).
-origin: VSDD
+origin: VCSDD
 ---
 
-# VSDD Formal Hardening
+# VCSDD Formal Hardening
 
 ## When to Activate
 - Phase 5 (formal hardening)

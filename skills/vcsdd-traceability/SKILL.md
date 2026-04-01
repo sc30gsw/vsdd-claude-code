@@ -1,14 +1,14 @@
 ---
-name: vsdd-traceability
-description: Use this skill when creating or querying VSDD Chainlink bead traceability. Provides bead creation patterns, chain traversal, and completeness validation.
-origin: VSDD
+name: vcsdd-traceability
+description: Use this skill when creating or querying VCSDD Chainlink bead traceability. Provides bead creation patterns, chain traversal, and completeness validation.
+origin: VCSDD
 ---
 
-# VSDD Traceability (Chainlink Beads)
+# VCSDD Traceability (Chainlink Beads)
 
 ## When to Activate
 - Creating new artifacts (specs, tests, code, findings)
-- Running /vsdd-trace command
+- Running /vcsdd-trace command
 - Validating chain completeness before Phase 6
 
 ## Bead Types and Creation Points
@@ -35,7 +35,7 @@ REQ-001 (spec-requirement)
 ## Creating Beads
 
 ```javascript
-const { createBead, linkBeads } = require('./scripts/lib/vsdd-traceability');
+const { createBead, linkBeads } = require('./scripts/lib/vcsdd-traceability');
 
 // Create spec requirement bead
 const req = createBead('my-feature', {
@@ -56,7 +56,7 @@ const test = createBead('my-feature', {
 });
 ```
 
-## Chain Display (/vsdd-trace)
+## Chain Display (/vcsdd-trace)
 
 ```
 BEAD-001 [spec-requirement] active

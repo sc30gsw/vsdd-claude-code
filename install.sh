@@ -12,15 +12,15 @@ resolve_script_path() {
   cd -P "$(dirname "$source")" && pwd
 }
 
-# VSDD Claude Code Plugin Installer
+# VCSDD Claude Code Plugin Installer
 SCRIPT_DIR="$(resolve_script_path)"
-PLUGIN_NAME="vsdd-claude-code"
+PLUGIN_NAME="vcsdd-claude-code"
 VERSION="1.0.0"
 COMMAND_NAME="$(basename "${0}")"
 
 # Default profile
-PROFILE="${VSDD_INSTALL_PROFILE:-standard}"
-LANGUAGE="${VSDD_INSTALL_LANGUAGE:-}"
+PROFILE="${VCSDD_INSTALL_PROFILE:-standard}"
+LANGUAGE="${VCSDD_INSTALL_LANGUAGE:-}"
 DRY_RUN=false
 
 # Parse arguments
@@ -37,7 +37,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-echo "VSDD Claude Code Plugin Installer v${VERSION}"
+echo "VCSDD Claude Code Plugin Installer v${VERSION}"
 echo "Profile: ${PROFILE}"
 [[ -n "$LANGUAGE" ]] && echo "Language: ${LANGUAGE}"
 [[ "$DRY_RUN" == "true" ]] && echo "[DRY RUN MODE - no files will be written]"
@@ -77,7 +77,7 @@ install_module() {
   fi
 }
 
-echo "Installing VSDD plugin to: ${PLUGIN_DIR}"
+echo "Installing VCSDD plugin to: ${PLUGIN_DIR}"
 [[ "$DRY_RUN" == "false" ]] && mkdir -p "$PLUGIN_DIR"
 
 # Copy plugin manifest
@@ -108,19 +108,19 @@ for install_path in "${INSTALL_PATHS[@]}"; do
 done
 
 echo ""
-echo "✅ VSDD Claude Code Plugin installed successfully!"
+echo "✅ VCSDD Claude Code Plugin installed successfully!"
 echo ""
 echo "Getting started:"
 echo "  1. Open a project in Claude Code"
-echo "  2. Run: /vsdd-init <feature-name> --mode lean"
-echo "  3. Run: /vsdd-spec"
-echo "  4. Run: /vsdd-status"
+echo "  2. Run: /vcsdd-init <feature-name> --mode lean"
+echo "  3. Run: /vcsdd-spec"
+echo "  4. Run: /vcsdd-status"
 echo ""
 if [[ "$PROFILE" == "standard" || "$PROFILE" == "strict" ]]; then
-  echo "Hooks: Default VSDD_HOOK_PROFILE=standard (gate enforcement on Write/Edit/Bash heuristics, session hooks, pre-compact)."
+  echo "Hooks: Default VCSDD_HOOK_PROFILE=standard (gate enforcement on Write/Edit/Bash heuristics, session hooks, pre-compact)."
   echo ""
 fi
 if [[ "$PROFILE" == "strict" ]]; then
-  echo "Strict hook profile: export VSDD_HOOK_PROFILE=strict (enables auto-commit hook path; still requires VSDD_AUTO_COMMIT=true to commit)."
+  echo "Strict hook profile: export VCSDD_HOOK_PROFILE=strict (enables auto-commit hook path; still requires VCSDD_AUTO_COMMIT=true to commit)."
   echo ""
 fi

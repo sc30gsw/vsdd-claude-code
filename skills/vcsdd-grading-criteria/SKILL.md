@@ -1,10 +1,10 @@
 ---
-name: vsdd-grading-criteria
-description: Use this skill when evaluating VSDD grading dimensions during adversarial review. Provides concrete evaluation checklists for each of the 5 dimensions and convergence signal detection.
-origin: VSDD
+name: vcsdd-grading-criteria
+description: Use this skill when evaluating VCSDD grading dimensions during adversarial review. Provides concrete evaluation checklists for each of the 5 dimensions and convergence signal detection.
+origin: VCSDD
 ---
 
-# VSDD Grading Criteria
+# VCSDD Grading Criteria
 
 ## When to Activate
 - During Phase 3 adversarial review

@@ -8,20 +8,20 @@ const VALID_PROFILES = new Set(['minimal', 'standard', 'strict']);
 // strict   - gate enforcement ON,  session persistence ON, auto-commit ON
 
 const HOOK_PROFILE_MAP = {
-  'vsdd-gate-check':      ['standard', 'strict'],
-  'vsdd-session-start':   ['minimal', 'standard', 'strict'],
-  'vsdd-session-persist':  ['minimal', 'standard', 'strict'],
-  'vsdd-pre-compact':     ['standard', 'strict'],
-  'vsdd-auto-commit':     ['strict'],
+  'vcsdd-gate-check':      ['standard', 'strict'],
+  'vcsdd-session-start':   ['minimal', 'standard', 'strict'],
+  'vcsdd-session-persist':  ['minimal', 'standard', 'strict'],
+  'vcsdd-pre-compact':     ['standard', 'strict'],
+  'vcsdd-auto-commit':     ['strict'],
 };
 
 function getProfile() {
-  const raw = String(process.env.VSDD_HOOK_PROFILE || 'standard').trim().toLowerCase();
+  const raw = String(process.env.VCSDD_HOOK_PROFILE || 'standard').trim().toLowerCase();
   return VALID_PROFILES.has(raw) ? raw : 'standard';
 }
 
 function getDisabledHooks() {
-  const raw = String(process.env.VSDD_DISABLED_HOOKS || '');
+  const raw = String(process.env.VCSDD_DISABLED_HOOKS || '');
   if (!raw.trim()) return new Set();
   return new Set(raw.split(',').map(v => v.trim().toLowerCase()).filter(Boolean));
 }

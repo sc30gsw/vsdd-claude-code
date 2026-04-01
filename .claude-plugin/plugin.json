@@ -1,14 +1,14 @@
 {
-  "name": "vsdd",
+  "name": "vcsdd",
   "version": "1.0.0",
   "description": "Verified Spec-Driven Development — adversarial quality gates for AI-assisted development",
   "author": {
     "name": "sc30gsw"
   },
-  "homepage": "https://github.com/sc30gsw/vsdd-claude-code",
-  "repository": "https://github.com/sc30gsw/vsdd-claude-code",
+  "homepage": "https://github.com/sc30gsw/vcsdd-claude-code",
+  "repository": "https://github.com/sc30gsw/vcsdd-claude-code",
   "license": "MIT",
-  "keywords": ["vsdd", "tdd", "spec-driven", "verification", "adversarial-review"],
+  "keywords": ["vcsdd", "tdd", "spec-driven", "verification", "adversarial-review"],
   "skills": "./skills/",
   "hooks": "./hooks/hooks.json"
 }

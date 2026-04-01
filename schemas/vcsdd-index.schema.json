@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "vsdd.index.v1",
-  "title": "VSDD Feature Index",
+  "$id": "vcsdd.index.v1",
+  "title": "VCSDD Feature Index",
   "type": "object",
   "required": ["version", "features", "activeFeature"],
   "additionalProperties": false,

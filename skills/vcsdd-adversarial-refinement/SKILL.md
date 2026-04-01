@@ -1,10 +1,10 @@
 ---
-name: vsdd-adversarial-refinement
-description: Use this skill when running or interpreting VSDD adversarial reviews. Provides calibration guidance for the Adversary agent, finding severity classification, and anti-leniency enforcement patterns.
-origin: VSDD
+name: vcsdd-adversarial-refinement
+description: Use this skill when running or interpreting VCSDD adversarial reviews. Provides calibration guidance for the Adversary agent, finding severity classification, and anti-leniency enforcement patterns.
+origin: VCSDD
 ---
 
-# VSDD Adversarial Refinement
+# VCSDD Adversarial Refinement
 
 ## When to Activate
 - Phase 3 (adversarial review)
