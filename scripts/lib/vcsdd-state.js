@@ -107,7 +107,9 @@ const GATE_PREREQUISITES = {
       return { ok: false, reason: 'Spec review gate must PASS before phase 2a' };
     }
 
-    // Coherence validation (optional — only when coherence.json exists)
+    // Coherence validation is opt-in (only when coherence.json exists).
+    // If coherence.json exists but is invalid (e.g. cycles), we block phase 2a.
+    // If the coherence runtime fails unexpectedly, we record history but do not block (advisory).
     const coherencePath = path.join(featurePath, 'coherence.json');
     if (fs.existsSync(coherencePath)) {
       try {

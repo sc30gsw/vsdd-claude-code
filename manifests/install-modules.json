@@ -69,8 +69,23 @@
     {
       "id": "vcsdd-commands",
       "kind": "commands",
-      "description": "13 VCSDD slash commands for pipeline control",
-      "paths": ["commands/"],
+      "description": "Core VCSDD slash commands for pipeline control (coherence commands ship with vcsdd-coherence)",
+      "paths": [
+        "commands/vcsdd-adversary.md",
+        "commands/vcsdd-commit.md",
+        "commands/vcsdd-contract-review.md",
+        "commands/vcsdd-converge.md",
+        "commands/vcsdd-escalate.md",
+        "commands/vcsdd-feedback.md",
+        "commands/vcsdd-harden.md",
+        "commands/vcsdd-impl.md",
+        "commands/vcsdd-init.md",
+        "commands/vcsdd-spec-review.md",
+        "commands/vcsdd-spec.md",
+        "commands/vcsdd-status.md",
+        "commands/vcsdd-tdd.md",
+        "commands/vcsdd-trace.md"
+      ],
       "targets": ["claude"],
       "dependencies": ["vcsdd-rules", "vcsdd-runtime", "vcsdd-schemas"],
       "defaultInstall": true,
@@ -96,7 +111,7 @@
     {
       "id": "vcsdd-skills",
       "kind": "skills",
-      "description": "10 core VCSDD skills for spec, adversarial review, traceability, and git",
+      "description": "Core VCSDD skills for spec, adversarial review, traceability, and git (language and coherence skills are separate modules)",
       "paths": [
         "skills/vcsdd-spec-crystallization/",
         "skills/vcsdd-sprint-contracts/",

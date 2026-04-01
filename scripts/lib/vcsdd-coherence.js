@@ -276,7 +276,7 @@ function removeAutoEvidence(ceg) {
     ceg.edges.flatMap(e => [e.sourceId, e.targetId]),
   );
   for (const nodeId of Object.keys(ceg.nodes)) {
-    if (!referencedIds.has(nodeId) && nodeId.startsWith('file:')) {
+    if (!referencedIds.has(nodeId)) {
       delete ceg.nodes[nodeId];
     }
   }
@@ -341,7 +341,7 @@ function classifyBand(confidence, evidenceCount, bands = DEFAULT_BANDS) {
  * enqueued when the candidate depth is strictly less than any previously
  * recorded depth — this correctly handles multiple start nodes.
  *
- * @returns {Map<string, {depth, path, source, confidence}>}
+ * @returns {Map<string, {depth, path, source}>}
  */
 function propagateImpact(ceg, startNodeIds, maxDepth = 10, minConfidence = 0) {
   // visited: nodeId -> { depth, path, source }
@@ -354,6 +354,8 @@ function propagateImpact(ceg, startNodeIds, maxDepth = 10, minConfidence = 0) {
   const queue = startNodeIds.map(id => [id, 0, [id], id]);
 
   while (queue.length > 0) {
+    // Note: For very large graphs, a head-index queue and an adjacency index
+    // (targetId -> incoming edges) would reduce overhead vs shift()+full scans.
     const [current, depth, nodePath, source] = queue.shift(); // FIFO = BFS
 
     if (depth > maxDepth) continue;
@@ -842,15 +844,28 @@ function rebuildFromFrontmatter(featureName) {
       }
     }
 
-    // data_dependencies: behavioral_dependency edges
+    // data_dependencies: intermediate db_column node + behavioral_dependency edges
+    // Mirrors CoDD scanner.py: creates db_column:{table}.{column} as intermediate node
+    // and edges FROM that node to each affected target (not directly from declaring doc).
     for (const dep of (coherence.data_dependencies ?? [])) {
+      const table  = dep.table  ?? '?';
+      const column = dep.column ?? '?';
+      const depId  = `db_column:${table}.${column}`;
+      upsertNode(ceg, depId, { type: 'db_column', name: `${table}.${column}` });
+      // Link declaring document to the intermediate column node
+      addEdge(ceg, nodeId, depId, 'behavioral_dependency', 'behavioral', [{
+        sourceType: 'frontmatter', method: 'data_dependency',
+        score: FRONTMATTER_SCORES.data_dependencies,
+        detail: dep.condition ?? `Data dependency declared in ${relPath}`,
+        isNegative: false,
+      }]);
       const affects = Array.isArray(dep.affects) ? dep.affects : [];
       for (const targetId of affects) {
         if (!targetId) continue;
-        addEdge(ceg, nodeId, targetId, 'behavioral_dependency', 'behavioral', [{
+        addEdge(ceg, depId, targetId, 'behavioral_dependency', 'behavioral', [{
           sourceType: 'frontmatter', method: 'data_dependency',
           score: FRONTMATTER_SCORES.data_dependencies,
-          detail: dep.condition ?? `Data dependency on ${dep.table ?? '?'}.${dep.column ?? '?'}`,
+          detail: dep.condition ?? `Data dependency on ${table}.${column}`,
           isNegative: false,
         }]);
       }
