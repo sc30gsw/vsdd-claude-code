@@ -64,7 +64,8 @@ When requirements change mid-project, the Coherence Engine traces which downstre
 - **Noisy-OR confidence scoring** -- evidence-based edge weights aggregated into Green (≥90%) / Amber (≥50%) / Gray (<50%) impact bands
 - **BFS forward impact propagation** -- traces all downstream nodes when a spec changes, so no affected document is silently missed
 - **DFS cycle detection** -- prevents circular dependencies in the spec graph before they corrupt propagation
-- **Opt-in and non-blocking** -- activates only when `coherence.json` is present; completely a no-op when absent, preserving all existing VCSDD guarantees
+- **Reference integrity enforcement** -- dangling references and placeholder nodes are hard errors at the Phase 2a gate; a broken graph blocks entering the red phase until fixed
+- **Opt-in** -- activates only when `coherence.json` is present; completely a no-op when absent, preserving all existing VCSDD guarantees. When opted in, coherence errors (dangling refs, cycles, corrupted graph, runtime failures) block the Phase 2a gate
 
 **Language verification profiles**
 - **Rust** -- `proptest`, `cargo-fuzz`, `cargo-mutants`, with `kani` as the bundled Tier 2 verifier and `cbmc` as a Tier 3 fallback hint
@@ -214,9 +215,6 @@ bash install.sh --profile standard
 
 # Optional: add a language profile
 bash install.sh --profile standard --language typescript
-
-# Optional: install extra modules (e.g. Coherence Engine)
-bash install.sh --profile standard --modules vcsdd-coherence
 ```
 
 **Option 3: Package Manager**
@@ -484,6 +482,7 @@ The canonical runtime tool hints live in `manifests/language-profiles.json`; thi
 | Skills | no | yes | yes |
 | Contexts | no | yes | yes |
 | Hooks | no | yes | yes |
+| Coherence Engine (`vcsdd-coherence`) | no | yes | yes |
 | Core runtime scripts (`scripts/lib/`) | yes | yes | yes |
 | Hook scripts (`scripts/hooks/`) | no | yes | yes |
 

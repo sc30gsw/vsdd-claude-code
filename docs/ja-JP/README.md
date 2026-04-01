@@ -87,7 +87,8 @@ PreToolUseフックがフェーズ外の `Write`/`Edit` および、リダイレ
 - **Noisy-OR 信頼度スコアリング**: 証拠ベースのエッジ重みを集約して Green（≥90%）/ Amber（≥50%）/ Gray（<50%）のインパクトバンドに分類する
 - **BFS 前方インパクト伝播**: 仕様が変更されたとき、すべての下流ノードをトレースし、影響を受けるドキュメントを見逃さない
 - **DFS 循環検出**: 仕様グラフの循環依存を伝播前に検出し防止する
-- **オプトインかつ非ブロッキング**: `coherence.json` が存在する場合のみ有効化。存在しない場合は完全に no-op となり、既存の VCSDD の保証をすべて維持する
+- **参照整合性強制**: 未解決の参照（dangling reference）やプレースホルダーノードは Phase 2a ゲートのハードエラーとなる。壊れたグラフは修正するまで red phase への遷移をブロックする
+- **オプトイン**: `coherence.json` が存在する場合のみ有効化。存在しない場合は完全に no-op となり、既存の VCSDD の保証をすべて維持する。オプトイン後は、dangling 参照・循環依存・グラフ破損・ランタイムエラーのいずれも Phase 2a ゲートをブロックする
 
 ### 言語プロファイル
 
@@ -307,8 +308,8 @@ npx vcsdd-claude-code --profile standard
 | プロファイル | 内容 | 適用シーン |
 |------------|------|----------|
 | minimal | docs + manifests + schemas + rules + commands + core runtime | 試用、軽量な利用 |
-| standard | + agents, skills, contexts, hooks, scripts（未指定時の hook profile は `standard`） | 通常の開発作業 |
-| strict | standard と同じファイル構成。必要なら `VCSDD_HOOK_PROFILE=strict` を明示して厳しいフックマップを使う | 高保証作業、チーム開発 |
+| standard | + agents, skills, contexts, hooks, scripts, coherence engine（未指定時の hook profile は `standard`） | 通常の開発作業 |
+| strict | standard と同じファイル構成（coherence engine 含む）。必要なら `VCSDD_HOOK_PROFILE=strict` を明示して厳しいフックマップを使う | 高保証作業、チーム開発 |
 
 ### 言語プロファイル
 
