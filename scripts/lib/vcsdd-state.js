@@ -1404,7 +1404,6 @@ function routeFeedback(featureName, targetPhase, reason) {
               impactedNodes: [...impacts.entries()].map(([id, info]) => ({
                 nodeId: id,
                 depth: info.depth,
-                confidence: info.confidence,
               })),
             });
           }
