@@ -394,9 +394,11 @@ function propagateImpact(ceg, startNodeIds, maxDepth = 10, minConfidence = 0) {
 function impactNodeIncomingStats(ceg, nodeId) {
   const nodeEdges     = ceg.edges.filter(e => e.targetId === nodeId && e.isActive);
   const evidenceCount = nodeEdges.length;
-  const maxConfidence = evidenceCount > 0
-    ? Math.max(...nodeEdges.map(e => e.confidence))
-    : 0;
+  // Use reduce instead of Math.max(...array) to avoid stack overflow on large arrays
+  const maxConfidence = nodeEdges.reduce(
+    (m, e) => (e.confidence > m ? e.confidence : m),
+    0,
+  );
   return { evidenceCount, maxConfidence };
 }
 
