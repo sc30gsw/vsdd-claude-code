@@ -205,6 +205,9 @@ Coherence skills: `vcsdd-coherence-scan`, `vcsdd-coherence-impact`, `vcsdd-coher
 
 # Install the plugin
 /plugin install vcsdd@sc30gsw-vcsdd-claude-code
+
+# Reload plugin
+/reload-plugins
 ```
 
 Skills are available as `/vcsdd:init`, `/vcsdd:spec`, `/vcsdd:adversary`, etc.

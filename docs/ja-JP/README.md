@@ -152,6 +152,9 @@ canonical VCSDD が定義するのは Human Architect、Builder、Tracker（Chai
 
 # プラグインをインストール
 /plugin install vcsdd@sc30gsw-vcsdd-claude-code
+
+# プラグインを再読み込み
+/reload-plugins
 ```
 
 インストール後、スキルは `/vcsdd:init`、`/vcsdd:spec`、`/vcsdd:adversary` のように呼び出せます。
