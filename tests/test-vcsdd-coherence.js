@@ -22,6 +22,8 @@ const {
   detectCycles,
   validateCoherence,
   removeAutoEvidence,
+  upsertNode,
+  addEdge,
   extractFrontmatter,
   sanitizeRelativePath,
   DEFAULT_BANDS,
@@ -599,6 +601,34 @@ removeAutoEvidence(orphanCeg);
 assert(!orphanCeg.nodes['file:x.ts'], 'orphan file: node removed');
 assert(orphanCeg.nodes['a'],          'non-orphan node a preserved');
 assert(orphanCeg.nodes['b'],          'non-orphan node b preserved');
+
+section('removeAutoEvidence — orphan non-file: nodes are also removed (Bug 1 fix)');
+
+// Bug 1 fix: previously only file: prefix orphans were removed.
+// After purging auto evidence, any unreferenced node (module:, design:, req:, etc.)
+// must also be deleted, matching the reference CoDD implementation.
+const orphanNonFileCeg = makeCegWithEvidence(
+  [
+    { id: 'a',          type: 'design' },
+    { id: 'b',          type: 'design' },
+    { id: 'module:old', type: 'module' },  // orphan — no edges reference it
+    { id: 'req:stale',  type: 'requirement' },  // orphan — no edges reference it
+  ],
+  [{
+    id: 1, sourceId: 'a', targetId: 'b',
+    relation: 'depends_on', semantic: 'governance',
+    confidence: 0.9, isActive: true,
+    evidence: [
+      { sourceType: 'human', method: 'manual', score: 0.9, isNegative: false },
+    ],
+  }],
+);
+
+removeAutoEvidence(orphanNonFileCeg);
+assert(!orphanNonFileCeg.nodes['module:old'], 'orphan module: node removed (Bug 1 fix)');
+assert(!orphanNonFileCeg.nodes['req:stale'],  'orphan req: node removed (Bug 1 fix)');
+assert(orphanNonFileCeg.nodes['a'],           'non-orphan design node a preserved');
+assert(orphanNonFileCeg.nodes['b'],           'non-orphan design node b preserved');
 
 // ══════════════════════════════════════════════════════════════════════════════
 // 10. sanitizeRelativePath — path traversal prevention
