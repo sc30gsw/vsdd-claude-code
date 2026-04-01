@@ -6,7 +6,7 @@
 
 **言語**: [English](../../README.md)
 
-**Verified Spec-Driven Development (VCSDD)** をあらゆるプロジェクトにもたらす Claude Code プラグイン。
+**Verified Coherence Spec-Driven Development (VCSDD)** をあらゆるプロジェクトにもたらす Claude Code プラグイン。
 
 ---
 

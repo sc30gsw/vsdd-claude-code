@@ -1,7 +1,7 @@
 {
   "name": "vcsdd-claude-code",
   "version": "1.0.0",
-  "description": "Verified Spec-Driven Development workflow plugin for Claude Code",
+  "description": "Verified Coherence Spec-Driven Development workflow plugin for Claude Code",
   "main": "scripts/lib/vcsdd-state.js",
   "bin": {
     "vcsdd": "./install.sh",

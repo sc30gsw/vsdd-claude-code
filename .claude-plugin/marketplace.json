@@ -4,13 +4,13 @@
     "name": "sc30gsw"
   },
   "metadata": {
-    "description": "Verified Spec-Driven Development plugin for Claude Code"
+    "description": "Verified Coherence Spec-Driven Development plugin for Claude Code"
   },
   "plugins": [
     {
       "name": "vcsdd",
       "source": "./",
-      "description": "Verified Spec-Driven Development — adversarial quality gates for AI-assisted development",
+      "description": "Verified Coherence Spec-Driven Development — adversarial quality gates for AI-assisted development",
       "author": {
         "name": "sc30gsw"
       },

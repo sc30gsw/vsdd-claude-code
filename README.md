@@ -7,7 +7,7 @@
 **Languages**: [日本語](docs/ja-JP/README.md)
 ![Node](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)
 
-A Claude Code plugin that brings **Verified Spec-Driven Development (VCSDD)** methodology to any project. It enforces spec-first, test-first, adversarial review, and formal verification as sequential quality gates.
+A Claude Code plugin that brings **Verified Coherence Spec-Driven Development (VCSDD)** methodology to any project. It enforces spec-first, test-first, adversarial review, and formal verification as sequential quality gates.
 
 ---
 

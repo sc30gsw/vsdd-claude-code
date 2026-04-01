@@ -1,6 +1,6 @@
 # VCSDD Methodology Overview
 
-VCSDD stands for Verified Spec-Driven Development.
+VCSDD stands for Verified Coherence Spec-Driven Development.
 
 It combines four constraints into one workflow:
 
