@@ -115,10 +115,12 @@ remain a no-op. Once active, the graph is enforced by the Phase 2a gate.
 
 When coherence is active, **structural validation** (including cycle detection)
 runs at the Phase **2a** gate: a failing validation **blocks** entering 2a until the
-graph is fixed. When coherence is active, runtime errors in the
-coherence module also **block the Phase 2a gate** and are logged to history.
-In the `standard` and `strict` hook profiles, spec edits also auto-refresh the
-graph after each write so later impact analysis runs against current frontmatter.
+graph is fixed. Runtime errors in the coherence module also **block the Phase 2a gate**
+and are logged to history. If `coherence.json` is corrupted, VCSDD preserves a
+`coherence.json.bak` backup and rebuilds the graph from current frontmatter
+instead of treating the cached graph as the source of truth. In the `standard`
+and `strict` hook profiles, spec edits also auto-refresh the graph after each
+write so later impact analysis runs against current frontmatter.
 
 New commands:
 - `/vcsdd-coherence-scan` — rebuild CEG from spec frontmatter

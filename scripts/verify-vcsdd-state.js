@@ -425,6 +425,49 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
   );
 }
 
+// ── Coherence gate: corrupted coherence.json is backed up and rebuilt from frontmatter ──
+{
+  const root = tmpDir();
+  process.chdir(root);
+  const feat = 'coherence-corrupt-recovery-feature';
+  initFeature(feat, 'lean');
+  transitionPhase(feat, '1a');
+  writeFile(
+    root,
+    `.vcsdd/features/${feat}/specs/behavioral-spec.md`,
+    [
+      '---',
+      'coherence:',
+      '  node_id: req:coherence-recover',
+      '---',
+      '',
+      '# Behavioral',
+      '',
+    ].join('\n')
+  );
+  writeFile(root, `.vcsdd/features/${feat}/coherence.json`, '{broken json');
+  transitionPhase(feat, '1b');
+  writeFile(root, `.vcsdd/features/${feat}/specs/verification-architecture.md`, '# Verification\n');
+  transitionPhase(feat, '1c');
+  recordGate(feat, '1c', 'PASS', 'adversary');
+  transitionPhase(feat, '2a');
+
+  const coherencePath = path.join(root, `.vcsdd/features/${feat}/coherence.json`);
+  const rebuilt = JSON.parse(fs.readFileSync(coherencePath, 'utf8'));
+  const historyEvents = fs.readFileSync(vcsdd.getHistoryPath(), 'utf8')
+    .trim()
+    .split('\n')
+    .map((line) => JSON.parse(line))
+    .filter((event) => event.featureName === feat);
+
+  assert(fs.existsSync(`${coherencePath}.bak`), 'corrupted coherence.json should be backed up during recovery');
+  assert(rebuilt.nodes['req:coherence-recover'], 'recovered coherence graph should be rebuilt from current frontmatter');
+  assert(
+    historyEvents.some((event) => event.event === 'coherence_recovered' && event.phase === '2a'),
+    'phase 2a recovery should be recorded in history.jsonl'
+  );
+}
+
 // ── Coherence gate: invalid node_id blocks phase 2a ──
 {
   const root = tmpDir();

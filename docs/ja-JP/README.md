@@ -90,10 +90,10 @@ PreToolUseフックがフェーズ外の `Write`/`Edit` および、リダイレ
 - **CoDD流モジュールトレーサビリティ**: `modules:` フロントマターから `module:*` ノードと technical edge を生成し、spec 変更時に影響を受ける実装モジュールを表面化する
 - **ファイルパストレーサビリティ**: `source_files:` は参照用のファイルパスを保存する。前方 impact 伝播は生のパス一覧ではなく、上記グラフエッジで判定する
 - **参照整合性強制**: 未解決の参照（dangling reference）やプレースホルダーノードは Phase 2a ゲートのハードエラーとなる。壊れたグラフは修正するまで red phase への遷移をブロックする
-- **オプトイン**: spec のフロントマターに `coherence:` を書いたとき、または既存の `coherence.json` を追跡しているときに有効化される。coherence metadata を持たない通常の VCSDD feature は完全に no-op のまま。オプトイン後は、dangling 参照・循環依存・グラフ破損・ランタイムエラーのいずれも Phase 2a ゲートをブロックする
+- **オプトイン**: spec のフロントマターに `coherence:` を書いたとき、または既存の `coherence.json` を追跡しているときに有効化される。coherence metadata を持たない通常の VCSDD feature は完全に no-op のまま。オプトイン後は、dangling 参照・循環依存・不正な frontmatter・ランタイムエラーが Phase 2a ゲートをブロックする。破損した `coherence.json` は `coherence.json.bak` に退避したうえで、現在の frontmatter から再構築される
 - **自動リフレッシュフック**: `standard` / `strict` hook profile では、spec 編集後に `coherence.json` を自動再構築する
 
-> **注意:** coherence scan および impact 分析は LLM による支援であり、自動化された静的解析ではありません。CEG（`coherence.json`）は spec frontmatter と手動で同期するか、`vcsdd-coherence-refresh` PostToolUse フックによって同期する必要があります。古い CEG は BFS impact 分析の信頼性を損ないます。
+> **注意:** coherence scan および impact 分析は LLM による支援であり、自動化された静的解析ではありません。CEG（`coherence.json`）は `/vcsdd-coherence-scan`、`/vcsdd-coherence-validate`、Phase 2a ゲート、または `vcsdd-coherence-refresh` PostToolUse フックで更新されます。これらを経由しない spec 変更では古い CEG が残り、BFS impact 分析を誤らせる可能性があります。
 
 ### 言語プロファイル
 

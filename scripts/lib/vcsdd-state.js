@@ -111,29 +111,25 @@ const GATE_PREREQUISITES = {
 
     // Coherence validation is opt-in.
     // If any spec frontmatter declares coherence metadata, or coherence.json already
-    // exists for this feature, rebuild from frontmatter first so the CEG is fresh.
-    // If the rebuilt CEG has cycles or dangling references, we block phase 2a.
-    // If the coherence runtime fails unexpectedly, we record history and block phase 2a.
-    const coherencePath = path.join(featurePath, 'coherence.json');
+    // exists for this feature, refresh from frontmatter first so the CEG is fresh.
+    // Dangling refs, cycles, invalid frontmatter, and runtime failures block phase 2a.
+    // A corrupted coherence.json is backed up and rebuilt from frontmatter.
     try {
       const {
-        rebuildFromFrontmatter,
-        validateCoherence,
-        scanSpecFrontmatterDetailed,
+        refreshAndValidateCoherence,
       } = require('./vcsdd-coherence');
-      const scanResult = scanSpecFrontmatterDetailed(featurePath);
-      const hasCoherenceFrontmatter = scanResult.entries.length > 0 || scanResult.errors.length > 0;
-      if (hasCoherenceFrontmatter || fs.existsSync(coherencePath)) {
-        if (scanResult.errors.length > 0) {
-          return { ok: false, reason: `Coherence validation failed: ${scanResult.errors[0]}` };
+      const coherenceCheck = refreshAndValidateCoherence(state.featureName);
+      if (coherenceCheck.active) {
+        if (coherenceCheck.recoveredFromCorruption) {
+          appendHistory({
+            event: 'coherence_recovered',
+            featureName: state.featureName,
+            phase: '2a',
+            message: 'Recovered coherence.json from current frontmatter after corruption; backup saved as coherence.json.bak',
+          });
         }
-        // Rebuild from frontmatter to ensure CEG reflects current spec state
-        const ceg = rebuildFromFrontmatter(state.featureName);
-        if (ceg) {
-          const result = validateCoherence(ceg);
-          if (!result.ok) {
-            return { ok: false, reason: `Coherence validation failed: ${result.reason}` };
-          }
+        if (!coherenceCheck.validation.ok) {
+          return { ok: false, reason: `Coherence validation failed: ${coherenceCheck.validation.reason}` };
         }
       }
     } catch (err) {

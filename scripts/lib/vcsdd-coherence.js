@@ -1134,27 +1134,21 @@ function scanSpecFrontmatterDetailed(featurePath) {
  *
  * Algorithm:
  *   1. If coherence.json exists, load it and purge auto-generated evidence
- *   2. Otherwise create a fresh CEG
- *   3. Scan specs/ for `coherence:` frontmatter
- *   4. Add nodes + edges from each file
- *   5. Save and return the updated CEG
+ *   2. If coherence.json is corrupted, keep the .bak backup and create a fresh CEG
+ *   3. Otherwise create a fresh CEG
+ *   4. Scan specs/ for `coherence:` frontmatter
+ *   5. Add nodes + edges from each file
+ *   6. Save and return the updated CEG
  */
 function rebuildFromFrontmatter(featureName) {
   const featurePath = getFeaturePath(featureName);
-  const { ceg: existingCeg, status } = loadCoherenceWithStatus(featureName);
+  const { ceg: existingCeg } = loadCoherenceWithStatus(featureName);
 
   let ceg;
   if (existingCeg) {
     ceg = existingCeg;
     removeAutoEvidence(ceg);
   } else {
-    if (status === 'corrupted') {
-      throw new Error(
-        `[vcsdd-coherence] coherence.json for "${featureName}" is corrupted. ` +
-        `A backup was saved to coherence.json.bak. ` +
-        `Restore from backup or delete coherence.json to force a clean rebuild.`,
-      );
-    }
     ceg = {
       version:    COHERENCE_VERSION,
       nodes:      {},
@@ -1292,6 +1286,70 @@ function rebuildFromFrontmatter(featureName) {
   return ceg;
 }
 
+/**
+ * Refresh coherence data from current frontmatter, then validate it.
+ *
+ * This avoids validating a stale coherence.json after specs changed.
+ *
+ * @returns {{
+ *   active: boolean,
+ *   rebuilt: boolean,
+ *   recoveredFromCorruption: boolean,
+ *   scanResult: { entries: { filePath: string, relPath: string, coherence: object }[], errors: string[] },
+ *   ceg: object | null,
+ *   summary: object | null,
+ *   validation: { ok: boolean, reason?: string, warnings?: string[], errors?: string[], cycles?: string[] },
+ * }}
+ */
+function refreshAndValidateCoherence(featureName) {
+  const featurePath = getFeaturePath(featureName);
+  const coherencePath = getCoherencePath(featureName);
+  const { status } = loadCoherenceWithStatus(featureName);
+  const scanResult = scanSpecFrontmatterDetailed(featurePath);
+  const active = scanResult.entries.length > 0 || scanResult.errors.length > 0 || fs.existsSync(coherencePath);
+
+  if (!active) {
+    return {
+      active: false,
+      rebuilt: false,
+      recoveredFromCorruption: false,
+      scanResult,
+      ceg: null,
+      summary: null,
+      validation: { ok: true, warnings: [], errors: [], cycles: [] },
+    };
+  }
+
+  if (scanResult.errors.length > 0) {
+    return {
+      active: true,
+      rebuilt: false,
+      recoveredFromCorruption: false,
+      scanResult,
+      ceg: null,
+      summary: null,
+      validation: {
+        ok: false,
+        reason: scanResult.errors[0],
+        warnings: [],
+        errors: [...scanResult.errors],
+        cycles: [],
+      },
+    };
+  }
+
+  const ceg = rebuildFromFrontmatter(featureName);
+  return {
+    active: true,
+    rebuilt: true,
+    recoveredFromCorruption: status === 'corrupted',
+    scanResult,
+    ceg,
+    summary: summarize(ceg),
+    validation: validateCoherence(ceg),
+  };
+}
+
 // ── Summary helpers ────────────────────────────────────────────────────────
 
 /**
@@ -1357,6 +1415,7 @@ module.exports = {
   scanSpecFrontmatter,
   scanSpecFrontmatterDetailed,
   rebuildFromFrontmatter,
+  refreshAndValidateCoherence,
 
   // Utilities
   summarize,

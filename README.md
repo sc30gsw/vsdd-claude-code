@@ -67,10 +67,10 @@ When requirements change mid-project, the Coherence Engine traces which downstre
 - **CoDD-style module traceability** -- `modules:` frontmatter creates first-class `module:*` nodes and technical edges so spec changes can surface impacted implementation modules
 - **File-path traceability metadata** -- `source_files:` records concrete file paths for reference, but forward impact propagation is driven by the graph edges above rather than raw file-path lists
 - **Reference integrity enforcement** -- dangling references and placeholder nodes are hard errors at the Phase 2a gate; a broken graph blocks entering the red phase until fixed
-- **Opt-in** -- activates when spec frontmatter declares `coherence:` metadata or an existing `coherence.json` is already being tracked. Pure VCSDD features without coherence metadata remain a no-op. When opted in, coherence errors (dangling refs, cycles, corrupted graph, runtime failures) block the Phase 2a gate
+- **Opt-in** -- activates when spec frontmatter declares `coherence:` metadata or an existing `coherence.json` is already being tracked. Pure VCSDD features without coherence metadata remain a no-op. When opted in, dangling refs, cycles, invalid frontmatter, and runtime failures block the Phase 2a gate; a corrupted `coherence.json` is backed up to `coherence.json.bak` and rebuilt from current frontmatter
 - **Automatic refresh hook** -- in `standard` and `strict` hook profiles, spec edits automatically rebuild `coherence.json` before later commands rely on it
 
-> **Note:** Coherence scans and impact analyses are LLM-assisted, not automated static analysis. The CEG (`coherence.json`) must be kept in sync with spec frontmatter manually or via the `vcsdd-coherence-refresh` PostToolUse hook. A stale CEG produces unreliable BFS impact results.
+> **Note:** Coherence scans and impact analyses are LLM-assisted, not automated static analysis. The CEG (`coherence.json`) is refreshed by `/vcsdd-coherence-scan`, `/vcsdd-coherence-validate`, the Phase 2a gate, or the `vcsdd-coherence-refresh` PostToolUse hook. A stale graph can still mislead impact analysis if specs are changed outside those paths.
 
 **Language verification profiles**
 - **Rust** -- `proptest`, `cargo-fuzz`, `cargo-mutants`, with `kani` as the bundled Tier 2 verifier and `cbmc` as a Tier 3 fallback hint

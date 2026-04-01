@@ -18,30 +18,34 @@ when any spec frontmatter declares coherence metadata, or when
 
 ## Steps
 
-1. Load the CEG and run validation:
+1. Refresh the CEG from current frontmatter, then run validation:
 
 ```js
-const { loadCoherence, validateCoherence, summarize } = require('./scripts/lib/vcsdd-coherence');
+const { refreshAndValidateCoherence } = require('./scripts/lib/vcsdd-coherence');
 const featureName = /* active feature */;
-const ceg = loadCoherence(featureName);
-if (!ceg) {
+const result = refreshAndValidateCoherence(featureName);
+if (!result.active) {
   // Coherence not active — nothing to validate
   return;
 }
-const result = validateCoherence(ceg);
-const summary = summarize(ceg);
+const summary = result.summary;
 ```
 
 2. Report results:
 
-**If `result.ok === true`:**
+**If `result.validation.ok === true`:**
 ```
 ✅ Coherence graph is valid
    Nodes : <nodeCount>   Edges : <edgeCount>
    Green : <green>   Amber : <amber>   Gray : <gray>
 ```
 
-**If `result.ok === false` (cycles detected):**
+**If `result.recoveredFromCorruption === true`:**
+```
+ℹ coherence.json was corrupted, so VCSDD saved coherence.json.bak and rebuilt the graph from current frontmatter before validating.
+```
+
+**If `result.validation.ok === false` (cycles detected):**
 ```
 ❌ Coherence validation failed: Circular dependency detected
    Cycle: design:A -> design:B -> design:C -> design:A
@@ -52,7 +56,7 @@ const summary = summarize(ceg);
    3. Re-run /vcsdd-coherence-scan then /vcsdd-coherence-validate
 ```
 
-**If `result.ok === false` (dangling references / placeholder nodes):**
+**If `result.validation.ok === false` (dangling references / placeholder nodes / invalid frontmatter):**
 ```
 ❌ Coherence validation failed: Reference integrity errors
    - Edge 3: unknown target node "design:missing-doc"
@@ -61,6 +65,6 @@ const summary = summarize(ceg);
 
 ## Exit criteria
 
-- `result.ok === true` → proceed to Phase 2a
+- `result.validation.ok === true` → proceed to Phase 2a
 - Cycles detected → must be resolved before the Phase 2a gate will pass
-- Dangling references / placeholder nodes → must be resolved before the Phase 2a gate will pass
+- Dangling references / placeholder nodes / invalid frontmatter → must be resolved before the Phase 2a gate will pass

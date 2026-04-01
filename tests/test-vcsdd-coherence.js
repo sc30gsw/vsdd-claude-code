@@ -39,6 +39,7 @@ const {
   scanSpecFrontmatter,
   scanSpecFrontmatterDetailed,
   rebuildFromFrontmatter,
+  refreshAndValidateCoherence,
   sanitizeRelativePath,
   DEFAULT_BANDS,
 } = require('../scripts/lib/vcsdd-coherence');
@@ -1339,34 +1340,52 @@ section('addEdge semantic deduplication');
   }
 }
 
-// Bug 5: rebuildFromFrontmatter — throws on corrupted coherence.json (no silent overwrite)
+// Bug 5: refreshAndValidateCoherence — validates current frontmatter, not stale coherence.json
 {
-  section('rebuildFromFrontmatter — throws on corrupted coherence.json');
+  section('refreshAndValidateCoherence — rebuilds before validating stale coherence.json');
 
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vcsdd-coherence-rebuild-'));
   try {
-    const featureDir = path.join(tmpDir, '.vcsdd', 'features', 'rebuild-corrupt-test');
-    fs.mkdirSync(featureDir, { recursive: true });
-    const coherencePath = path.join(featureDir, 'coherence.json');
-    fs.writeFileSync(coherencePath, '{not valid json!!!');
+    const featureDir = path.join(tmpDir, '.vcsdd', 'features', 'refresh-validate-test');
+    const specsDir = path.join(featureDir, 'specs');
+    fs.mkdirSync(specsDir, { recursive: true });
 
-    // Create minimal specs/ dir so scanSpecFrontmatter doesn't fail
-    fs.mkdirSync(path.join(featureDir, 'specs'), { recursive: true });
+    fs.writeFileSync(path.join(specsDir, 'behavioral-spec.md'), [
+      '---',
+      'coherence:',
+      '  node_id: "req:refresh-validate"',
+      '---',
+      '',
+      '# Behavioral',
+      '',
+    ].join('\n'));
 
     const origCwd = process.cwd();
     process.chdir(tmpDir);
     try {
-      let threw = false;
-      let thrownMessage = '';
-      try {
-        rebuildFromFrontmatter('rebuild-corrupt-test');
-      } catch (err) {
-        threw = true;
-        thrownMessage = err.message;
-      }
-      assert(threw, 'rebuildFromFrontmatter throws when coherence.json is corrupted');
-      assert(thrownMessage.includes('corrupted'), 'error message mentions "corrupted"');
-      assert(thrownMessage.includes('rebuild-corrupt-test'), 'error message mentions feature name');
+      rebuildFromFrontmatter('refresh-validate-test');
+
+      fs.writeFileSync(path.join(specsDir, 'behavioral-spec.md'), [
+        '---',
+        'coherence:',
+        '  node_id: INVALID_NO_PREFIX',
+        '---',
+        '',
+        '# Broken Behavioral',
+        '',
+      ].join('\n'));
+
+      const staleResult = validateCoherence(loadCoherenceWithStatus('refresh-validate-test').ceg);
+      const freshResult = refreshAndValidateCoherence('refresh-validate-test');
+
+      assert(staleResult.ok === true, 'stale coherence.json still looks valid before refresh');
+      assert(freshResult.active === true, 'refresh validation detects active coherence metadata');
+      assert(freshResult.rebuilt === false, 'frontmatter error prevents rebuild');
+      assert(freshResult.validation.ok === false, 'refresh validation fails on current invalid frontmatter');
+      assert(
+        freshResult.validation.reason.includes('invalid node_id'),
+        'refresh validation reports the current frontmatter error',
+      );
     } finally {
       process.chdir(origCwd);
     }
@@ -1375,7 +1394,49 @@ section('addEdge semantic deduplication');
   }
 }
 
-// Bug 6: rebuildFromFrontmatter — throws on invalid node_id (no silent skip)
+// Bug 6: rebuildFromFrontmatter — recovers from corrupted coherence.json using frontmatter
+{
+  section('rebuildFromFrontmatter — recovers from corrupted coherence.json via fresh rebuild');
+
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vcsdd-coherence-recover-'));
+  try {
+    const featureDir = path.join(tmpDir, '.vcsdd', 'features', 'recover-corrupt-test');
+    const specsDir = path.join(featureDir, 'specs');
+    const coherencePath = path.join(featureDir, 'coherence.json');
+    fs.mkdirSync(specsDir, { recursive: true });
+
+    fs.writeFileSync(path.join(specsDir, 'behavioral-spec.md'), [
+      '---',
+      'coherence:',
+      '  node_id: "req:recoverable"',
+      '---',
+      '',
+      '# Recoverable',
+      '',
+    ].join('\n'));
+    fs.writeFileSync(coherencePath, '{not valid json!!!');
+
+    const origCwd = process.cwd();
+    process.chdir(tmpDir);
+    try {
+      const result = refreshAndValidateCoherence('recover-corrupt-test');
+      const rebuiltCeg = loadCoherenceWithStatus('recover-corrupt-test').ceg;
+
+      assert(result.active === true, 'corrupted graph feature remains active');
+      assert(result.rebuilt === true, 'refresh validation rebuilds corrupted graph');
+      assert(result.recoveredFromCorruption === true, 'corruption recovery is reported');
+      assert(result.validation.ok === true, 'rebuilt graph validates cleanly');
+      assert(fs.existsSync(coherencePath + '.bak'), 'corrupted graph backup is preserved');
+      assert(rebuiltCeg && rebuiltCeg.nodes['req:recoverable'], 'fresh graph is rebuilt from frontmatter');
+    } finally {
+      process.chdir(origCwd);
+    }
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+}
+
+// Bug 7: rebuildFromFrontmatter — throws on invalid node_id (no silent skip)
 {
   section('rebuildFromFrontmatter — throws on invalid node_id');
 
@@ -1417,7 +1478,7 @@ section('addEdge semantic deduplication');
   }
 }
 
-// Bug 7: rebuildFromFrontmatter — throws on malformed coherence frontmatter
+// Bug 8: rebuildFromFrontmatter — throws on malformed coherence frontmatter
 {
   section('rebuildFromFrontmatter — throws on malformed coherence frontmatter');
 
