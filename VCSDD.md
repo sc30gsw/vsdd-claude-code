@@ -2,12 +2,14 @@
 
 VCSDD stands for Verified Coherence Spec-Driven Development.
 
-It combines four constraints into one workflow:
+It combines four disciplines into one workflow:
 
 1. Spec-first: define behavioral requirements before code.
 2. Red-before-green: write failing tests before implementation.
-3. Adversarial review: use a fresh-context reviewer that judges only from artifacts on disk.
-4. Selective formal hardening: require proof where the feature declares required obligations, while still producing security and purity audit artifacts for every Phase 5 pass.
+3. Verification-driven: treat verification as a first-class deliverable, with proof obligations declared per feature and security/purity audit artifacts produced in every Phase 5 pass.
+4. Coherence-driven: record dependency relationships between tracked artifacts so requirement changes propagate automatically to downstream specs and declared implementation modules.
+
+These are joined by an adversarial review gate: use a fresh-context reviewer that judges only from artifacts on disk.
 
 ## Phases
 

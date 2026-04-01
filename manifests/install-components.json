@@ -2,8 +2,8 @@
   "components": {
     "baseline": [
       {"id": "vcsdd-core", "modules": ["vcsdd-rules", "vcsdd-runtime", "vcsdd-schemas", "vcsdd-manifests", "vcsdd-docs", "vcsdd-commands"]},
-      {"id": "vcsdd-full", "modules": ["vcsdd-rules", "vcsdd-runtime", "vcsdd-schemas", "vcsdd-manifests", "vcsdd-docs", "vcsdd-contexts", "vcsdd-commands", "vcsdd-agents", "vcsdd-skills"]},
-      {"id": "vcsdd-strict", "modules": ["vcsdd-rules", "vcsdd-runtime", "vcsdd-schemas", "vcsdd-manifests", "vcsdd-docs", "vcsdd-contexts", "vcsdd-commands", "vcsdd-agents", "vcsdd-skills", "vcsdd-hooks"]}
+      {"id": "vcsdd-full", "modules": ["vcsdd-rules", "vcsdd-runtime", "vcsdd-schemas", "vcsdd-manifests", "vcsdd-docs", "vcsdd-contexts", "vcsdd-commands", "vcsdd-agents", "vcsdd-skills", "vcsdd-coherence"]},
+      {"id": "vcsdd-strict", "modules": ["vcsdd-rules", "vcsdd-runtime", "vcsdd-schemas", "vcsdd-manifests", "vcsdd-docs", "vcsdd-contexts", "vcsdd-commands", "vcsdd-agents", "vcsdd-skills", "vcsdd-hooks", "vcsdd-coherence"]}
     ],
     "language": [
       {"id": "lang:rust", "modules": ["vcsdd-language-rust"]},
