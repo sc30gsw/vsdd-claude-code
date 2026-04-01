@@ -71,7 +71,8 @@
         "to": { "$ref": "#/$defs/phaseId" },
         "timestamp": { "type": "string" },
         "reason": { "type": "string" },
-        "sprint": { "type": "integer", "minimum": 1 }
+        "sprint": { "type": "integer", "minimum": 1 },
+        "nextSprintHint": { "type": "integer", "minimum": 1 }
       }
     },
     "proofObligation": {

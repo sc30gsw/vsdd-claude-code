@@ -444,7 +444,7 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
     'target-feature-tests: PASS\nregression-baseline: PASS\n'
   );
   const staleGreenLog = path.join(root, `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`);
-  const staleDate = new Date(Date.now() - 5000);
+  const staleDate = new Date(Date.now() - 10000);
   fs.utimesSync(staleGreenLog, staleDate, staleDate);
   transitionPhase(feat, '2b');
 
@@ -997,7 +997,7 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
   );
   assertThrows(
     () => transitionPhase(feat, '6'),
-    'security-report.md required for phase 6'
+    'security-report.md not found'
   );
 
   writeFile(
@@ -1014,7 +1014,7 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
   fs.rmSync(path.join(root, `.vcsdd/features/${feat}/verification/purity-audit.md`), { force: true });
   assertThrows(
     () => transitionPhase(feat, '6'),
-    'purity-audit.md required for phase 6'
+    'purity-audit.md not found'
   );
 }
 
@@ -1868,6 +1868,176 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
   const escalationDir = path.join(root, `.vcsdd/features/${feat}/escalations`);
   assert(fs.existsSync(escalationDir), 'contract review escalation should be written after exceeding negotiation limit');
   assert(fs.readdirSync(escalationDir).length > 0, 'contract review escalation directory should contain an escalation record');
+}
+
+// ── complete → 1a: next sprint cycle from spec re-crystallization ──
+{
+  const root = tmpDir();
+  process.chdir(root);
+  const feat = 'complete-to-1a-feature';
+  initFeature(feat, 'lean');
+
+  // Run a minimal lean sprint to reach complete
+  transitionPhase(feat, '1a');
+  writeFile(root, `.vcsdd/features/${feat}/specs/behavioral-spec.md`, '# Behavioral\n');
+  transitionPhase(feat, '1b');
+  writeFile(root, `.vcsdd/features/${feat}/specs/verification-architecture.md`, '# Verification\n');
+  transitionPhase(feat, '1c');
+  recordGate(feat, '1c', 'PASS', 'adversary');
+  transitionPhase(feat, '2a');
+  writeFile(
+    root,
+    `.vcsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
+    'new-feature-tests: FAIL\nregression-baseline: PASS\n'
+  );
+  transitionPhase(feat, '2b');
+  writeFile(
+    root,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    'target-feature-tests: PASS\nregression-baseline: PASS\n'
+  );
+  transitionPhase(feat, '2c');
+  writeFile(
+    root,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    'target-feature-tests: PASS\nregression-baseline: PASS\nafter-refactor: PASS\n'
+  );
+  transitionPhase(feat, '3');
+  recordGate(feat, '3', 'PASS', 'adversary');
+  writeFile(
+    root,
+    `.vcsdd/features/${feat}/reviews/sprint-1/output/verdict.json`,
+    JSON.stringify(
+      createPassingVerdict(
+        feat, 1, 1,
+        `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+        { findingCount: 0, previousFindingCount: 1, allCriteriaEvaluated: true, duplicateFindings: [] }
+      ),
+      null, 2
+    ) + '\n'
+  );
+  transitionPhase(feat, '5');
+  writeFormalHardeningArtifacts(root, feat, {
+    verificationReport: [
+      '# Verification Report', '', '## Proof Obligations', '',
+      'No required proof obligations.', '', '## Summary', '',
+      '- Required obligations: 0', '- Proved: 0', '- Failed: 0',
+    ].join('\n') + '\n',
+  });
+  transitionPhase(feat, '6');
+  transitionPhase(feat, 'complete');
+
+  assert(readState(feat).currentPhase === 'complete', 'should reach complete');
+
+  // Now start the next sprint cycle from spec re-crystallization
+  transitionPhase(feat, '1a', 'start sprint 2 cycle');
+
+  const st2 = readState(feat);
+  assert(st2.currentPhase === '1a', 'complete → 1a should succeed');
+  // sprintCount is NOT incremented yet (that happens at 1c → 2a)
+  assert(st2.sprintCount === 1, 'sprintCount should still be 1 until 1c → 2a');
+
+  // phaseHistory entry for complete → 1a should carry nextSprintHint
+  const histEntry = st2.phaseHistory[st2.phaseHistory.length - 1];
+  assert(histEntry.from === 'complete', 'history from should be complete');
+  assert(histEntry.to === '1a', 'history to should be 1a');
+  assert(histEntry.nextSprintHint === 2, 'nextSprintHint should be 2');
+
+  // history.jsonl should contain sprint_boundary event
+  const historyPath = vcsdd.getHistoryPath();
+  const histLines = fs.readFileSync(historyPath, 'utf8').trim().split('\n');
+  const boundaryEvents = histLines
+    .map((l) => { try { return JSON.parse(l); } catch (_) { return null; } })
+    .filter((e) => e && e.event === 'sprint_boundary' && e.featureName === feat);
+  assert(boundaryEvents.length >= 1, 'history.jsonl should contain sprint_boundary event');
+  assert(boundaryEvents[boundaryEvents.length - 1].nextSprintHint === 2, 'sprint_boundary nextSprintHint should be 2');
+
+  // Verify the transition was actually recorded in history.jsonl (not missed)
+  const transitionEvents = histLines
+    .map((l) => { try { return JSON.parse(l); } catch (_) { return null; } })
+    .filter((e) => e && e.event === 'phase_transition' && e.from === 'complete' && e.featureName === feat);
+  assert(transitionEvents.length >= 1, 'complete → 1a phase_transition should be recorded in history.jsonl');
+}
+
+// ── complete → 3: re-enter adversarial review without full spec rewrite ──
+{
+  const root = tmpDir();
+  process.chdir(root);
+  const feat = 'complete-to-3-feature';
+  initFeature(feat, 'lean');
+
+  // Run a minimal lean sprint to reach complete
+  transitionPhase(feat, '1a');
+  writeFile(root, `.vcsdd/features/${feat}/specs/behavioral-spec.md`, '# Behavioral\n');
+  transitionPhase(feat, '1b');
+  writeFile(root, `.vcsdd/features/${feat}/specs/verification-architecture.md`, '# Verification\n');
+  transitionPhase(feat, '1c');
+  recordGate(feat, '1c', 'PASS', 'adversary');
+  transitionPhase(feat, '2a');
+  writeFile(
+    root,
+    `.vcsdd/features/${feat}/evidence/sprint-1-red-phase.log`,
+    'new-feature-tests: FAIL\nregression-baseline: PASS\n'
+  );
+  transitionPhase(feat, '2b');
+  writeFile(
+    root,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    'target-feature-tests: PASS\nregression-baseline: PASS\n'
+  );
+  transitionPhase(feat, '2c');
+  writeFile(
+    root,
+    `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+    'target-feature-tests: PASS\nregression-baseline: PASS\nafter-refactor: PASS\n'
+  );
+  transitionPhase(feat, '3');
+  recordGate(feat, '3', 'PASS', 'adversary');
+  writeFile(
+    root,
+    `.vcsdd/features/${feat}/reviews/sprint-1/output/verdict.json`,
+    JSON.stringify(
+      createPassingVerdict(
+        feat, 1, 1,
+        `.vcsdd/features/${feat}/evidence/sprint-1-green-phase.log`,
+        { findingCount: 0, previousFindingCount: 1, allCriteriaEvaluated: true, duplicateFindings: [] }
+      ),
+      null, 2
+    ) + '\n'
+  );
+  transitionPhase(feat, '5');
+  writeFormalHardeningArtifacts(root, feat, {
+    verificationReport: [
+      '# Verification Report', '', '## Proof Obligations', '',
+      'No required proof obligations.', '', '## Summary', '',
+      '- Required obligations: 0', '- Proved: 0', '- Failed: 0',
+    ].join('\n') + '\n',
+  });
+  transitionPhase(feat, '6');
+  transitionPhase(feat, 'complete');
+
+  assert(readState(feat).currentPhase === 'complete', 'should reach complete');
+
+  // Re-enter adversarial review directly from complete
+  transitionPhase(feat, '3', 're-review after deploy feedback');
+
+  const st3 = readState(feat);
+  assert(st3.currentPhase === '3', 'complete → 3 should succeed');
+  assert(st3.sprintCount === 1, 'sprintCount should remain 1 for complete → 3 path');
+
+  // phaseHistory entry should carry nextSprintHint (complete is the predecessor)
+  const histEntry3 = st3.phaseHistory[st3.phaseHistory.length - 1];
+  assert(histEntry3.from === 'complete', 'history from should be complete');
+  assert(histEntry3.to === '3', 'history to should be 3');
+  assert(histEntry3.nextSprintHint === 2, 'nextSprintHint should be 2 for complete → 3');
+
+  // history.jsonl should contain both phase_transition and sprint_boundary events
+  const historyPath3 = vcsdd.getHistoryPath();
+  const histLines3 = fs.readFileSync(historyPath3, 'utf8').trim().split('\n');
+  const transEvents3 = histLines3
+    .map((l) => { try { return JSON.parse(l); } catch (_) { return null; } })
+    .filter((e) => e && e.event === 'phase_transition' && e.from === 'complete' && e.featureName === feat);
+  assert(transEvents3.length >= 1, 'complete → 3 phase_transition should be recorded in history.jsonl');
 }
 
 // eslint-disable-next-line no-console

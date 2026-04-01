@@ -55,7 +55,9 @@ const STRICT_TRANSITION_MAP = {
   '4':        ['1a', '1b', '2a', '2b', '2c', '5'],
   '5':        ['6'],
   '6':        ['complete', '3'],
-  'complete': [],
+  // complete → 1a: start a new sprint cycle from spec crystallization
+  // complete → 3:  re-enter adversarial review without a full spec rewrite
+  'complete': ['1a', '3'],
 };
 
 /** @deprecated Use getAllowedTransitions(state) — kept for backward compatibility */
@@ -1308,6 +1310,12 @@ function transitionPhase(featureName, targetPhase, reason) {
     startedSprint = true;
   }
 
+  // complete→1a or complete→3: record a sprint boundary so history.jsonl captures the
+  // transition out of complete. sprintCount is NOT incremented here — that still happens
+  // at 1c→2a so evidence log names remain consistent. The nextSprintHint field in
+  // phaseHistory signals which sprint cycle this phase belongs to.
+  const isNextSprintEntry = current === 'complete';
+
   // 4. Apply transition
   state.currentPhase = targetPhase;
   state.iterations[targetPhase] = iterCount;
@@ -1317,6 +1325,7 @@ function transitionPhase(featureName, targetPhase, reason) {
     timestamp: new Date().toISOString(),
     reason: reason || undefined,
     sprint: state.sprintCount || undefined,
+    ...(isNextSprintEntry ? { nextSprintHint: state.sprintCount + 1 } : {}),
   });
 
   writeState(featureName, state);
@@ -1341,6 +1350,16 @@ function transitionPhase(featureName, targetPhase, reason) {
     iteration: iterCount,
     phase: targetPhase,
   });
+
+  if (isNextSprintEntry) {
+    appendHistory({
+      event: 'sprint_boundary',
+      featureName,
+      // sprintCount has not yet been incremented; the next sprint number is a hint
+      nextSprintHint: state.sprintCount + 1,
+      phase: targetPhase,
+    });
+  }
 
   if (startedSprint) {
     appendHistory({
