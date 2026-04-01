@@ -1,0 +1,5 @@
+- Naming convention has been migrated from `vsdd` to `vcsdd` across shipped assets.
+- Runtime scripts use CommonJS, `'use strict'`, small helper functions, explicit validation, and append-only history/state updates.
+- Markdown docs are the source of truth for slash commands and skills; JSON schemas backstop artifact structure.
+- Coherence metadata is stored in Markdown frontmatter and persisted to `.vcsdd/features/<feature>/coherence.json`.
+- Tests are self-hosted Node assertion scripts rather than a formal test framework.

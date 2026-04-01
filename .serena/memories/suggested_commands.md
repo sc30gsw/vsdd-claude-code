@@ -1,0 +1,8 @@
+- Verify state machine: `node scripts/verify-vcsdd-state.js`
+- Verify runtime/schema/install invariants: `node scripts/verify-vcsdd-runtime.js`
+- Verify CoDD/coherence engine: `node tests/test-vcsdd-coherence.js`
+- Full verification bundle: `npm run verify`
+- Resolve installer plan: `node scripts/install/resolve-install-plan.js --profile standard --format json`
+- Install locally: `bash install.sh --profile standard`
+- Search code fast: `rg <pattern>` / `rg --files`.
+- Git status/diff: `git status --short`, `git diff origin/main...HEAD`.
