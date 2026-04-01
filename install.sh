@@ -21,6 +21,7 @@ COMMAND_NAME="$(basename "${0}")"
 # Default profile
 PROFILE="${VCSDD_INSTALL_PROFILE:-standard}"
 LANGUAGE="${VCSDD_INSTALL_LANGUAGE:-}"
+MODULES="${VCSDD_INSTALL_MODULES:-}"
 DRY_RUN=false
 
 # Parse arguments
@@ -28,9 +29,10 @@ while [[ $# -gt 0 ]]; do
   case $1 in
     --profile)   PROFILE="$2"; shift 2 ;;
     --language)  LANGUAGE="$2"; shift 2 ;;
+    --modules)   MODULES="$2"; shift 2 ;;
     --dry-run)   DRY_RUN=true; shift ;;
     --help|-h)
-      echo "Usage: ${COMMAND_NAME} [--profile minimal|standard|strict] [--language rust|python|typescript|go|cpp] [--dry-run]"
+      echo "Usage: ${COMMAND_NAME} [--profile minimal|standard|strict] [--language rust|python|typescript|go|cpp] [--modules id1,id2,...] [--dry-run]"
       exit 0
       ;;
     *) echo "Unknown argument: $1"; exit 1 ;;
@@ -95,6 +97,10 @@ resolver_args=(
 if [[ -n "$LANGUAGE" ]]; then
   echo "Installing language profile: ${LANGUAGE}"
   resolver_args+=(--language "${LANGUAGE}")
+fi
+if [[ -n "$MODULES" ]]; then
+  echo "Installing extra modules: ${MODULES}"
+  resolver_args+=(--modules "${MODULES}")
 fi
 
 INSTALL_PATHS=()

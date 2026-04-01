@@ -1394,7 +1394,8 @@ function routeFeedback(featureName, targetPhase, reason) {
         // path starts with 'specs/' and whose type is 'design' or 'requirement'
         const specNodes = Object.keys(ceg.nodes).filter(id => {
           const n = ceg.nodes[id];
-          return n.path && n.path.startsWith('specs/');
+          return n.path && n.path.startsWith('specs/') &&
+            (n.type === 'design' || n.type === 'requirement');
         });
         if (specNodes.length > 0) {
           const impacts = propagateImpact(ceg, specNodes, 5, 0.5);

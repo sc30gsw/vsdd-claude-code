@@ -213,6 +213,9 @@ bash install.sh --profile standard
 
 # Optional: add a language profile
 bash install.sh --profile standard --language typescript
+
+# Optional: install extra modules (e.g. Coherence Engine)
+bash install.sh --profile standard --modules vcsdd-coherence
 ```
 
 **Option 3: Package Manager**

@@ -226,7 +226,7 @@ function addEdge(ceg, sourceId, targetId, relation, semantic, evidenceItems) {
   if (!ceg.nodes[targetId]) upsertNode(ceg, targetId);
 
   const existing = ceg.edges.find(
-    e => e.sourceId === sourceId && e.targetId === targetId && e.relation === relation,
+    e => e.sourceId === sourceId && e.targetId === targetId && e.relation === relation && e.semantic === semantic,
   );
 
   if (existing) {
@@ -254,7 +254,7 @@ function addEdge(ceg, sourceId, targetId, relation, semantic, evidenceItems) {
 /**
  * Remove all auto-generated evidence from each edge.
  * Edges with zero remaining evidence are deleted.
- * Orphan file: nodes (no edges) are also removed.
+ * Orphan nodes (no remaining edges) are also removed.
  * Human evidence is never touched.
  */
 function removeAutoEvidence(ceg) {
@@ -766,15 +766,23 @@ function scanSpecFrontmatter(featurePath) {
 
   if (!fs.existsSync(specsDir)) return results;
 
-  const files = fs.readdirSync(specsDir).filter(f => f.endsWith('.md'));
-  for (const file of files) {
-    const filePath  = path.join(specsDir, file);
-    const content   = fs.readFileSync(filePath, 'utf8');
-    const coherence = extractFrontmatter(content);
-    if (coherence) {
-      results.push({ filePath, relPath: path.join('specs', file), coherence });
+  // Recursive walk to match CoDD's os.walk() behaviour
+  function walkDir(dir, relPrefix) {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (entry.isDirectory()) {
+        walkDir(path.join(dir, entry.name), path.join(relPrefix, entry.name));
+      } else if (entry.name.endsWith('.md')) {
+        const filePath  = path.join(dir, entry.name);
+        const content   = fs.readFileSync(filePath, 'utf8');
+        const coherence = extractFrontmatter(content);
+        if (coherence) {
+          results.push({ filePath, relPath: path.join(relPrefix, entry.name), coherence });
+        }
+      }
     }
   }
+
+  walkDir(specsDir, 'specs');
   return results;
 }
 
@@ -806,7 +814,17 @@ function rebuildFromFrontmatter(featureName) {
   const entries = scanSpecFrontmatter(featurePath);
 
   for (const { relPath, coherence } of entries) {
-    const nodeId = coherence.node_id ?? `doc:${relPath}`;
+    const rawNodeId = coherence.node_id ?? `doc:${relPath}`;
+    // Validate node_id format: must be "<known-prefix><name>" matching /^[a-z_]+:.+$/
+    // and the prefix must be in PREFIX_TYPE_MAP (mirrors CoDD validator.py lines 320-324)
+    const nodeIdValid =
+      /^[a-z_]+:.+$/.test(rawNodeId) &&
+      Object.keys(PREFIX_TYPE_MAP).some(p => rawNodeId.startsWith(p));
+    if (!nodeIdValid) {
+      console.warn(`[vcsdd-coherence] Skipping spec "${relPath}": invalid node_id "${rawNodeId}" (must match <prefix>:<name> with a known prefix)`);
+      continue;
+    }
+    const nodeId = rawNodeId;
     upsertNode(ceg, nodeId, {
       type: coherence.type,
       path: relPath,

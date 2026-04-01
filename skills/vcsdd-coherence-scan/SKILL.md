@@ -35,6 +35,16 @@ coherence:
       relation: specifies
   depended_by:
     - id: "design:ui-design"        # Nodes that depend on this doc
+  conventions:
+    - targets:
+        - "module:auth"             # Node IDs that must be reviewed when this doc changes
+      reason: "Auth policy applies to all modules"
+  data_dependencies:
+    - table: "users"
+      column: "tenant_id"
+      affects:
+        - "module:billing"          # Nodes impacted when this column changes
+      condition: "multi-tenant isolation"
   source_files:
     - "src/api/routes.ts"           # Implementation files for this design
 ---
@@ -42,7 +52,7 @@ coherence:
 
 Allowed `node_id` prefixes:
 `req:`, `design:`, `db_table:`, `db_column:`, `module:`, `file:`, `test:`,
-`config:`, `endpoint:`, `infra:`, `governance:`, `doc:`, `detail:`, `plan:`
+`config:`, `endpoint:`, `infra:`, `governance:`, `doc:`, `db:`, `detail:`, `plan:`, `ops:`
 
 ## Steps
 
