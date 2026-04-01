@@ -109,14 +109,16 @@ const GATE_PREREQUISITES = {
       return { ok: false, reason: 'Spec review gate must PASS before phase 2a' };
     }
 
-    // Coherence validation is opt-in (only when coherence.json exists).
-    // Rebuilds from frontmatter first to ensure the CEG is fresh (not stale).
-    // If the rebuilt CEG has cycles, we block phase 2a.
+    // Coherence validation is opt-in.
+    // If any spec frontmatter declares coherence metadata, or coherence.json already
+    // exists for this feature, rebuild from frontmatter first so the CEG is fresh.
+    // If the rebuilt CEG has cycles or dangling references, we block phase 2a.
     // If the coherence runtime fails unexpectedly, we record history and block phase 2a.
     const coherencePath = path.join(featurePath, 'coherence.json');
-    if (fs.existsSync(coherencePath)) {
-      try {
-        const { rebuildFromFrontmatter, validateCoherence } = require('./vcsdd-coherence');
+    try {
+      const { rebuildFromFrontmatter, validateCoherence, scanSpecFrontmatter } = require('./vcsdd-coherence');
+      const hasCoherenceFrontmatter = scanSpecFrontmatter(featurePath).length > 0;
+      if (hasCoherenceFrontmatter || fs.existsSync(coherencePath)) {
         // Rebuild from frontmatter to ensure CEG reflects current spec state
         const ceg = rebuildFromFrontmatter(state.featureName);
         if (ceg) {
@@ -125,15 +127,15 @@ const GATE_PREREQUISITES = {
             return { ok: false, reason: `Coherence validation failed: ${result.reason}` };
           }
         }
-      } catch (err) {
-        appendHistory({
-          event:       'coherence_check_error',
-          featureName: state.featureName,
-          phase:       '2a',
-          error:       err.message,
-        });
-        return { ok: false, reason: `Coherence module error: ${err.message}` };
       }
+    } catch (err) {
+      appendHistory({
+        event:       'coherence_check_error',
+        featureName: state.featureName,
+        phase:       '2a',
+        error:       err.message,
+      });
+      return { ok: false, reason: `Coherence module error: ${err.message}` };
     }
 
     return { ok: true };

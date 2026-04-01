@@ -105,13 +105,16 @@ maintaining design coherence when requirements change:
   Markdown spec files (no separate config)
 
 Coherence is **optional and advisory** — it activates automatically when
-`coherence.json` is present, and is a no-op when absent.
+spec frontmatter declares `coherence:` metadata, or when an existing
+`coherence.json` is already being tracked. Features without coherence metadata
+remain a no-op.
 
-When `coherence.json` exists, **structural validation** (including cycle detection)
+When coherence is active, **structural validation** (including cycle detection)
 runs at the Phase **2a** gate: a failing validation **blocks** entering 2a until the
-graph is fixed. When `coherence.json` is present (opt-in), runtime errors in the
+graph is fixed. When coherence is active, runtime errors in the
 coherence module also **block the Phase 2a gate** and are logged to history.
-When `coherence.json` is absent, the coherence check is skipped entirely.
+In the `standard` and `strict` hook profiles, spec edits also auto-refresh the
+graph after each write so later impact analysis runs against current frontmatter.
 
 New commands:
 - `/vcsdd-coherence-scan` — rebuild CEG from spec frontmatter

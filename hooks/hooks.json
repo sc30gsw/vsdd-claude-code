@@ -17,6 +17,10 @@
         "hooks": [
           {
             "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_DIR}/scripts/hooks/vcsdd-coherence-refresh.js\""
+          },
+          {
+            "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_DIR}/scripts/hooks/vcsdd-auto-commit.js\""
           }
         ]

@@ -27,6 +27,7 @@ const {
 } = vcsdd;
 
 const gateHookPath = path.join(__dirname, 'hooks', 'vcsdd-gate-check.js');
+const coherenceRefreshHookPath = path.join(__dirname, 'hooks', 'vcsdd-coherence-refresh.js');
 const CANONICAL_DIMENSIONS = [
   'spec_fidelity',
   'edge_case_coverage',
@@ -129,11 +130,25 @@ function assertThrows(fn, expectedSubstring) {
   }
 }
 
-function runGateHook(root, payload) {
-  return spawnSync('node', [gateHookPath], {
+function runHook(root, hookPath, payload, extraEnv = {}) {
+  return spawnSync('node', [hookPath], {
     cwd: root,
     input: JSON.stringify(payload),
     encoding: 'utf8',
+    env: {
+      ...process.env,
+      ...extraEnv,
+    },
+  });
+}
+
+function runGateHook(root, payload) {
+  return runHook(root, gateHookPath, payload);
+}
+
+function runCoherenceRefreshHook(root, payload) {
+  return runHook(root, coherenceRefreshHookPath, payload, {
+    VCSDD_HOOK_PROFILE: 'standard',
   });
 }
 
@@ -334,6 +349,106 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
     tool_input: { file_path: path.join(root, 'tests/example.test.ts') },
   });
   assert(blocked.status === 2, 'tests should stay blocked during phase 1c');
+}
+
+// ── Coherence gate: frontmatter activates validation even before coherence.json exists ──
+{
+  const root = tmpDir();
+  process.chdir(root);
+  const feat = 'coherence-frontmatter-gate-feature';
+  initFeature(feat, 'lean');
+  transitionPhase(feat, '1a');
+  writeFile(
+    root,
+    `.vcsdd/features/${feat}/specs/behavioral-spec.md`,
+    [
+      '---',
+      'coherence:',
+      '  node_id: req:coherence-gate',
+      '  depends_on:',
+      '    - id: req:missing-upstream',
+      '---',
+      '',
+      '# Behavioral',
+      '',
+    ].join('\n')
+  );
+  transitionPhase(feat, '1b');
+  writeFile(root, `.vcsdd/features/${feat}/specs/verification-architecture.md`, '# Verification\n');
+  transitionPhase(feat, '1c');
+  recordGate(feat, '1c', 'PASS', 'adversary');
+
+  assertThrows(
+    () => transitionPhase(feat, '2a'),
+    'Coherence validation failed'
+  );
+}
+
+// ── Coherence gate: valid frontmatter auto-builds coherence.json at phase 2a ──
+{
+  const root = tmpDir();
+  process.chdir(root);
+  const feat = 'coherence-auto-build-feature';
+  initFeature(feat, 'lean');
+  transitionPhase(feat, '1a');
+  writeFile(
+    root,
+    `.vcsdd/features/${feat}/specs/behavioral-spec.md`,
+    [
+      '---',
+      'coherence:',
+      '  node_id: req:coherence-auto-build',
+      '---',
+      '',
+      '# Behavioral',
+      '',
+    ].join('\n')
+  );
+  transitionPhase(feat, '1b');
+  writeFile(root, `.vcsdd/features/${feat}/specs/verification-architecture.md`, '# Verification\n');
+  transitionPhase(feat, '1c');
+  recordGate(feat, '1c', 'PASS', 'adversary');
+  transitionPhase(feat, '2a');
+
+  assert(
+    fs.existsSync(path.join(root, `.vcsdd/features/${feat}/coherence.json`)),
+    'coherence.json should be rebuilt automatically when coherence frontmatter exists'
+  );
+}
+
+// ── Coherence refresh hook: spec edits rebuild the graph before later phases rely on it ──
+{
+  const root = tmpDir();
+  process.chdir(root);
+  const feat = 'coherence-refresh-hook-feature';
+  initFeature(feat, 'lean');
+  transitionPhase(feat, '1a');
+
+  const specPath = path.join(root, `.vcsdd/features/${feat}/specs/behavioral-spec.md`);
+  writeFile(
+    root,
+    `.vcsdd/features/${feat}/specs/behavioral-spec.md`,
+    [
+      '---',
+      'coherence:',
+      '  node_id: req:hook-refresh',
+      '---',
+      '',
+      '# Behavioral',
+      '',
+    ].join('\n')
+  );
+
+  const refreshResult = runCoherenceRefreshHook(root, {
+    tool_name: 'Write',
+    tool_input: { file_path: specPath },
+  });
+  assert(refreshResult.status === 0, 'coherence refresh hook should not block spec edits');
+
+  const coherencePath = path.join(root, `.vcsdd/features/${feat}/coherence.json`);
+  assert(fs.existsSync(coherencePath), 'coherence refresh hook should rebuild coherence.json');
+  const coherence = JSON.parse(fs.readFileSync(coherencePath, 'utf8'));
+  assert(coherence.nodes['req:hook-refresh'], 'rebuilt coherence graph should include the edited spec node');
 }
 
 // ── Lean: full 6-phase path with lighter gates (no human approval, selective proofs) ──

@@ -88,7 +88,8 @@ PreToolUseフックがフェーズ外の `Write`/`Edit` および、リダイレ
 - **BFS 前方インパクト伝播**: 仕様が変更されたとき、すべての下流ノードをトレースし、影響を受けるドキュメントを見逃さない
 - **DFS 循環検出**: 仕様グラフの循環依存を伝播前に検出し防止する
 - **参照整合性強制**: 未解決の参照（dangling reference）やプレースホルダーノードは Phase 2a ゲートのハードエラーとなる。壊れたグラフは修正するまで red phase への遷移をブロックする
-- **オプトイン**: `coherence.json` が存在する場合のみ有効化。存在しない場合は完全に no-op となり、既存の VCSDD の保証をすべて維持する。オプトイン後は、dangling 参照・循環依存・グラフ破損・ランタイムエラーのいずれも Phase 2a ゲートをブロックする
+- **オプトイン**: spec のフロントマターに `coherence:` を書いたとき、または既存の `coherence.json` を追跡しているときに有効化される。coherence metadata を持たない通常の VCSDD feature は完全に no-op のまま。オプトイン後は、dangling 参照・循環依存・グラフ破損・ランタイムエラーのいずれも Phase 2a ゲートをブロックする
+- **自動リフレッシュフック**: `standard` / `strict` hook profile では、spec 編集後に `coherence.json` を自動再構築する
 
 ### 言語プロファイル
 
@@ -412,7 +413,8 @@ REQ-001 [spec-requirement] active
 | セッション開始コンテキスト（SessionStart） | ON | ON | ON |
 | セッション永続化（Stop） | ON | ON | ON |
 | コンパクト前チェックポイント（PreCompact） | OFF | ON | ON |
-| 自動コミット（PostToolUse） | OFF | OFF | ON（要設定） |
+| coherence 自動リフレッシュ（PostToolUse: spec Write/Edit/MultiEdit） | OFF | ON | ON |
+| 自動コミット（PostToolUse: Write/Edit/MultiEdit） | OFF | OFF | ON（要設定） |
 
 feature の mode と hook profile は独立しています。`VCSDD_HOOK_PROFILE=minimal` を使うと、ゲート強制を切りつつセッション系フックだけを維持できます。
 

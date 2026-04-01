@@ -3,15 +3,16 @@
 const VALID_PROFILES = new Set(['minimal', 'standard', 'strict']);
 
 // Hook profile semantics:
-// minimal  - gate enforcement OFF, session persistence ON, auto-commit OFF
-// standard - gate enforcement ON,  session persistence ON, auto-commit OFF
-// strict   - gate enforcement ON,  session persistence ON, auto-commit ON
+// minimal  - gate enforcement OFF, session persistence ON, coherence refresh OFF, auto-commit OFF
+// standard - gate enforcement ON,  session persistence ON, coherence refresh ON,  auto-commit OFF
+// strict   - gate enforcement ON,  session persistence ON, coherence refresh ON,  auto-commit ON
 
 const HOOK_PROFILE_MAP = {
   'vcsdd-gate-check':      ['standard', 'strict'],
   'vcsdd-session-start':   ['minimal', 'standard', 'strict'],
   'vcsdd-session-persist':  ['minimal', 'standard', 'strict'],
   'vcsdd-pre-compact':     ['standard', 'strict'],
+  'vcsdd-coherence-refresh': ['standard', 'strict'],
   'vcsdd-auto-commit':     ['strict'],
 };
 
