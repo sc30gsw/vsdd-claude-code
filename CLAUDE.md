@@ -94,20 +94,24 @@ Exit only when all convergence conditions are satisfied:
 VCSDD includes a native implementation of CoDD's core mechanisms for
 maintaining design coherence when requirements change:
 
-- **CEG (Conditioned Evidence Graph)**: dependency graph between spec docs,
-  stored in `.vcsdd/features/<name>/coherence.json`
+- **CEG (Conditioned Evidence Graph)**: dependency graph between spec docs
+  and declared implementation modules, stored in
+  `.vcsdd/features/<name>/coherence.json`
+- **Module traceability**: `modules:` frontmatter creates first-class
+  `module:*` nodes linked to specs with technical edges
 - **Noisy-OR confidence scoring**: evidence-based edge confidence with
   Green (≥90%) / Amber (≥50%) / Gray (<50%) band classification
-- **BFS forward impact propagation**: traces all downstream specs when a
-  node changes
+- **BFS forward impact propagation**: traces all downstream tracked nodes
+  when a node changes
 - **DFS cycle detection**: prevents circular dependencies in the spec graph
 - **Frontmatter-driven**: declare dependencies via `coherence:` blocks in
-  Markdown spec files (no separate config)
+  Markdown spec files (with `source_files:` kept as file-path traceability
+  metadata, not as a standalone propagation mechanism)
 
-Coherence is **optional and advisory** — it activates automatically when
+Coherence is **optional by activation** — it activates automatically when
 spec frontmatter declares `coherence:` metadata, or when an existing
 `coherence.json` is already being tracked. Features without coherence metadata
-remain a no-op.
+remain a no-op. Once active, the graph is enforced by the Phase 2a gate.
 
 When coherence is active, **structural validation** (including cycle detection)
 runs at the Phase **2a** gate: a failing validation **blocks** entering 2a until the

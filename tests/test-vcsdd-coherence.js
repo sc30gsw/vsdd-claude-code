@@ -493,6 +493,108 @@ section('rebuildFromFrontmatter — conventions targets block list creates must_
   }
 }
 
+section('rebuildFromFrontmatter — module targets are concrete nodes, not placeholder errors');
+
+{
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vcsdd-coherence-test-'));
+  const originalCwd = process.cwd();
+  try {
+    process.chdir(tmpDir);
+    const featureName = 'module-targets-test';
+    const featureDir = path.join(tmpDir, '.vcsdd', 'features', featureName);
+    const specsDir = path.join(featureDir, 'specs');
+    fs.mkdirSync(specsDir, { recursive: true });
+
+    fs.writeFileSync(path.join(specsDir, 'api.md'), [
+      '---',
+      'coherence:',
+      '  node_id: "design:api-design"',
+      '  type: design',
+      '  depends_on:',
+      '    - id: "design:system-design"',
+      '  conventions:',
+      '    - targets:',
+      '        - "module:auth"',
+      '      reason: "Auth policy applies"',
+      '  data_dependencies:',
+      '    - table: "users"',
+      '      column: "tenant_id"',
+      '      affects:',
+      '        - "module:billing"',
+      '---',
+      '# API Design',
+    ].join('\n'));
+
+    fs.writeFileSync(path.join(specsDir, 'system.md'), [
+      '---',
+      'coherence:',
+      '  node_id: "design:system-design"',
+      '  type: design',
+      '---',
+      '# System Design',
+    ].join('\n'));
+
+    const ceg = rebuildFromFrontmatter(featureName);
+    const result = validateCoherence(ceg);
+
+    assert(ceg.nodes['module:auth'] !== undefined, 'module:auth node is materialised');
+    assert(ceg.nodes['module:billing'] !== undefined, 'module:billing node is materialised');
+    assert(ceg.nodes['module:auth'].placeholder === false, 'module:auth is concrete, not placeholder');
+    assert(ceg.nodes['module:billing'].placeholder === false, 'module:billing is concrete, not placeholder');
+    assert(result.ok === true, 'module targets do not fail coherence validation');
+  } finally {
+    process.chdir(originalCwd);
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+}
+
+section('rebuildFromFrontmatter — modules field links specs to implementation modules');
+
+{
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vcsdd-coherence-test-'));
+  const originalCwd = process.cwd();
+  try {
+    process.chdir(tmpDir);
+    const featureName = 'modules-field-test';
+    const featureDir = path.join(tmpDir, '.vcsdd', 'features', featureName);
+    const specsDir = path.join(featureDir, 'specs');
+    fs.mkdirSync(specsDir, { recursive: true });
+
+    fs.writeFileSync(path.join(specsDir, 'auth.md'), [
+      '---',
+      'coherence:',
+      '  node_id: "design:auth-detail"',
+      '  type: design',
+      '  modules:',
+      '    - auth',
+      '    - "module:session"',
+      '---',
+      '# Auth Detail',
+    ].join('\n'));
+
+    const ceg = rebuildFromFrontmatter(featureName);
+    const result = validateCoherence(ceg);
+    const impacts = propagateImpact(ceg, ['design:auth-detail']);
+
+    assert(result.ok === true, 'modules field produces a valid coherence graph');
+    assert(ceg.nodes['module:auth'] !== undefined, 'plain module name is normalized to module:auth');
+    assert(ceg.nodes['module:session'] !== undefined, 'prefixed module name is preserved');
+    assert(
+      ceg.edges.some(e =>
+        e.sourceId === 'module:auth' &&
+        e.targetId === 'design:auth-detail' &&
+        e.relation === 'implements' &&
+        e.semantic === 'technical'),
+      'module:auth -> design:auth-detail implements edge exists',
+    );
+    assert(impacts.has('module:auth'), 'spec change propagates to module:auth');
+    assert(impacts.has('module:session'), 'spec change propagates to module:session');
+  } finally {
+    process.chdir(originalCwd);
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 // 6. calculateConfidence — Noisy-OR formula (mirrors CoDD _noisy_or)
 // ══════════════════════════════════════════════════════════════════════════════

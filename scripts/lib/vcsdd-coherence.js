@@ -50,6 +50,7 @@ const DEFAULT_BANDS = {
 const FRONTMATTER_SCORES = {
   depends_on:        0.9,
   depended_by:       0.9,
+  modules:           0.85,
   conventions:       0.8,
   data_dependencies: 0.75,
   source_files:      0.85,
@@ -78,6 +79,21 @@ const PREFIX_TYPE_MAP = {
 /** Keys that must never be set on plain objects (prototype-pollution guard). */
 const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 
+/**
+ * Node prefixes that represent concrete artifacts and do not require a
+ * matching Markdown document to exist in specs/.
+ */
+const CONCRETE_ARTIFACT_PREFIXES = [
+  'module:',
+  'file:',
+  'db_table:',
+  'db_column:',
+  'config:',
+  'endpoint:',
+  'infra:',
+  'ops:',
+];
+
 // ── Input validation ───────────────────────────────────────────────────────
 
 /**
@@ -105,6 +121,32 @@ function sanitizeRelativePath(p) {
   const normalised = path.normalize(p);
   if (normalised.startsWith('..')) return null;
   return normalised;
+}
+
+function isConcreteArtifactNodeId(nodeId) {
+  return typeof nodeId === 'string' &&
+    CONCRETE_ARTIFACT_PREFIXES.some(prefix => nodeId.startsWith(prefix));
+}
+
+function ensureReferencedNode(ceg, nodeId) {
+  if (typeof nodeId !== 'string' || nodeId.length === 0) return null;
+  if (ceg.nodes[nodeId]) return ceg.nodes[nodeId];
+
+  if (isConcreteArtifactNodeId(nodeId)) {
+    const inferredType = Object.entries(PREFIX_TYPE_MAP)
+      .find(([prefix]) => nodeId.startsWith(prefix))?.[1];
+    const name = nodeId.includes(':') ? nodeId.split(':').slice(1).join(':') : nodeId;
+    return upsertNode(ceg, nodeId, { type: inferredType, name, placeholder: false });
+  }
+
+  return upsertNode(ceg, nodeId);
+}
+
+function normalizeModuleId(moduleRef) {
+  if (typeof moduleRef !== 'string') return '';
+  const trimmed = moduleRef.trim();
+  if (!trimmed) return '';
+  return trimmed.startsWith('module:') ? trimmed : `module:${trimmed}`;
 }
 
 // ── Path helpers ───────────────────────────────────────────────────────────
@@ -969,6 +1011,7 @@ function rebuildFromFrontmatter(featureName) {
       const targetId = (typeof dep === 'object' ? dep.id : dep) ?? '';
       if (!targetId) continue;
       const relation = dep.relation ?? 'depends_on';
+      ensureReferencedNode(ceg, targetId);
       addEdge(ceg, nodeId, targetId, relation, 'governance', [{
         sourceType: 'frontmatter', method: 'frontmatter',
         score: FRONTMATTER_SCORES.depends_on,
@@ -981,10 +1024,32 @@ function rebuildFromFrontmatter(featureName) {
       const sourceId = (typeof dep === 'object' ? dep.id : dep) ?? '';
       if (!sourceId) continue;
       const relation = dep.relation ?? 'depends_on';
+      ensureReferencedNode(ceg, sourceId);
       addEdge(ceg, sourceId, nodeId, relation, 'governance', [{
         sourceType: 'frontmatter', method: 'frontmatter',
         score: FRONTMATTER_SCORES.depended_by,
         detail: `Declared in ${relPath} depended_by`, isNegative: false,
+      }]);
+    }
+
+    // modules: implementation modules linked to this spec (CoDD upstream field)
+    for (const mod of (coherence.modules ?? [])) {
+      const rawModuleId = typeof mod === 'object'
+        ? (mod.id ?? mod.module ?? mod.name)
+        : mod;
+      const moduleId = normalizeModuleId(rawModuleId);
+      if (!moduleId) continue;
+      const relation = typeof mod === 'object' ? (mod.relation ?? 'implements') : 'implements';
+      upsertNode(ceg, moduleId, {
+        type: 'module',
+        name: moduleId.slice('module:'.length),
+        placeholder: false,
+      });
+      addEdge(ceg, moduleId, nodeId, relation, 'technical', [{
+        sourceType: 'frontmatter', method: 'modules',
+        score: FRONTMATTER_SCORES.modules,
+        detail: `Module declared in ${relPath}`,
+        isNegative: false,
       }]);
     }
 
@@ -994,6 +1059,7 @@ function rebuildFromFrontmatter(featureName) {
         : (typeof conv.targets === 'string' ? [conv.targets] : []);
       for (const targetId of targets) {
         if (!targetId) continue;
+        ensureReferencedNode(ceg, targetId);
         addEdge(ceg, nodeId, targetId, 'must_review', 'governance', [{
           sourceType: 'frontmatter', method: 'convention',
           score: FRONTMATTER_SCORES.conventions,
@@ -1024,6 +1090,7 @@ function rebuildFromFrontmatter(featureName) {
       const affects = Array.isArray(dep.affects) ? dep.affects : [];
       for (const targetId of affects) {
         if (!targetId) continue;
+        ensureReferencedNode(ceg, targetId);
         // edge(targetId, depId): affected item depends_on db_column
         // BFS from depId (following incoming edges) surfaces targetId when column changes
         addEdge(ceg, targetId, depId, 'behavioral_dependency', 'behavioral', [{

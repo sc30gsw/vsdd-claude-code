@@ -3,9 +3,9 @@
 ## What
 
 Rebuild the Conditioned Evidence Graph (CEG) from `coherence:` frontmatter
-declared in the feature's spec files.  The CEG tracks dependency
-relationships between spec documents so that change-impact analysis is
-always current.
+declared in the feature's spec files. The CEG tracks dependency
+relationships between spec documents and declared implementation modules so
+that change-impact analysis is always current.
 
 ## When to use
 
@@ -35,6 +35,9 @@ coherence:
       relation: specifies
   depended_by:
     - id: "design:ui-design"        # Nodes that depend on this doc
+  modules:
+    - "auth"
+    - "module:session"              # CoDD-style implementation module links
   conventions:
     - targets:
         - "module:auth"             # Node IDs that must be reviewed when this doc changes
@@ -46,9 +49,13 @@ coherence:
         - "module:billing"          # Nodes impacted when this column changes
       condition: "multi-tenant isolation"
   source_files:
-    - "src/api/routes.ts"           # Implementation files for this design
+    - "src/api/routes.ts"           # File-path traceability metadata
 ---
 ```
+
+`modules:` participates in impact propagation by creating concrete
+`module:*` nodes. `source_files:` records file paths for reference but does
+not, by itself, drive forward BFS propagation.
 
 Allowed `node_id` prefixes:
 `req:`, `design:`, `db_table:`, `db_column:`, `module:`, `file:`, `test:`,

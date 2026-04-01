@@ -7,12 +7,13 @@ Validate the CEG for structural integrity:
 2. **Cycle detection** — no circular dependencies in the dependency graph
 
 This is run automatically as part of the `GATE_PREREQUISITES['2a']` check
-when `coherence.json` is present.  You can also invoke it manually at any time.
+when any spec frontmatter declares coherence metadata, or when
+`coherence.json` is already present. You can also invoke it manually at any time.
 
 ## When to use
 
 - After `/vcsdd-coherence-scan` to confirm graph integrity
-- When the status command reports coherence warnings
+- When the status command reports coherence validation errors
 - Before transitioning to Phase 2a to pre-empt gate failures
 
 ## Steps
@@ -51,15 +52,15 @@ const summary = summarize(ceg);
    3. Re-run /vcsdd-coherence-scan then /vcsdd-coherence-validate
 ```
 
-**If warnings exist (dangling references):**
+**If `result.ok === false` (dangling references / placeholder nodes):**
 ```
-⚠ Warnings:
+❌ Coherence validation failed: Reference integrity errors
    - Edge 3: unknown target node "design:missing-doc"
      → Add the missing node or fix the node_id reference in the spec frontmatter
 ```
 
 ## Exit criteria
 
-- `result.ok === true` with zero warnings → proceed to Phase 2a
-- Cycles detected → must be resolved before Phase 2a gate will pass
-- Warnings only → document them and proceed at your discretion
+- `result.ok === true` → proceed to Phase 2a
+- Cycles detected → must be resolved before the Phase 2a gate will pass
+- Dangling references / placeholder nodes → must be resolved before the Phase 2a gate will pass
