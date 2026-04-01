@@ -20,7 +20,7 @@ VCSDD is a methodology that fuses four disciplines into a single workflow:
 - **Spec-Driven Development (SDD)** -- behavior is fully specified before any code is written
 - **Test-Driven Development (TDD)** -- failing tests are written before any implementation
 - **Verification-Driven Development (VDD)** -- formal verification is treated as a first-class deliverable, not an afterthought
-- **Coherence-Driven Development (CoDD)** -- dependency relationships between spec documents are tracked so that requirement changes propagate automatically to all affected artifacts
+- **Coherence-Driven Development (CoDD)** -- dependency relationships between tracked artifacts are recorded so that requirement changes propagate automatically to downstream specs and any declared implementation modules
 
 These are joined by an **adversarial review gate**: a fresh-context agent running on a more capable model that reviews all artifacts with zero tolerance and produces binary verdicts. The adversary is structurally isolated from the builder -- it reads only from disk and cannot be influenced by the builder's conversational context.
 
@@ -59,11 +59,13 @@ Completion is blocked if any persisted adversary finding lacks a matching `adver
 The `vcsdd-gate-check.js` hook runs on `PreToolUse` for `Write`/`Edit`/`MultiEdit` and for `Bash` when the command targets phase-restricted paths. It blocks direct writes, shell redirects, in-place edits, and common path-based mutation commands such as `cp` into restricted areas. Gate strictness is controlled by the `VCSDD_HOOK_PROFILE` environment variable.
 
 **Coherence Engine (CoDD integration)**
-When requirements change mid-project, the Coherence Engine traces which downstream spec documents are affected and classifies them into confidence bands before any code is touched. It is implemented natively in Node.js inside `scripts/lib/vcsdd-coherence.js` and stores its graph in `.vcsdd/features/<name>/coherence.json`.
-- **CEG (Conditioned Evidence Graph)** -- directed dependency graph between spec documents; built from `coherence:` frontmatter blocks in Markdown files
+When requirements change mid-project, the Coherence Engine traces which downstream tracked artifacts are affected and classifies them into confidence bands before any code is touched. It is implemented natively in Node.js inside `scripts/lib/vcsdd-coherence.js` and stores its graph in `.vcsdd/features/<name>/coherence.json`.
+- **CEG (Conditioned Evidence Graph)** -- directed dependency graph between spec documents and declared implementation modules; built from `coherence:` frontmatter blocks in Markdown files
 - **Noisy-OR confidence scoring** -- evidence-based edge weights aggregated into Green (≥90%) / Amber (≥50%) / Gray (<50%) impact bands
 - **BFS forward impact propagation** -- traces all downstream nodes when a spec changes, so no affected document is silently missed
 - **DFS cycle detection** -- prevents circular dependencies in the spec graph before they corrupt propagation
+- **CoDD-style module traceability** -- `modules:` frontmatter creates first-class `module:*` nodes and technical edges so spec changes can surface impacted implementation modules
+- **File-path traceability metadata** -- `source_files:` records concrete file paths for reference, but forward impact propagation is driven by the graph edges above rather than raw file-path lists
 - **Reference integrity enforcement** -- dangling references and placeholder nodes are hard errors at the Phase 2a gate; a broken graph blocks entering the red phase until fixed
 - **Opt-in** -- activates when spec frontmatter declares `coherence:` metadata or an existing `coherence.json` is already being tracked. Pure VCSDD features without coherence metadata remain a no-op. When opted in, coherence errors (dangling refs, cycles, corrupted graph, runtime failures) block the Phase 2a gate
 - **Automatic refresh hook** -- in `standard` and `strict` hook profiles, spec edits automatically rebuild `coherence.json` before later commands rely on it
