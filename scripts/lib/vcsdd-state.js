@@ -111,14 +111,23 @@ const GATE_PREREQUISITES = {
     const coherencePath = path.join(featurePath, 'coherence.json');
     if (fs.existsSync(coherencePath)) {
       try {
-        const { validateCoherence } = require('./vcsdd-coherence');
-        const ceg = JSON.parse(fs.readFileSync(coherencePath, 'utf8'));
-        const result = validateCoherence(ceg);
-        if (!result.ok) {
-          return { ok: false, reason: `Coherence validation failed: ${result.reason}` };
+        const { loadCoherence, validateCoherence } = require('./vcsdd-coherence');
+        // Use loadCoherence for structural validation + safe parsing
+        const ceg = loadCoherence(state.featureName);
+        if (ceg) {
+          const result = validateCoherence(ceg);
+          if (!result.ok) {
+            return { ok: false, reason: `Coherence validation failed: ${result.reason}` };
+          }
         }
-      } catch {
-        // If coherence module fails to load, do not block the gate
+      } catch (err) {
+        // Log error but do not block the gate — coherence is advisory
+        appendHistory({
+          event:       'coherence_check_error',
+          featureName: state.featureName,
+          phase:       '2a',
+          error:       err.message,
+        });
       }
     }
 
@@ -1401,8 +1410,14 @@ function routeFeedback(featureName, targetPhase, reason) {
           }
         }
       }
-    } catch {
-      // Coherence impact is advisory — do not block routing on errors
+    } catch (err) {
+      // Coherence impact is advisory — log but do not block routing on errors
+      appendHistory({
+        event:       'coherence_check_error',
+        featureName,
+        phase:       'feedback',
+        error:       err.message,
+      });
     }
   }
 
