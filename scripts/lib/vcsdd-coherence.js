@@ -174,6 +174,35 @@ function loadCoherence(featureName) {
   }
 }
 
+/**
+ * Load coherence.json with status information.
+ * Returns { ceg, status } where status is 'loaded' | 'not_found' | 'corrupted'.
+ * On corruption, creates a .bak backup automatically.
+ */
+function loadCoherenceWithStatus(featureName) {
+  const p = getCoherencePath(featureName);
+  if (!fs.existsSync(p)) return { ceg: null, status: 'not_found' };
+  try {
+    const ceg = JSON.parse(fs.readFileSync(p, 'utf8'));
+    if (!isValidCegStructure(ceg)) {
+      _backupCorruptedFile(p);
+      return { ceg: null, status: 'corrupted' };
+    }
+    return { ceg, status: 'loaded' };
+  } catch {
+    _backupCorruptedFile(p);
+    return { ceg: null, status: 'corrupted' };
+  }
+}
+
+function _backupCorruptedFile(filePath) {
+  try {
+    fs.copyFileSync(filePath, filePath + '.bak');
+  } catch {
+    // Best-effort backup; proceed even if it fails
+  }
+}
+
 /** Save coherence data atomically. */
 function saveCoherence(featureName, ceg) {
   ceg.lastScanAt = new Date().toISOString();
@@ -208,6 +237,9 @@ function upsertNode(ceg, nodeId, data = {}) {
     ...existing,
     id:   nodeId,
     type: data.type  ?? existing.type  ?? inferredType,
+    // placeholder: true when auto-created by addEdge (no explicit data),
+    // false when created from scanned frontmatter. Preserve existing value.
+    placeholder: data.placeholder ?? existing.placeholder ?? true,
     ...(data.path   !== undefined ? { path:   data.path   } : {}),
     ...(data.name   !== undefined ? { name:   data.name   } : {}),
     ...(data.module !== undefined ? { module: data.module } : {}),
@@ -572,11 +604,17 @@ function validateCoherence(ceg) {
   const knownIds = new Set(Object.keys(ceg.nodes));
   for (const edge of ceg.edges) {
     if (!edge.isActive) continue;
-    if (!knownIds.has(edge.sourceId)) {
+    const src = ceg.nodes[edge.sourceId];
+    const tgt = ceg.nodes[edge.targetId];
+    if (!src) {
       warnings.push(`Edge ${edge.id}: unknown source node "${edge.sourceId}"`);
+    } else if (src.placeholder) {
+      warnings.push(`Edge ${edge.id}: source node "${edge.sourceId}" is a placeholder (no matching document found)`);
     }
-    if (!knownIds.has(edge.targetId)) {
+    if (!tgt) {
       warnings.push(`Edge ${edge.id}: unknown target node "${edge.targetId}"`);
+    } else if (tgt.placeholder) {
+      warnings.push(`Edge ${edge.id}: target node "${edge.targetId}" is a placeholder (no matching document found)`);
     }
   }
 
@@ -741,6 +779,31 @@ function parseMinimalYaml(yamlText) {
 }
 
 function parseScalar(s) {
+  // Flow sequence: [] or [a, b, c]
+  if (s.startsWith('[') && s.endsWith(']')) {
+    const inner = s.slice(1, -1).trim();
+    if (inner === '') return [];
+    const items = [];
+    let current = '';
+    let inQuote = null;
+    for (let i = 0; i < inner.length; i++) {
+      const ch = inner[i];
+      if (inQuote) {
+        current += ch;
+        if (ch === inQuote) inQuote = null;
+      } else if (ch === '"' || ch === "'") {
+        current += ch;
+        inQuote = ch;
+      } else if (ch === ',') {
+        items.push(parseScalar(current.trim()));
+        current = '';
+      } else {
+        current += ch;
+      }
+    }
+    if (current.trim() !== '') items.push(parseScalar(current.trim()));
+    return items;
+  }
   if (s === 'true')  return true;
   if (s === 'false') return false;
   if (s === 'null' || s === '~') return null;
@@ -800,11 +863,19 @@ function scanSpecFrontmatter(featurePath) {
  */
 function rebuildFromFrontmatter(featureName) {
   const featurePath = getFeaturePath(featureName);
-  let ceg = loadCoherence(featureName);
+  const { ceg: existingCeg, status } = loadCoherenceWithStatus(featureName);
 
-  if (ceg) {
+  let ceg;
+  if (existingCeg) {
+    ceg = existingCeg;
     removeAutoEvidence(ceg);
   } else {
+    if (status === 'corrupted') {
+      console.warn(
+        `[vcsdd-coherence] WARNING: coherence.json for "${featureName}" was corrupted. ` +
+        `A backup has been saved to coherence.json.bak. Human evidence may have been lost.`,
+      );
+    }
     ceg = {
       version:    COHERENCE_VERSION,
       nodes:      {},
@@ -828,9 +899,10 @@ function rebuildFromFrontmatter(featureName) {
     }
     const nodeId = rawNodeId;
     upsertNode(ceg, nodeId, {
-      type: coherence.type,
-      path: relPath,
-      name: coherence.name,
+      type:        coherence.type,
+      path:        relPath,
+      name:        coherence.name,
+      placeholder: false,
     });
 
     // depends_on: source→target edges
@@ -959,6 +1031,7 @@ function summarize(ceg, bands = DEFAULT_BANDS) {
 module.exports = {
   // Lifecycle
   loadCoherence,
+  loadCoherenceWithStatus,
   saveCoherence,
   initCoherence,
 

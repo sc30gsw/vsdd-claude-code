@@ -108,14 +108,15 @@ const GATE_PREREQUISITES = {
     }
 
     // Coherence validation is opt-in (only when coherence.json exists).
-    // If coherence.json exists but is invalid (e.g. cycles), we block phase 2a.
+    // Rebuilds from frontmatter first to ensure the CEG is fresh (not stale).
+    // If the rebuilt CEG has cycles, we block phase 2a.
     // If the coherence runtime fails unexpectedly, we record history but do not block (advisory).
     const coherencePath = path.join(featurePath, 'coherence.json');
     if (fs.existsSync(coherencePath)) {
       try {
-        const { loadCoherence, validateCoherence } = require('./vcsdd-coherence');
-        // Use loadCoherence for structural validation + safe parsing
-        const ceg = loadCoherence(state.featureName);
+        const { rebuildFromFrontmatter, validateCoherence } = require('./vcsdd-coherence');
+        // Rebuild from frontmatter to ensure CEG reflects current spec state
+        const ceg = rebuildFromFrontmatter(state.featureName);
         if (ceg) {
           const result = validateCoherence(ceg);
           if (!result.ok) {

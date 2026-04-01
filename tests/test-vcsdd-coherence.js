@@ -28,6 +28,7 @@ const {
   impactNodeIncomingStats,
   generateImpactReport,
   detectCycles,
+  loadCoherenceWithStatus,
   validateCoherence,
   removeAutoEvidence,
   upsertNode,
@@ -898,6 +899,156 @@ section('addEdge semantic deduplication');
   assert(govEdges[0].evidence.length === 2, 'same-semantic duplicate accumulates evidence on existing edge');
   assert(ceg.edges.filter(e => e.sourceId === 'req:a' && e.targetId === 'design:b').length === 2,
     'evidence accumulation does not create a third edge');
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Section 11: Bug fixes — CoDD adversarial review (Bug 1, 2, 3, 4)
+// ══════════════════════════════════════════════════════════════════════════════
+
+// Bug 1: parseScalar() handles YAML flow sequences
+{
+  section('parseScalar / extractFrontmatter — depends_on: [] (inline empty array)');
+
+  const docEmpty = [
+    '---',
+    'coherence:',
+    '  node_id: "req:inline-empty"',
+    '  type: requirement',
+    '  depends_on: []',
+    '---',
+    '# body',
+  ].join('\n');
+
+  const fmEmpty = extractFrontmatter(docEmpty);
+  assert(fmEmpty !== null, 'frontmatter parsed');
+  assert(Array.isArray(fmEmpty.depends_on), 'depends_on: [] yields an array');
+  assertEqual(fmEmpty.depends_on.length, 0, 'depends_on: [] has length 0');
+
+  section('parseScalar / extractFrontmatter — depends_on: [req:a, req:b] (inline list)');
+
+  const docList = [
+    '---',
+    'coherence:',
+    '  node_id: "req:inline-list"',
+    '  type: requirement',
+    '  depends_on: [req:alpha, req:beta]',
+    '---',
+    '# body',
+  ].join('\n');
+
+  const fmList = extractFrontmatter(docList);
+  assert(fmList !== null, 'frontmatter with inline list parsed');
+  assert(Array.isArray(fmList.depends_on), 'depends_on: [a, b] yields an array');
+  assertEqual(fmList.depends_on.length, 2, 'inline list has 2 items');
+  assertEqual(fmList.depends_on[0], 'req:alpha', 'first item is req:alpha');
+  assertEqual(fmList.depends_on[1], 'req:beta', 'second item is req:beta');
+
+  section('parseScalar / extractFrontmatter — source_files: [] (inline empty)');
+
+  const docSf = [
+    '---',
+    'coherence:',
+    '  node_id: "req:sf-empty"',
+    '  type: requirement',
+    '  source_files: []',
+    '---',
+  ].join('\n');
+
+  const fmSf = extractFrontmatter(docSf);
+  assert(fmSf !== null, 'frontmatter with source_files: [] parsed');
+  assert(Array.isArray(fmSf.source_files), 'source_files: [] yields an array');
+  assertEqual(fmSf.source_files.length, 0, 'source_files: [] has length 0');
+}
+
+// Bug 2: validateCoherence() warns on placeholder nodes
+{
+  section('validateCoherence — placeholder node warnings (Bug 2)');
+
+  const ceg = { version: '1', nodes: {}, edges: [] };
+  // Scanned node (real document)
+  upsertNode(ceg, 'req:real', { type: 'requirement', placeholder: false });
+  // addEdge auto-creates 'req:ghost' as placeholder
+  addEdge(ceg, 'req:real', 'req:ghost', 'depends_on', 'governance', [
+    { sourceType: 'frontmatter', method: 'frontmatter', score: 0.9, isNegative: false },
+  ]);
+
+  assert(ceg.nodes['req:ghost'] !== undefined, 'auto-created node exists');
+  assert(ceg.nodes['req:ghost'].placeholder === true, 'auto-created node is placeholder');
+  assert(ceg.nodes['req:real'].placeholder === false, 'scanned node is not placeholder');
+
+  const result = validateCoherence(ceg);
+  assert(result.ok === true, 'placeholder ref is a warning only, not a hard failure');
+  assert(Array.isArray(result.warnings), 'warnings array returned');
+  assert(
+    result.warnings.some(w => w.includes('req:ghost') && w.includes('placeholder')),
+    'warning mentions placeholder node req:ghost',
+  );
+
+  section('validateCoherence — no placeholder warnings when all nodes are real');
+
+  const ceg2 = { version: '1', nodes: {}, edges: [] };
+  upsertNode(ceg2, 'req:a', { type: 'requirement', placeholder: false });
+  upsertNode(ceg2, 'design:b', { type: 'design', placeholder: false });
+  addEdge(ceg2, 'req:a', 'design:b', 'depends_on', 'governance', [
+    { sourceType: 'frontmatter', method: 'frontmatter', score: 0.9, isNegative: false },
+  ]);
+  // Nodes were created before addEdge, so they retain placeholder: false
+  ceg2.nodes['req:a'].placeholder = false;
+  ceg2.nodes['design:b'].placeholder = false;
+
+  const result2 = validateCoherence(ceg2);
+  assert(result2.ok === true, 'no failure when all nodes are real');
+  assert(
+    !result2.warnings.some(w => w.includes('placeholder')),
+    'no placeholder warnings when all nodes are real',
+  );
+}
+
+// Bug 4: loadCoherenceWithStatus — corruption recovery with backup
+{
+  section('loadCoherenceWithStatus — corrupted JSON creates .bak and returns status corrupted');
+
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vcsdd-coherence-corrupt-'));
+  try {
+    const featureDir = path.join(tmpDir, '.vcsdd', 'features', 'corrupt-test');
+    fs.mkdirSync(featureDir, { recursive: true });
+    const coherencePath = path.join(featureDir, 'coherence.json');
+    fs.writeFileSync(coherencePath, '{invalid json!!!');
+
+    const origCwd = process.cwd();
+    process.chdir(tmpDir);
+    try {
+      const result = loadCoherenceWithStatus('corrupt-test');
+      assert(result.ceg === null, 'corrupted file returns null ceg');
+      assertEqual(result.status, 'corrupted', 'status is corrupted');
+      assert(fs.existsSync(coherencePath + '.bak'), 'backup file .bak was created');
+    } finally {
+      process.chdir(origCwd);
+    }
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+
+  section('loadCoherenceWithStatus — missing file returns status not_found');
+
+  const tmpDir2 = fs.mkdtempSync(path.join(os.tmpdir(), 'vcsdd-coherence-notfound-'));
+  try {
+    const featureDir2 = path.join(tmpDir2, '.vcsdd', 'features', 'notfound-test');
+    fs.mkdirSync(featureDir2, { recursive: true });
+    // No coherence.json written
+
+    const origCwd = process.cwd();
+    process.chdir(tmpDir2);
+    try {
+      const result = loadCoherenceWithStatus('notfound-test');
+      assert(result.ceg === null, 'missing file returns null ceg');
+      assertEqual(result.status, 'not_found', 'status is not_found');
+    } finally {
+      process.chdir(origCwd);
+    }
+  } finally {
+    fs.rmSync(tmpDir2, { recursive: true, force: true });
+  }
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
