@@ -8,14 +8,22 @@
  *   2. propagateImpact: confidence NOT stored during BFS
  *   3. generateImpactReport: band classification from edge lookup (not path.length)
  *
+ * Also covers: calculateConfidence, detectCycles, validateCoherence,
+ * removeAutoEvidence, sanitizeRelativePath.
+ *
  * Mirrors CoDD reference test cases from codd-dev/tests/test_graph.py.
  */
 
 const {
   classifyBand,
+  calculateConfidence,
   propagateImpact,
   generateImpactReport,
+  detectCycles,
+  validateCoherence,
+  removeAutoEvidence,
   extractFrontmatter,
+  sanitizeRelativePath,
   DEFAULT_BANDS,
 } = require('../scripts/lib/vcsdd-coherence');
 
@@ -374,6 +382,237 @@ const fm4 = extractFrontmatter(allEmptyListsDoc);
 assert(Array.isArray(fm4.depends_on),    'depends_on empty at EOF → []');
 assert(Array.isArray(fm4.depended_by),   'depended_by empty at EOF → []');
 assert(Array.isArray(fm4.source_files),  'source_files empty at EOF → []');
+
+// ══════════════════════════════════════════════════════════════════════════════
+// 6. calculateConfidence — Noisy-OR formula (mirrors CoDD _noisy_or)
+// ══════════════════════════════════════════════════════════════════════════════
+
+section('calculateConfidence — Noisy-OR formula');
+
+// Empty evidence → 0 (posProduct=1, negProduct=1 → 1-1=0)
+assertEqual(calculateConfidence([]), 0, 'empty evidence → 0');
+
+// Single positive evidence 0.9 → 1-(1-0.9) = 0.9
+assertEqual(
+  calculateConfidence([{ score: 0.9, isNegative: false }]),
+  0.9,
+  'single positive 0.9 → 0.9'
+);
+
+// Two positive evidences 0.9 + 0.8 → 1-(0.1*0.2) = 0.98
+assertEqual(
+  calculateConfidence([
+    { score: 0.9, isNegative: false },
+    { score: 0.8, isNegative: false },
+  ]),
+  0.98,
+  'two positives 0.9+0.8 → 0.98'
+);
+
+// Single negative evidence alone → max(0, 0.1 - 1.0) = 0
+// negProduct = 0.1, posProduct = 1.0, raw = 0.1-1.0 = -0.9 → 0
+assertEqual(
+  calculateConfidence([{ score: 0.9, isNegative: true }]),
+  0,
+  'single negative evidence alone → 0 (clamped at 0)'
+);
+
+// Positive 0.9 + negative 0.7: posProduct=0.1, negProduct=0.3, raw=0.3-0.1=0.2
+assertEqual(
+  calculateConfidence([
+    { score: 0.9, isNegative: false },
+    { score: 0.7, isNegative: true },
+  ]),
+  0.2,
+  'positive 0.9 + negative 0.7 → 0.2'
+);
+
+// Score clamping: score > 1 treated as 1 → posProduct = (1-1.0)=0 → conf = negProduct - 0
+// With no negatives: posProduct=0, raw = negProduct(1) - posProduct(0) = 1
+assertEqual(
+  calculateConfidence([{ score: 9999, isNegative: false }]),
+  1,
+  'score > 1 clamped to 1 → confidence 1.0'
+);
+
+// Rounding to 4 decimal places
+const threePositives = calculateConfidence([
+  { score: 0.9, isNegative: false },
+  { score: 0.7, isNegative: false },
+  { score: 0.5, isNegative: false },
+]);
+// 1-(0.1*0.3*0.5) = 1-0.015 = 0.985
+assertEqual(threePositives, 0.985, 'three positives 0.9+0.7+0.5 → 0.985');
+
+// ══════════════════════════════════════════════════════════════════════════════
+// 7. detectCycles — iterative DFS cycle detection
+// ══════════════════════════════════════════════════════════════════════════════
+
+section('detectCycles — no cycles');
+
+const noCycleCeg = makeCeg(
+  [{ id: 'a' }, { id: 'b' }, { id: 'c' }],
+  [makeEdge('a', 'b', 0.9), makeEdge('b', 'c', 0.9)],
+);
+assertEqual(detectCycles(noCycleCeg), [], 'DAG has no cycles');
+
+section('detectCycles — simple two-node cycle');
+
+const twoCycleCeg = makeCeg(
+  [{ id: 'a' }, { id: 'b' }],
+  [makeEdge('a', 'b', 0.9), makeEdge('b', 'a', 0.9)],
+);
+const twoCycles = detectCycles(twoCycleCeg);
+assert(twoCycles.length === 1, 'two-node cycle detected exactly once');
+assert(twoCycles[0] === 'a -> b -> a', `canonical form is "a -> b -> a" (got: ${twoCycles[0]})`);
+
+section('detectCycles — three-node cycle');
+
+const threeCycleCeg = makeCeg(
+  [{ id: 'a' }, { id: 'b' }, { id: 'c' }],
+  [makeEdge('a', 'b', 0.9), makeEdge('b', 'c', 0.9), makeEdge('c', 'a', 0.9)],
+);
+const threeCycles = detectCycles(threeCycleCeg);
+assert(threeCycles.length === 1, 'three-node cycle detected exactly once');
+assert(threeCycles[0] === 'a -> b -> c -> a', `canonical form is "a -> b -> c -> a" (got: ${threeCycles[0]})`);
+
+section('detectCycles — inactive edges ignored');
+
+const inactiveCycleCeg = makeCeg(
+  [{ id: 'a' }, { id: 'b' }],
+  [
+    makeEdge('a', 'b', 0.9),
+    { ...makeEdge('b', 'a', 0.9), isActive: false },  // inactive back-edge
+  ],
+);
+assertEqual(detectCycles(inactiveCycleCeg), [], 'inactive edges do not form cycles');
+
+// ══════════════════════════════════════════════════════════════════════════════
+// 8. validateCoherence — reference integrity + cycle detection
+// ══════════════════════════════════════════════════════════════════════════════
+
+section('validateCoherence — clean graph');
+
+const cleanCeg = makeCeg(
+  [{ id: 'a' }, { id: 'b' }],
+  [makeEdge('a', 'b', 0.9)],
+);
+const cleanResult = validateCoherence(cleanCeg);
+assert(cleanResult.ok === true, 'clean graph → ok: true');
+assertEqual(cleanResult.warnings, [], 'clean graph → no warnings');
+assertEqual(cleanResult.cycles, [], 'clean graph → no cycles');
+
+section('validateCoherence — dangling reference warns');
+
+const danglingCeg = makeCeg(
+  [{ id: 'a' }],
+  [makeEdge('a', 'ghost', 0.9)],  // 'ghost' is not in nodes
+);
+const danglingResult = validateCoherence(danglingCeg);
+assert(danglingResult.ok === true, 'dangling ref → ok: true (warning only, not failure)');
+assert(danglingResult.warnings.length > 0, 'dangling ref → at least one warning');
+assert(
+  danglingResult.warnings.some(w => w.includes('ghost')),
+  'warning mentions missing node "ghost"'
+);
+
+section('validateCoherence — cycle → ok: false');
+
+const cycleCeg = makeCeg(
+  [{ id: 'x' }, { id: 'y' }],
+  [makeEdge('x', 'y', 0.9), makeEdge('y', 'x', 0.9)],
+);
+const cycleResult = validateCoherence(cycleCeg);
+assert(cycleResult.ok === false, 'cycle graph → ok: false');
+assert(typeof cycleResult.reason === 'string', 'cycle result has reason string');
+assert(cycleResult.reason.includes('Circular'), 'reason mentions "Circular"');
+assert(cycleResult.cycles.length > 0, 'cycles array is non-empty');
+
+// ══════════════════════════════════════════════════════════════════════════════
+// 9. removeAutoEvidence — purge auto, preserve human
+// ══════════════════════════════════════════════════════════════════════════════
+
+section('removeAutoEvidence — removes auto evidence, keeps human');
+
+function makeCegWithEvidence(nodes, edges) {
+  const nodeMap = {};
+  for (const n of nodes) nodeMap[n.id] = n;
+  return { version: '1', nodes: nodeMap, edges };
+}
+
+const autoHumanCeg = makeCegWithEvidence(
+  [{ id: 'a', type: 'design' }, { id: 'b', type: 'design' }],
+  [{
+    id: 1, sourceId: 'a', targetId: 'b',
+    relation: 'depends_on', semantic: 'governance',
+    confidence: 0.95, isActive: true,
+    evidence: [
+      { sourceType: 'frontmatter', method: 'frontmatter', score: 0.9, isNegative: false },
+      { sourceType: 'human',       method: 'manual',      score: 0.8, isNegative: false },
+    ],
+  }],
+);
+
+removeAutoEvidence(autoHumanCeg);
+assert(autoHumanCeg.edges.length === 1, 'edge survives (human evidence remains)');
+assertEqual(autoHumanCeg.edges[0].evidence.length, 1, 'auto evidence removed, 1 human remains');
+assertEqual(autoHumanCeg.edges[0].evidence[0].sourceType, 'human', 'remaining evidence is human');
+
+section('removeAutoEvidence — edge with only auto evidence is deleted');
+
+const autoOnlyCeg = makeCegWithEvidence(
+  [{ id: 'a', type: 'design' }, { id: 'b', type: 'design' }],
+  [{
+    id: 1, sourceId: 'a', targetId: 'b',
+    relation: 'depends_on', semantic: 'governance',
+    confidence: 0.9, isActive: true,
+    evidence: [
+      { sourceType: 'frontmatter', method: 'frontmatter', score: 0.9, isNegative: false },
+      { sourceType: 'static',      method: 'ast',         score: 0.8, isNegative: false },
+    ],
+  }],
+);
+
+removeAutoEvidence(autoOnlyCeg);
+assertEqual(autoOnlyCeg.edges.length, 0, 'edge deleted when all evidence is auto');
+
+section('removeAutoEvidence — orphan file: nodes are removed');
+
+const orphanCeg = makeCegWithEvidence(
+  [
+    { id: 'a', type: 'design' },
+    { id: 'b', type: 'design' },
+    { id: 'file:x.ts', type: 'file' },  // orphan after edge deletion
+  ],
+  [{
+    id: 1, sourceId: 'a', targetId: 'b',
+    relation: 'depends_on', semantic: 'governance',
+    confidence: 0.9, isActive: true,
+    evidence: [
+      { sourceType: 'human', method: 'manual', score: 0.9, isNegative: false },
+    ],
+  }],
+  // note: file:x.ts has no edges at all
+);
+
+removeAutoEvidence(orphanCeg);
+assert(!orphanCeg.nodes['file:x.ts'], 'orphan file: node removed');
+assert(orphanCeg.nodes['a'],          'non-orphan node a preserved');
+assert(orphanCeg.nodes['b'],          'non-orphan node b preserved');
+
+// ══════════════════════════════════════════════════════════════════════════════
+// 10. sanitizeRelativePath — path traversal prevention
+// ══════════════════════════════════════════════════════════════════════════════
+
+section('sanitizeRelativePath — valid and invalid paths');
+
+assertEqual(sanitizeRelativePath('src/app.ts'),        'src/app.ts',  'simple relative path passes');
+assertEqual(sanitizeRelativePath('a/b/c.ts'),          'a/b/c.ts',    'nested relative path passes');
+assertEqual(sanitizeRelativePath('file.ts'),            'file.ts',     'root-level relative path passes');
+assertEqual(sanitizeRelativePath('/etc/passwd'),        null,          'absolute path rejected');
+assertEqual(sanitizeRelativePath('../etc/passwd'),      null,          'path traversal rejected');
+assertEqual(sanitizeRelativePath('../../etc/shadow'),   null,          'deep path traversal rejected');
+assertEqual(sanitizeRelativePath(42),                   null,          'non-string rejected');
 
 // ══════════════════════════════════════════════════════════════════════════════
 // Results
