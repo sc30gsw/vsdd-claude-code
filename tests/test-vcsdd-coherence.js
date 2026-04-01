@@ -35,6 +35,7 @@ const {
   addEdge,
   extractFrontmatter,
   scanSpecFrontmatter,
+  scanSpecFrontmatterDetailed,
   rebuildFromFrontmatter,
   sanitizeRelativePath,
   DEFAULT_BANDS,
@@ -959,10 +960,10 @@ section('scanSpecFrontmatter recursive traversal');
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// rebuildFromFrontmatter — node_id format validation (BUG-2 fix)
+// scanSpecFrontmatterDetailed / rebuildFromFrontmatter — node_id validation
 // ══════════════════════════════════════════════════════════════════════════════
 
-section('rebuildFromFrontmatter node_id validation');
+section('scanSpecFrontmatterDetailed / rebuildFromFrontmatter node_id validation');
 
 {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vcsdd-coherence-test-'));
@@ -1005,35 +1006,14 @@ section('rebuildFromFrontmatter node_id validation');
       '# Invalid prefix',
     ].join('\n'));
 
-    // Capture console.warn output to verify warning is emitted
-    const warnings = [];
-    const originalWarn = console.warn;
-    console.warn = (...args) => warnings.push(args.join(' '));
+    const scanResult = scanSpecFrontmatterDetailed(tmpDir);
+    const validEntries = scanSpecFrontmatter(tmpDir);
 
-    // Use a fake feature name that maps to tmpDir by temporarily overriding
-    // The test verifies scanSpecFrontmatter captures all 3 files (parsing is separate from validation)
-    const allEntries = scanSpecFrontmatter(tmpDir);
-    console.warn = originalWarn;
-
-    assert(allEntries.length === 3, 'scanSpecFrontmatter returns all 3 spec files (validation is in rebuildFromFrontmatter)');
-
-    // Directly verify the validation logic used in rebuildFromFrontmatter
-    const PREFIX_TYPE_MAP_PREFIXES = [
-      'req:', 'design:', 'db_table:', 'db_column:', 'module:', 'file:', 'test:',
-      'config:', 'endpoint:', 'infra:', 'governance:', 'doc:', 'db:', 'detail:', 'plan:', 'ops:',
-    ];
-
-    function isValidNodeId(id) {
-      return /^[a-z_]+:.+$/.test(id) &&
-        PREFIX_TYPE_MAP_PREFIXES.some(p => id.startsWith(p));
-    }
-
-    assert(isValidNodeId('req:valid-requirement'), 'valid node_id passes validation');
-    assert(!isValidNodeId('INVALID_NO_PREFIX'), 'uppercase-only id fails validation');
-    assert(!isValidNodeId('unknown:some-node'), 'unknown prefix fails validation');
-    assert(!isValidNodeId('123:numeric-start'), 'numeric-start prefix fails validation');
-    assert(isValidNodeId('ops:deploy-pipeline'), 'ops: prefix is valid');
-    assert(isValidNodeId('detail:db-schema'), 'detail: prefix is valid');
+    assertEqual(scanResult.entries.length, 1, 'detailed scan keeps only valid coherence entries');
+    assertEqual(scanResult.errors.length, 2, 'detailed scan reports both invalid node_id documents');
+    assert(validEntries.length === 1, 'scanSpecFrontmatter returns only valid spec files');
+    assert(scanResult.errors.some(e => e.includes('INVALID_NO_PREFIX')), 'invalid uppercase node_id is reported');
+    assert(scanResult.errors.some(e => e.includes('unknown:some-node')), 'unknown-prefix node_id is reported');
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
@@ -1254,6 +1234,90 @@ section('addEdge semantic deduplication');
       assert(threw, 'rebuildFromFrontmatter throws when coherence.json is corrupted');
       assert(thrownMessage.includes('corrupted'), 'error message mentions "corrupted"');
       assert(thrownMessage.includes('rebuild-corrupt-test'), 'error message mentions feature name');
+    } finally {
+      process.chdir(origCwd);
+    }
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+}
+
+// Bug 6: rebuildFromFrontmatter — throws on invalid node_id (no silent skip)
+{
+  section('rebuildFromFrontmatter — throws on invalid node_id');
+
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vcsdd-coherence-invalid-nodeid-'));
+  try {
+    const featureDir = path.join(tmpDir, '.vcsdd', 'features', 'invalid-nodeid-test');
+    const specsDir = path.join(featureDir, 'specs');
+    fs.mkdirSync(specsDir, { recursive: true });
+
+    fs.writeFileSync(path.join(specsDir, 'behavioral-spec.md'), [
+      '---',
+      'coherence:',
+      '  node_id: "INVALID_NO_PREFIX"',
+      '---',
+      '',
+      '# Broken node id',
+      '',
+    ].join('\n'));
+
+    const origCwd = process.cwd();
+    process.chdir(tmpDir);
+    try {
+      let threw = false;
+      let thrownMessage = '';
+      try {
+        rebuildFromFrontmatter('invalid-nodeid-test');
+      } catch (err) {
+        threw = true;
+        thrownMessage = err.message;
+      }
+      assert(threw, 'rebuildFromFrontmatter throws when node_id is invalid');
+      assert(thrownMessage.includes('invalid node_id'), 'error message mentions invalid node_id');
+      assert(thrownMessage.includes('behavioral-spec.md'), 'error message mentions the broken file path');
+    } finally {
+      process.chdir(origCwd);
+    }
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+}
+
+// Bug 7: rebuildFromFrontmatter — throws on malformed coherence frontmatter
+{
+  section('rebuildFromFrontmatter — throws on malformed coherence frontmatter');
+
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vcsdd-coherence-invalid-frontmatter-'));
+  try {
+    const featureDir = path.join(tmpDir, '.vcsdd', 'features', 'invalid-frontmatter-test');
+    const specsDir = path.join(featureDir, 'specs');
+    fs.mkdirSync(specsDir, { recursive: true });
+
+    fs.writeFileSync(path.join(specsDir, 'behavioral-spec.md'), [
+      '---',
+      'coherence:',
+      '  node_id "req:broken"',
+      '---',
+      '',
+      '# Broken frontmatter',
+      '',
+    ].join('\n'));
+
+    const origCwd = process.cwd();
+    process.chdir(tmpDir);
+    try {
+      let threw = false;
+      let thrownMessage = '';
+      try {
+        rebuildFromFrontmatter('invalid-frontmatter-test');
+      } catch (err) {
+        threw = true;
+        thrownMessage = err.message;
+      }
+      assert(threw, 'rebuildFromFrontmatter throws when coherence frontmatter is malformed');
+      assert(thrownMessage.includes('invalid frontmatter'), 'error message mentions invalid frontmatter');
+      assert(thrownMessage.includes('behavioral-spec.md'), 'error message mentions the broken file path');
     } finally {
       process.chdir(origCwd);
     }

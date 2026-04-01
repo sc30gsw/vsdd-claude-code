@@ -116,9 +116,17 @@ const GATE_PREREQUISITES = {
     // If the coherence runtime fails unexpectedly, we record history and block phase 2a.
     const coherencePath = path.join(featurePath, 'coherence.json');
     try {
-      const { rebuildFromFrontmatter, validateCoherence, scanSpecFrontmatter } = require('./vcsdd-coherence');
-      const hasCoherenceFrontmatter = scanSpecFrontmatter(featurePath).length > 0;
+      const {
+        rebuildFromFrontmatter,
+        validateCoherence,
+        scanSpecFrontmatterDetailed,
+      } = require('./vcsdd-coherence');
+      const scanResult = scanSpecFrontmatterDetailed(featurePath);
+      const hasCoherenceFrontmatter = scanResult.entries.length > 0 || scanResult.errors.length > 0;
       if (hasCoherenceFrontmatter || fs.existsSync(coherencePath)) {
+        if (scanResult.errors.length > 0) {
+          return { ok: false, reason: `Coherence validation failed: ${scanResult.errors[0]}` };
+        }
         // Rebuild from frontmatter to ensure CEG reflects current spec state
         const ceg = rebuildFromFrontmatter(state.featureName);
         if (ceg) {

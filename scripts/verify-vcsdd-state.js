@@ -416,6 +416,68 @@ function writeFailingReviewVerdict(root, feature, reviewScope, evidenceLocation,
   );
 }
 
+// ── Coherence gate: invalid node_id blocks phase 2a ──
+{
+  const root = tmpDir();
+  process.chdir(root);
+  const feat = 'coherence-invalid-nodeid-feature';
+  initFeature(feat, 'lean');
+  transitionPhase(feat, '1a');
+  writeFile(
+    root,
+    `.vcsdd/features/${feat}/specs/behavioral-spec.md`,
+    [
+      '---',
+      'coherence:',
+      '  node_id: INVALID_NO_PREFIX',
+      '---',
+      '',
+      '# Behavioral',
+      '',
+    ].join('\n')
+  );
+  transitionPhase(feat, '1b');
+  writeFile(root, `.vcsdd/features/${feat}/specs/verification-architecture.md`, '# Verification\n');
+  transitionPhase(feat, '1c');
+  recordGate(feat, '1c', 'PASS', 'adversary');
+
+  assertThrows(
+    () => transitionPhase(feat, '2a'),
+    'invalid node_id'
+  );
+}
+
+// ── Coherence gate: malformed frontmatter blocks phase 2a ──
+{
+  const root = tmpDir();
+  process.chdir(root);
+  const feat = 'coherence-invalid-frontmatter-feature';
+  initFeature(feat, 'lean');
+  transitionPhase(feat, '1a');
+  writeFile(
+    root,
+    `.vcsdd/features/${feat}/specs/behavioral-spec.md`,
+    [
+      '---',
+      'coherence:',
+      '  node_id "req:broken"',
+      '---',
+      '',
+      '# Behavioral',
+      '',
+    ].join('\n')
+  );
+  transitionPhase(feat, '1b');
+  writeFile(root, `.vcsdd/features/${feat}/specs/verification-architecture.md`, '# Verification\n');
+  transitionPhase(feat, '1c');
+  recordGate(feat, '1c', 'PASS', 'adversary');
+
+  assertThrows(
+    () => transitionPhase(feat, '2a'),
+    'invalid frontmatter'
+  );
+}
+
 // ── Coherence refresh hook: spec edits rebuild the graph before later phases rely on it ──
 {
   const root = tmpDir();

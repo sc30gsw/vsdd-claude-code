@@ -6,7 +6,7 @@ const path = require('path');
 const { run } = require('./run-with-flags');
 const { getActiveFeature, getFeaturePath, appendHistory } = require('../lib/vcsdd-state');
 const {
-  scanSpecFrontmatter,
+  scanSpecFrontmatterDetailed,
   rebuildFromFrontmatter,
   validateCoherence,
 } = require('../lib/vcsdd-coherence');
@@ -63,11 +63,23 @@ run('vcsdd-coherence-refresh', async (payload) => {
     }
 
     const coherencePath = path.join(featurePath, 'coherence.json');
-    const frontmatterEntries = scanSpecFrontmatter(featurePath);
+    const scanResult = scanSpecFrontmatterDetailed(featurePath);
+    const frontmatterEntries = scanResult.entries;
 
     // Keep CoDD opt-in: skip pure spec edits unless the feature already has
     // coherence metadata or an existing coherence graph to refresh.
-    if (frontmatterEntries.length === 0 && !fs.existsSync(coherencePath)) {
+    if (frontmatterEntries.length === 0 && scanResult.errors.length === 0 && !fs.existsSync(coherencePath)) {
+      return { blocked: false };
+    }
+
+    if (scanResult.errors.length > 0) {
+      const message = scanResult.errors.join('; ');
+      appendHistory({
+        event: 'coherence_refresh_warning',
+        featureName: activeFeature,
+        reason: message,
+      });
+      process.stderr.write(`[vcsdd-coherence-refresh] ${activeFeature}: ${message}\n`);
       return { blocked: false };
     }
 

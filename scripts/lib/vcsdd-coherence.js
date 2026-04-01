@@ -78,6 +78,7 @@ const PREFIX_TYPE_MAP = {
 
 /** Keys that must never be set on plain objects (prototype-pollution guard). */
 const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+const FRONTMATTER_PATTERN = /^---\s*\n([\s\S]*?)\n---/;
 
 /**
  * Node prefixes that represent concrete artifacts and do not require a
@@ -147,6 +148,12 @@ function normalizeModuleId(moduleRef) {
   const trimmed = moduleRef.trim();
   if (!trimmed) return '';
   return trimmed.startsWith('module:') ? trimmed : `module:${trimmed}`;
+}
+
+function isValidNodeId(nodeId) {
+  return typeof nodeId === 'string' &&
+    /^[a-z_]+:.+$/.test(nodeId) &&
+    Object.keys(PREFIX_TYPE_MAP).some(prefix => nodeId.startsWith(prefix));
 }
 
 // ── Path helpers ───────────────────────────────────────────────────────────
@@ -688,7 +695,7 @@ function validateCoherence(ceg) {
  * convention; `coherence:` is the VCSDD convention).
  */
 function extractFrontmatter(content) {
-  const match = content.match(/^---\s*\n([\s\S]*?)\n---/);
+  const match = content.match(FRONTMATTER_PATTERN);
   if (!match) return null;
   try {
     const parsed = parseMinimalYaml(match[1]);
@@ -815,12 +822,15 @@ function parseMinimalYaml(yamlText) {
           // Scalar item
           scope.obj[scope.arrayKey].push(parseScalar(rest));
         }
+      } else {
+        throw new Error(`Invalid YAML array item at line ${lineIdx + 1}`);
       }
-      // If no arrayKey in current scope, the array item is ignored
     } else {
       // ── Key: value (or key:) ─────────────────────────────────────────────
       const kvMatch = trimmed.match(/^([^:]+):\s*(.*)$/);
-      if (!kvMatch) continue;
+      if (!kvMatch) {
+        throw new Error(`Invalid YAML line at line ${lineIdx + 1}: ${trimmed}`);
+      }
 
       const key   = kvMatch[1].trim();
       const value = kvMatch[2].trim();
@@ -926,10 +936,66 @@ function parseScalar(s) {
  * @returns {{ filePath, relPath, coherence }[]}
  */
 function scanSpecFrontmatter(featurePath) {
-  const specsDir = path.join(featurePath, 'specs');
-  const results  = [];
+  return scanSpecFrontmatterDetailed(featurePath).entries;
+}
 
-  if (!fs.existsSync(specsDir)) return results;
+/**
+ * Scan all .md files under `featurePath/specs/`, collecting valid coherence
+ * frontmatter entries and reporting malformed CoDD metadata as errors.
+ *
+ * @returns {{ entries: { filePath, relPath, coherence }[], errors: string[] }}
+ */
+function scanSpecFrontmatterDetailed(featurePath) {
+  const specsDir = path.join(featurePath, 'specs');
+  const entries  = [];
+  const errors   = [];
+
+  if (!fs.existsSync(specsDir)) return { entries, errors };
+
+  function inspectFrontmatter(content, relPath) {
+    const match = content.match(FRONTMATTER_PATTERN);
+    if (!match) return { coherence: null, error: null };
+
+    const frontmatterText = match[1];
+    const mentionsCoherence = /^\s*(coherence|codd)\s*:/m.test(frontmatterText);
+    if (!mentionsCoherence) return { coherence: null, error: null };
+
+    let parsed;
+    try {
+      parsed = parseMinimalYaml(frontmatterText);
+    } catch (err) {
+      return {
+        coherence: null,
+        error: `invalid frontmatter in "${relPath}": ${err.message}`,
+      };
+    }
+
+    const coherence = typeof parsed?.coherence === 'object' ? parsed.coherence
+      : (typeof parsed?.codd === 'object' ? parsed.codd : null);
+
+    if (!coherence || Array.isArray(coherence)) {
+      return {
+        coherence: null,
+        error: `invalid frontmatter in "${relPath}": coherence block must be a mapping`,
+      };
+    }
+
+    if (typeof coherence.node_id !== 'string' || coherence.node_id.trim() === '') {
+      return {
+        coherence: null,
+        error: `invalid frontmatter in "${relPath}": coherence.node_id is required`,
+      };
+    }
+
+    if (!isValidNodeId(coherence.node_id)) {
+      return {
+        coherence: null,
+        error: `invalid node_id "${coherence.node_id}" in "${relPath}" (must match <prefix>:<name> with a known prefix)`,
+      };
+    }
+
+    return { coherence, error: null };
+  }
 
   // Recursive walk to match CoDD's os.walk() behaviour
   function walkDir(dir, relPrefix) {
@@ -939,16 +1005,19 @@ function scanSpecFrontmatter(featurePath) {
       } else if (entry.name.endsWith('.md')) {
         const filePath  = path.join(dir, entry.name);
         const content   = fs.readFileSync(filePath, 'utf8');
-        const coherence = extractFrontmatter(content);
-        if (coherence) {
-          results.push({ filePath, relPath: path.join(relPrefix, entry.name), coherence });
+        const relPath = path.join(relPrefix, entry.name);
+        const result = inspectFrontmatter(content, relPath);
+        if (result.error) {
+          errors.push(result.error);
+        } else if (result.coherence) {
+          entries.push({ filePath, relPath, coherence: result.coherence });
         }
       }
     }
   }
 
   walkDir(specsDir, 'specs');
-  return results;
+  return { entries, errors };
 }
 
 /**
@@ -985,20 +1054,13 @@ function rebuildFromFrontmatter(featureName) {
     };
   }
 
-  const entries = scanSpecFrontmatter(featurePath);
+  const { entries, errors } = scanSpecFrontmatterDetailed(featurePath);
+  if (errors.length > 0) {
+    throw new Error(`[vcsdd-coherence] ${errors.join('; ')}`);
+  }
 
   for (const { relPath, coherence } of entries) {
-    const rawNodeId = coherence.node_id ?? `doc:${relPath}`;
-    // Validate node_id format: must be "<known-prefix><name>" matching /^[a-z_]+:.+$/
-    // and the prefix must be in PREFIX_TYPE_MAP (mirrors CoDD validator.py lines 320-324)
-    const nodeIdValid =
-      /^[a-z_]+:.+$/.test(rawNodeId) &&
-      Object.keys(PREFIX_TYPE_MAP).some(p => rawNodeId.startsWith(p));
-    if (!nodeIdValid) {
-      console.warn(`[vcsdd-coherence] Skipping spec "${relPath}": invalid node_id "${rawNodeId}" (must match <prefix>:<name> with a known prefix)`);
-      continue;
-    }
-    const nodeId = rawNodeId;
+    const nodeId = coherence.node_id;
     upsertNode(ceg, nodeId, {
       type:        coherence.type,
       path:        relPath,
@@ -1182,6 +1244,7 @@ module.exports = {
   // Frontmatter
   extractFrontmatter,
   scanSpecFrontmatter,
+  scanSpecFrontmatterDetailed,
   rebuildFromFrontmatter,
 
   // Utilities
