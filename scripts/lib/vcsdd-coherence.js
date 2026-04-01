@@ -641,14 +641,19 @@ function validateCoherence(ceg) {
 
 /**
  * Extract YAML frontmatter block from Markdown content.
- * Returns the parsed `coherence:` sub-object, or null if absent.
+ * Returns the parsed `coherence:` or `codd:` sub-object, or null if absent.
+ * Accepts both keys for upstream CoDD compatibility (`codd:` is the upstream
+ * convention; `coherence:` is the VCSDD convention).
  */
 function extractFrontmatter(content) {
   const match = content.match(/^---\s*\n([\s\S]*?)\n---/);
   if (!match) return null;
   try {
     const parsed = parseMinimalYaml(match[1]);
-    return (parsed && typeof parsed.coherence === 'object') ? parsed.coherence : null;
+    if (!parsed) return null;
+    if (typeof parsed.coherence === 'object') return parsed.coherence;
+    if (typeof parsed.codd      === 'object') return parsed.codd;
+    return null;
   } catch {
     return null;
   }
@@ -1008,7 +1013,7 @@ function rebuildFromFrontmatter(featureName) {
       const table  = dep.table  ?? '?';
       const column = dep.column ?? '?';
       const depId  = `db_column:${table}.${column}`;
-      upsertNode(ceg, depId, { type: 'db_column', name: `${table}.${column}` });
+      upsertNode(ceg, depId, { type: 'db_column', name: `${table}.${column}`, placeholder: false });
       // edge(nodeId, depId): declaring doc depends_on db_column
       addEdge(ceg, nodeId, depId, 'behavioral_dependency', 'behavioral', [{
         sourceType: 'frontmatter', method: 'data_dependency',
@@ -1035,7 +1040,7 @@ function rebuildFromFrontmatter(featureName) {
       const safePath = sanitizeRelativePath(srcFile);
       if (!safePath) continue; // Skip absolute paths / traversal attempts
       const fileNodeId = `file:${safePath}`;
-      upsertNode(ceg, fileNodeId, { type: 'file', path: safePath });
+      upsertNode(ceg, fileNodeId, { type: 'file', path: safePath, placeholder: false });
       addEdge(ceg, nodeId, fileNodeId, 'extracted_from', 'technical', [{
         sourceType: 'frontmatter', method: 'source_files',
         score: FRONTMATTER_SCORES.source_files,
