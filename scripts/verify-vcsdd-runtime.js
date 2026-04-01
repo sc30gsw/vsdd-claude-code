@@ -54,6 +54,17 @@ function tmpDir() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'vcsdd-runtime-verify-'));
 }
 
+function listBundledSkillDirs(options = {}) {
+  const { includeLanguage = true } = options;
+  const skillsRoot = path.join(__dirname, '..', 'skills');
+  return fs.readdirSync(skillsRoot, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .filter((name) => includeLanguage || !name.startsWith('vcsdd-language-'))
+    .map((name) => `skills/${name}/`)
+    .sort();
+}
+
 function createPassingVerdict(feature, evidenceLocation, options = {}) {
   const {
     iteration = 1,
@@ -327,6 +338,13 @@ assertThrows(
   const standard = resolveInstallPlan('standard', null);
   assert(standard.modules.includes('vcsdd-contexts'), 'standard profile should include contexts');
   assert(standard.paths.includes('contexts/'), 'standard profile should install context files');
+  const expectedStandardSkills = listBundledSkillDirs({ includeLanguage: false });
+  for (const skillPath of expectedStandardSkills) {
+    assert(
+      standard.paths.includes(skillPath),
+      `standard profile should install bundled skill path ${skillPath}`
+    );
+  }
 
   const strictTs = resolveInstallPlan('strict', 'typescript');
   assert(strictTs.modules.includes('vcsdd-hooks'), 'strict profile should include hooks');
@@ -334,6 +352,12 @@ assertThrows(
   assert(strictTs.modules.includes('vcsdd-language-typescript'), 'typescript language module should be resolved');
   assert(strictTs.paths.includes('skills/vcsdd-language-typescript/'), 'typescript skill path should be installed');
   assert(strictTs.paths.includes('VCSDD.md'), 'docs should be installed from manifests');
+  for (const skillPath of expectedStandardSkills) {
+    assert(
+      strictTs.paths.includes(skillPath),
+      `strict profile should install bundled skill path ${skillPath}`
+    );
+  }
 }
 
 // eslint-disable-next-line no-console

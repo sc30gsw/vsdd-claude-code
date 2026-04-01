@@ -70,6 +70,8 @@ When requirements change mid-project, the Coherence Engine traces which downstre
 - **Opt-in** -- activates when spec frontmatter declares `coherence:` metadata or an existing `coherence.json` is already being tracked. Pure VCSDD features without coherence metadata remain a no-op. When opted in, coherence errors (dangling refs, cycles, corrupted graph, runtime failures) block the Phase 2a gate
 - **Automatic refresh hook** -- in `standard` and `strict` hook profiles, spec edits automatically rebuild `coherence.json` before later commands rely on it
 
+> **Note:** Coherence scans and impact analyses are LLM-assisted, not automated static analysis. The CEG (`coherence.json`) must be kept in sync with spec frontmatter manually or via the `vcsdd-coherence-refresh` PostToolUse hook. A stale CEG produces unreliable BFS impact results.
+
 **Language verification profiles**
 - **Rust** -- `proptest`, `cargo-fuzz`, `cargo-mutants`, with `kani` as the bundled Tier 2 verifier and `cbmc` as a Tier 3 fallback hint
 - **Python** -- `hypothesis` and `mutmut`
@@ -121,7 +123,9 @@ Agents communicate exclusively through files under `.vcsdd/features/<feature-nam
 | `/vcsdd-coherence-impact` | -- | Run BFS change-impact analysis from changed spec nodes |
 | `/vcsdd-coherence-validate` | -- | Validate CEG reference integrity and detect cycles |
 
-### 16 Skills
+### 30 Skills
+
+Slash-command companion skills: `vcsdd-init`, `vcsdd-spec`, `vcsdd-spec-review`, `vcsdd-tdd`, `vcsdd-impl`, `vcsdd-contract-review`, `vcsdd-adversary`, `vcsdd-feedback`, `vcsdd-harden`, `vcsdd-converge`, `vcsdd-escalate`, `vcsdd-status`, `vcsdd-trace`, `vcsdd-commit`
 
 Core workflow skills: `vcsdd-spec-crystallization`, `vcsdd-sprint-contracts`, `vcsdd-adversarial-refinement`, `vcsdd-grading-criteria`, `vcsdd-feedback-routing`, `vcsdd-convergence-detection`, `vcsdd-formal-hardening`, `vcsdd-verification-architecture`, `vcsdd-traceability`, `vcsdd-git-integration`
 

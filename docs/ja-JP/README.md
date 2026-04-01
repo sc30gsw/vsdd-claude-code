@@ -93,6 +93,8 @@ PreToolUseフックがフェーズ外の `Write`/`Edit` および、リダイレ
 - **オプトイン**: spec のフロントマターに `coherence:` を書いたとき、または既存の `coherence.json` を追跡しているときに有効化される。coherence metadata を持たない通常の VCSDD feature は完全に no-op のまま。オプトイン後は、dangling 参照・循環依存・グラフ破損・ランタイムエラーのいずれも Phase 2a ゲートをブロックする
 - **自動リフレッシュフック**: `standard` / `strict` hook profile では、spec 編集後に `coherence.json` を自動再構築する
 
+> **注意:** coherence scan および impact 分析は LLM による支援であり、自動化された静的解析ではありません。CEG（`coherence.json`）は spec frontmatter と手動で同期するか、`vcsdd-coherence-refresh` PostToolUse フックによって同期する必要があります。古い CEG は BFS impact 分析の信頼性を損ないます。
+
 ### 言語プロファイル
 
 言語固有の検証ツールヒントをプリセットで提供します。以下は現在バンドルされている runtime ヒントに対応します。
@@ -135,7 +137,7 @@ canonical VCSDD が定義するのは Human Architect、Builder、Tracker（Chai
 | コンポーネント | 数量 | 説明 |
 |--------------|------|------|
 | スラッシュコマンド | 17 | `/vcsdd-init` から `/vcsdd-coherence-validate` まで |
-| スキル | 16 | トレーサビリティ、言語プロファイル、コヒーレンスなど |
+| スキル | 30 | スラッシュコマンド補助、方法論コア、言語プロファイル、コヒーレンス |
 | JSONスキーマ | 7 | state, bead, finding, grading, coherence など |
 
 ---
