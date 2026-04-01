@@ -20,6 +20,7 @@
 const fs   = require('fs');
 const os   = require('os');
 const path = require('path');
+const childProcess = require('child_process');
 
 const {
   classifyBand,
@@ -40,6 +41,9 @@ const {
   scanSpecFrontmatterDetailed,
   rebuildFromFrontmatter,
   refreshAndValidateCoherence,
+  getChangedFilesFromGit,
+  resolveChangedNodes,
+  detectChangedNodes,
   sanitizeRelativePath,
   DEFAULT_BANDS,
 } = require('../scripts/lib/vcsdd-coherence');
@@ -74,6 +78,14 @@ function assertEqual(actual, expected, message) {
 
 function section(name) {
   console.log(`\n── ${name} ──`);
+}
+
+function runGit(args, cwd) {
+  return childProcess.execFileSync('git', args, {
+    cwd,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
 }
 
 // ── Helper: build minimal CEG ─────────────────────────────────────────────────
@@ -1512,6 +1524,111 @@ section('addEdge semantic deduplication');
       assert(threw, 'rebuildFromFrontmatter throws when coherence frontmatter is malformed');
       assert(thrownMessage.includes('invalid frontmatter'), 'error message mentions invalid frontmatter');
       assert(thrownMessage.includes('behavioral-spec.md'), 'error message mentions the broken file path');
+    } finally {
+      process.chdir(origCwd);
+    }
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+}
+
+// Bug 9: detectChangedNodes — auto-detect changed spec/file nodes from git diff
+{
+  section('detectChangedNodes — auto-detects start nodes from git diff');
+
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vcsdd-coherence-git-diff-'));
+  try {
+    runGit(['init'], tmpDir);
+    runGit(['config', 'user.name', 'VCSDD Test'], tmpDir);
+    runGit(['config', 'user.email', 'test@example.com'], tmpDir);
+
+    const featureDir = path.join(tmpDir, '.vcsdd', 'features', 'git-impact-test');
+    const specsDir = path.join(featureDir, 'specs');
+    const srcDir = path.join(tmpDir, 'src');
+    fs.mkdirSync(specsDir, { recursive: true });
+    fs.mkdirSync(srcDir, { recursive: true });
+
+    const systemSpecPath = path.join(specsDir, 'system-design.md');
+    const apiSpecPath = path.join(specsDir, 'api-design.md');
+    const sourceFilePath = path.join(srcDir, 'auth.ts');
+
+    fs.writeFileSync(systemSpecPath, [
+      '---',
+      'codd:',
+      '  node_id: "design:system-design"',
+      '  modules:',
+      '    - "auth"',
+      '  source_files:',
+      '    - "src/auth.ts"',
+      '---',
+      '',
+      '# System Design',
+      '',
+    ].join('\n'));
+    fs.writeFileSync(apiSpecPath, [
+      '---',
+      'coherence:',
+      '  node_id: "design:api-design"',
+      '  depends_on:',
+      '    - id: "design:system-design"',
+      '---',
+      '',
+      '# API Design',
+      '',
+    ].join('\n'));
+    fs.writeFileSync(sourceFilePath, 'export const auth = true;\n');
+
+    const origCwd = process.cwd();
+    process.chdir(tmpDir);
+    try {
+      rebuildFromFrontmatter('git-impact-test');
+
+      runGit(['add', '.'], tmpDir);
+      runGit(['commit', '-m', 'initial'], tmpDir);
+
+      fs.writeFileSync(systemSpecPath, [
+        '---',
+        'codd:',
+        '  node_id: "design:system-design"',
+        '  modules:',
+        '    - "auth"',
+        '  source_files:',
+        '    - "src/auth.ts"',
+        '---',
+        '',
+        '# System Design',
+        '',
+        'Updated requirement.',
+        '',
+      ].join('\n'));
+      fs.writeFileSync(sourceFilePath, 'export const auth = false;\n');
+
+      const changed = getChangedFilesFromGit(tmpDir, 'HEAD');
+      assert(changed.ok === true, 'git diff HEAD succeeds');
+      assertEqual(
+        changed.changedFiles.sort(),
+        [
+          '.vcsdd/features/git-impact-test/specs/system-design.md',
+          'src/auth.ts',
+        ].sort(),
+        'git diff HEAD returns changed spec and source files'
+      );
+
+      const ceg = loadCoherenceWithStatus('git-impact-test').ceg;
+      const resolved = resolveChangedNodes(ceg, tmpDir, changed.changedFiles);
+      assert(resolved.some(entry => entry.nodeId === 'design:system-design' && entry.resolution === 'frontmatter.node_id'),
+        'changed spec resolves to its frontmatter node_id');
+      assert(resolved.some(entry => entry.nodeId === 'file:src/auth.ts' && entry.resolution === 'file-node'),
+        'changed source file resolves to file:path node');
+
+      const detected = detectChangedNodes('git-impact-test');
+      assert(detected.ok === true, 'detectChangedNodes succeeds');
+      assertEqual(detected.diffTarget, 'HEAD', 'default diff target is HEAD');
+      assertEqual(detected.changedFiles.sort(), changed.changedFiles.sort(), 'detectChangedNodes returns git diff file list');
+      assert(detected.startNodes.some(entry => entry.nodeId === 'design:system-design'),
+        'detectChangedNodes includes changed spec node');
+      assert(detected.startNodes.some(entry => entry.nodeId === 'file:src/auth.ts'),
+        'detectChangedNodes includes changed file node');
     } finally {
       process.chdir(origCwd);
     }

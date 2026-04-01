@@ -83,7 +83,7 @@ PreToolUseフックがフェーズ外の `Write`/`Edit` および、リダイレ
 
 要件が途中で変わったとき、コヒーレンスエンジンがどの追跡対象成果物へ影響が及ぶかを追跡し、コードに触れる前に信頼度バンドで分類します。`scripts/lib/vcsdd-coherence.js` にネイティブ実装され、グラフは `.vcsdd/features/<name>/coherence.json` に保存されます。
 
-- **CEG（Conditioned Evidence Graph）**: 仕様ドキュメントと宣言済み実装モジュールの有向依存グラフ。Markdown ファイルの `coherence:` フロントマターから構築される
+- **CEG（Conditioned Evidence Graph）**: 仕様ドキュメントと宣言済み実装モジュールの有向依存グラフ。Markdown ファイルの `coherence:` フロントマターから構築され、upstream CoDD 互換として `codd:` も受け付ける
 - **Noisy-OR 信頼度スコアリング**: 証拠ベースのエッジ重みを集約して Green（≥90%）/ Amber（≥50%）/ Gray（<50%）のインパクトバンドに分類する
 - **BFS 前方インパクト伝播**: 仕様が変更されたとき、すべての下流ノードをトレースし、影響を受けるドキュメントを見逃さない
 - **DFS 循環検出**: 仕様グラフの循環依存を伝播前に検出し防止する
@@ -230,11 +230,15 @@ pnpm dlx vcsdd-claude-code --profile standard
 /vcsdd-trace REQ-001
 
 # --- 任意: コヒーレンスエンジン（CoDD）---
-# 仕様ファイルのフロントマターから CEG を再構築する
+# 仕様ファイルの `coherence:` / `codd:` フロントマターから CEG を再構築する
 /vcsdd-coherence-scan
 
-# 変更された仕様ノードからインパクト分析を実行する（Green/Amber/Gray 分類）
-/vcsdd-coherence-impact [node_id]
+# インパクト分析を実行する。
+# node_id を省略した場合は git diff HEAD から変更ファイルを自動検出し、CEG の開始ノードへ解決する。
+# 過去比較は --diff HEAD~1、明示指定したい場合は node_id を渡す。
+/vcsdd-coherence-impact
+/vcsdd-coherence-impact --diff HEAD~1
+/vcsdd-coherence-impact design:system-design
 
 # CEG の参照整合性と循環依存をチェックする
 /vcsdd-coherence-validate

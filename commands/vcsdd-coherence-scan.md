@@ -1,7 +1,7 @@
 # /vcsdd-coherence-scan
 
-Rebuild the Conditioned Evidence Graph (CEG) from `coherence:` frontmatter
-in the feature's spec files.
+Rebuild the Conditioned Evidence Graph (CEG) from `coherence:` or `codd:`
+frontmatter in the feature's spec files.
 
 **Usage:** `/vcsdd-coherence-scan`
 

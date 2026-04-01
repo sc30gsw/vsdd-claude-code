@@ -60,7 +60,7 @@ The `vcsdd-gate-check.js` hook runs on `PreToolUse` for `Write`/`Edit`/`MultiEdi
 
 **Coherence Engine (CoDD integration)**
 When requirements change mid-project, the Coherence Engine traces which downstream tracked artifacts are affected and classifies them into confidence bands before any code is touched. It is implemented natively in Node.js inside `scripts/lib/vcsdd-coherence.js` and stores its graph in `.vcsdd/features/<name>/coherence.json`.
-- **CEG (Conditioned Evidence Graph)** -- directed dependency graph between spec documents and declared implementation modules; built from `coherence:` frontmatter blocks in Markdown files
+- **CEG (Conditioned Evidence Graph)** -- directed dependency graph between spec documents and declared implementation modules; built from `coherence:` frontmatter blocks in Markdown files, with upstream CoDD `codd:` frontmatter accepted for compatibility
 - **Noisy-OR confidence scoring** -- evidence-based edge weights aggregated into Green (≥90%) / Amber (≥50%) / Gray (<50%) impact bands
 - **BFS forward impact propagation** -- traces all downstream nodes when a spec changes, so no affected document is silently missed
 - **DFS cycle detection** -- prevents circular dependencies in the spec graph before they corrupt propagation
@@ -285,11 +285,15 @@ pnpm dlx vcsdd-claude-code --profile standard
 /vcsdd-commit
 
 # --- Optional: Coherence Engine (CoDD) ---
-# Rebuild the CEG from coherence: frontmatter in spec files
+# Rebuild the CEG from coherence: or codd: frontmatter in spec files
 /vcsdd-coherence-scan
 
-# Run change-impact analysis (classify downstream specs into Green/Amber/Gray)
-/vcsdd-coherence-impact [node_id]
+# Run change-impact analysis.
+# With no node_id, VCSDD auto-detects changed files from git diff HEAD and resolves them into graph start nodes.
+# Use --diff HEAD~1 to compare against an earlier revision, or pass explicit node_id values to override auto-detection.
+/vcsdd-coherence-impact
+/vcsdd-coherence-impact --diff HEAD~1
+/vcsdd-coherence-impact design:system-design
 
 # Validate CEG reference integrity and detect circular dependencies
 /vcsdd-coherence-validate

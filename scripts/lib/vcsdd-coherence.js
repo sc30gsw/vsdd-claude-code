@@ -22,6 +22,7 @@
 
 const fs   = require('fs');
 const path = require('path');
+const childProcess = require('child_process');
 const crypto = require('crypto');
 
 // ── Constants ──────────────────────────────────────────────────────────────
@@ -175,6 +176,11 @@ function getFeaturePath(featureName) {
 
 function getCoherencePath(featureName) {
   return path.join(getFeaturePath(featureName), COHERENCE_FILE);
+}
+
+function resolveProjectRoot(featureName) {
+  const featurePath = getFeaturePath(featureName);
+  return path.resolve(featurePath, '..', '..', '..');
 }
 
 // ── Atomic write (same pattern as vcsdd-state.js) ─────────────────────────
@@ -1049,6 +1055,157 @@ function scanSpecFrontmatter(featurePath) {
 }
 
 /**
+ * Resolve changed files from git diff. Defaults to HEAD, which means
+ * "uncommitted changes" in normal git usage.
+ *
+ * @param {string} projectRoot
+ * @param {string} diffTarget
+ * @returns {{ ok: boolean, changedFiles: string[], error: string|null }}
+ */
+function getChangedFilesFromGit(projectRoot, diffTarget = 'HEAD') {
+  const target = typeof diffTarget === 'string' && diffTarget.trim()
+    ? diffTarget.trim()
+    : 'HEAD';
+
+  try {
+    const stdout = childProcess.execFileSync(
+      'git',
+      ['diff', '--name-only', target],
+      {
+        cwd: projectRoot,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+      },
+    );
+    return {
+      ok: true,
+      changedFiles: stdout.split('\n').map(line => line.trim()).filter(Boolean),
+      error: null,
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      changedFiles: [],
+      error: err.stderr?.toString?.().trim?.() || err.message || 'git diff failed',
+    };
+  }
+}
+
+/**
+ * Resolve a set of changed files to graph start nodes.
+ *
+ * Resolution order mirrors CoDD intent:
+ *   1. changed Markdown spec with `coherence:` or `codd:` frontmatter -> node_id
+ *   2. exact `file:<path>` node
+ *   3. any graph node whose stored `path` matches the changed file
+ *
+ * @param {object} ceg
+ * @param {string} projectRoot
+ * @param {string[]} changedFiles
+ * @returns {{ nodeId: string, sourceFile: string, resolution: string }[]}
+ */
+function resolveChangedNodes(ceg, projectRoot, changedFiles) {
+  const resolved = [];
+  const seen = new Set();
+
+  for (const changedFile of changedFiles) {
+    if (typeof changedFile !== 'string' || !changedFile.trim()) continue;
+    const relPath = sanitizeRelativePath(changedFile.trim());
+    if (!relPath) continue;
+
+    const fullPath = path.join(projectRoot, relPath);
+    const isMarkdown = relPath.endsWith('.md');
+
+    if (isMarkdown && fs.existsSync(fullPath)) {
+      const frontmatter = extractFrontmatter(fs.readFileSync(fullPath, 'utf8'));
+      if (frontmatter && typeof frontmatter.node_id === 'string' && ceg.nodes[frontmatter.node_id]) {
+        if (!seen.has(frontmatter.node_id)) {
+          resolved.push({
+            nodeId: frontmatter.node_id,
+            sourceFile: relPath,
+            resolution: 'frontmatter.node_id',
+          });
+          seen.add(frontmatter.node_id);
+        }
+        continue;
+      }
+    }
+
+    const fileNodeId = `file:${relPath}`;
+    if (ceg.nodes[fileNodeId] && !seen.has(fileNodeId)) {
+      resolved.push({
+        nodeId: fileNodeId,
+        sourceFile: relPath,
+        resolution: 'file-node',
+      });
+      seen.add(fileNodeId);
+    }
+
+    for (const nodeId of Object.keys(ceg.nodes)) {
+      const nodePath = sanitizeRelativePath(ceg.nodes[nodeId]?.path);
+      if (!nodePath || nodePath !== relPath || seen.has(nodeId)) continue;
+      resolved.push({
+        nodeId,
+        sourceFile: relPath,
+        resolution: 'node.path',
+      });
+      seen.add(nodeId);
+    }
+  }
+
+  return resolved;
+}
+
+/**
+ * Auto-detect impact-analysis start nodes from git diff.
+ *
+ * @param {string} featureName
+ * @param {{ diffTarget?: string }} options
+ * @returns {{
+ *   ok: boolean,
+ *   changedFiles: string[],
+ *   startNodes: { nodeId: string, sourceFile: string, resolution: string }[],
+ *   error: string|null,
+ *   diffTarget: string
+ * }}
+ */
+function detectChangedNodes(featureName, options = {}) {
+  const projectRoot = resolveProjectRoot(featureName);
+  const diffTarget = typeof options.diffTarget === 'string' && options.diffTarget.trim()
+    ? options.diffTarget.trim()
+    : 'HEAD';
+  const changed = getChangedFilesFromGit(projectRoot, diffTarget);
+  if (!changed.ok) {
+    return {
+      ok: false,
+      changedFiles: [],
+      startNodes: [],
+      error: changed.error,
+      diffTarget,
+    };
+  }
+
+  const ceg = loadCoherence(featureName);
+  if (!ceg) {
+    return {
+      ok: false,
+      changedFiles: changed.changedFiles,
+      startNodes: [],
+      error: 'coherence graph not found',
+      diffTarget,
+    };
+  }
+
+  return {
+    ok: true,
+    changedFiles: changed.changedFiles,
+    startNodes: resolveChangedNodes(ceg, projectRoot, changed.changedFiles),
+    error: null,
+    diffTarget,
+  };
+}
+
+/**
  * Scan all .md files under `featurePath/specs/`, collecting valid coherence
  * frontmatter entries and reporting malformed CoDD metadata as errors.
  *
@@ -1416,6 +1573,9 @@ module.exports = {
   scanSpecFrontmatterDetailed,
   rebuildFromFrontmatter,
   refreshAndValidateCoherence,
+  getChangedFilesFromGit,
+  resolveChangedNodes,
+  detectChangedNodes,
 
   // Utilities
   summarize,

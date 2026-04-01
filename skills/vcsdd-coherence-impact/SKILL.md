@@ -8,6 +8,12 @@ need updating. Also surface any CoDD `conventions:` / `must_review` alerts
 attached to the changed node or its immediate parents. Results are classified
 into Green / Amber / Gray bands.
 
+If no node is provided, auto-detect changed files from `git diff --name-only HEAD`
+and resolve them to start nodes using CoDD-compatible rules:
+- changed Markdown spec with `coherence:` or `codd:` frontmatter -> `node_id`
+- changed source/config file with a tracked `file:<path>` node -> `file:<path>`
+- changed file matching a node's stored `path` -> that node
+
 ## When to use
 
 - When a spec document is modified and you need to know what else is affected
@@ -22,14 +28,18 @@ into Green / Amber / Gray bands.
 
 ## Steps
 
-1. Ask the user which node(s) changed, OR infer from the current Phase 4
-   feedback finding (use `routeToPhase` + the affected spec node_id)
+1. Determine start nodes in this order:
+   - If the user passed explicit `node_id` arguments, use them.
+   - Else if the command included `--diff <target>`, auto-detect from that git diff target.
+   - Else auto-detect from uncommitted changes (`HEAD`).
+   - If Phase 4 feedback already names a `node_id`, you may use that directly.
 
-2. Load the CEG and run impact analysis:
+2. Load the CEG and resolve changed files when auto-detecting:
 
 ```js
 const {
   loadCoherence,
+  detectChangedNodes,
   propagateImpact,
   collectConventionAlerts,
   generateImpactReport,
@@ -37,12 +47,21 @@ const {
 const featureName = /* active feature */;
 const ceg = loadCoherence(featureName);
 if (!ceg) { /* coherence not active, skip */ }
-const impacts = propagateImpact(ceg, [changedNodeId], 10, 0);
-const conventionAlerts = collectConventionAlerts(ceg, [changedNodeId]);
+const detected = detectChangedNodes(featureName, { diffTarget: 'HEAD' });
+const startNodes = detected.startNodes.map(entry => entry.nodeId);
+const impacts = propagateImpact(ceg, startNodes, 10, 0);
+const conventionAlerts = collectConventionAlerts(ceg, startNodes);
 const report = generateImpactReport(impacts, ceg, undefined, { conventionAlerts });
 ```
 
-3. Present the Markdown report to the user.
+3. Present the Markdown report to the user, including:
+   - which files changed
+   - which graph start nodes they resolved to
+   - the Green / Amber / Gray impact bands
+
+4. If auto-detection returns no start nodes:
+   - say that no changed files mapped into the CEG
+   - advise the user to pass explicit `node_id` values or add `coherence:` / `codd:` / `source_files:` metadata
 
 ## Band interpretation and required actions
 

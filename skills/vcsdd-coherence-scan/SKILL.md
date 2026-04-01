@@ -2,25 +2,28 @@
 
 ## What
 
-Rebuild the Conditioned Evidence Graph (CEG) from `coherence:` frontmatter
+Rebuild the Conditioned Evidence Graph (CEG) from `coherence:` or `codd:`
+frontmatter
 declared in the feature's spec files. The CEG tracks dependency
 relationships between spec documents and declared implementation modules so
 that change-impact analysis is always current.
 
 ## When to use
 
-- After writing or editing any spec file that contains a `coherence:` block
+- After writing or editing any spec file that contains a `coherence:` or `codd:` block
 - Before running `/vcsdd-coherence-impact` to ensure the graph is up to date
 - Whenever you want to initialise coherence tracking for a new feature
 
 ## Prerequisites
 
 - An active VCSDD feature pipeline (`.vcsdd/features/<name>/` exists)
-- At least one spec file with a `coherence:` frontmatter block
+- At least one spec file with a `coherence:` or `codd:` frontmatter block
 
 ## Frontmatter format
 
-Add a `coherence:` block to the top of any Markdown spec file:
+Add a `coherence:` block to the top of any Markdown spec file.
+For upstream CoDD compatibility, `codd:` is also accepted. Prefer `coherence:`
+in VCSDD-authored docs, but do not rewrite imported CoDD docs solely for key naming.
 
 ```yaml
 ---
