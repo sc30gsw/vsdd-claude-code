@@ -1,4 +1,4 @@
-# vsdd-claude-code
+# vcsdd-claude-code
 
 ![Version](https://img.shields.io/badge/version-1.0.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
@@ -7,19 +7,20 @@
 **Languages**: [日本語](docs/ja-JP/README.md)
 ![Node](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)
 
-A Claude Code plugin that brings **Verified Spec-Driven Development (VSDD)** methodology to any project. It enforces spec-first, test-first, adversarial review, and formal verification as sequential quality gates.
+A Claude Code plugin that brings **Verified Coherence Spec-Driven Development (VCSDD)** methodology to any project. It enforces spec-first, test-first, adversarial review, and formal verification as sequential quality gates.
 
 ---
 
-## What is VSDD?
+## What is VCSDD?
 
 AI-assisted development has a structural problem: there are no quality gates. Language models produce code that passes surface-level review but routinely harbors spec mismatches, untested edge cases, and structural debt. This is "AI slop" -- code that looks correct but conceals hidden deficiencies.
 
-VSDD is a methodology that fuses three disciplines into a single workflow:
+VCSDD is a methodology that fuses four disciplines into a single workflow:
 
 - **Spec-Driven Development (SDD)** -- behavior is fully specified before any code is written
 - **Test-Driven Development (TDD)** -- failing tests are written before any implementation
 - **Verification-Driven Development (VDD)** -- formal verification is treated as a first-class deliverable, not an afterthought
+- **Coherence-Driven Development (CoDD)** -- dependency relationships between tracked artifacts are recorded so that requirement changes propagate automatically to downstream specs and any declared implementation modules
 
 These are joined by an **adversarial review gate**: a fresh-context agent running on a more capable model that reviews all artifacts with zero tolerance and produces binary verdicts. The adversary is structurally isolated from the builder -- it reads only from disk and cannot be influenced by the builder's conversational context.
 
@@ -33,13 +34,13 @@ The result is a systematic process for eliminating the gap between "looks correc
 Spec Crystallization -> Test-First Implementation -> Adversarial Review -> Feedback Integration -> Formal Hardening -> Convergence. Each phase has explicit prerequisites and produces file artifacts that serve as the handoff to the next phase.
 
 **Two operating modes**
-- `strict` -- full VSDD ceremony for high-assurance work: sprint contracts, multiple adversary passes, proof obligations, all 6 phases enforced
+- `strict` -- full VCSDD ceremony for high-assurance work: sprint contracts, multiple adversary passes, proof obligations, all 6 phases enforced
 - `lean` -- all 6 phases remain in place, but approvals, sprint contracts, and proof obligations are lighter for product work and faster iteration
 
-These modes are plugin-specific extensions, not a claim that canonical VSDD defines two ceremonies. Canonical VSDD assumes the human Architect signs off on the Phase 1c spec gate; this plugin keeps that as a hard requirement in `strict` mode and relaxes it in `lean` mode for faster product iteration.
+These modes are plugin-specific extensions, not a claim that canonical VCSDD defines two ceremonies. Canonical VCSDD assumes the human Architect signs off on the Phase 1c spec gate; this plugin keeps that as a hard requirement in `strict` mode and relaxes it in `lean` mode for faster product iteration.
 
 **Fresh-context adversary agent**
-The adversary (`vsdd-adversary`) runs on the Opus model and is always spawned as a new agent instance with zero conversational history from the builder. It reads review artifacts from disk, produces findings, and terminates. It cannot say "overall looks good" -- it must cite concrete evidence for every verdict.
+The adversary (`vcsdd-adversary`) runs on the Opus model and is always spawned as a new agent instance with zero conversational history from the builder. It reads review artifacts from disk, produces findings, and terminates. It cannot say "overall looks good" -- it must cite concrete evidence for every verdict.
 
 **Binary PASS/FAIL verdicts across 5 operational dimensions**
 1. Spec Fidelity
@@ -55,7 +56,21 @@ Every requirement, test, implementation block, adversary finding, and formal pro
 Completion is blocked if any persisted adversary finding lacks a matching `adversary-finding` bead.
 
 **Gate enforcement via Claude Code hooks**
-The `vsdd-gate-check.js` hook runs on `PreToolUse` for `Write`/`Edit`/`MultiEdit` and for `Bash` when the command targets phase-restricted paths. It blocks direct writes, shell redirects, in-place edits, and common path-based mutation commands such as `cp` into restricted areas. Gate strictness is controlled by the `VSDD_HOOK_PROFILE` environment variable.
+The `vcsdd-gate-check.js` hook runs on `PreToolUse` for `Write`/`Edit`/`MultiEdit` and for `Bash` when the command targets phase-restricted paths. It blocks direct writes, shell redirects, in-place edits, and common path-based mutation commands such as `cp` into restricted areas. Gate strictness is controlled by the `VCSDD_HOOK_PROFILE` environment variable.
+
+**Coherence Engine (CoDD integration)**
+When requirements change mid-project, the Coherence Engine traces which downstream tracked artifacts are affected and classifies them into confidence bands before any code is touched. It is implemented natively in Node.js inside `scripts/lib/vcsdd-coherence.js` and stores its graph in `.vcsdd/features/<name>/coherence.json`.
+- **CEG (Conditioned Evidence Graph)** -- directed dependency graph between spec documents and declared implementation modules; built from `coherence:` frontmatter blocks in Markdown files, with upstream CoDD `codd:` frontmatter accepted for compatibility
+- **Noisy-OR confidence scoring** -- evidence-based edge weights aggregated into Green (≥90%) / Amber (≥50%) / Gray (<50%) impact bands
+- **BFS forward impact propagation** -- traces all downstream nodes when a spec changes, so no affected document is silently missed
+- **DFS cycle detection** -- prevents circular dependencies in the spec graph before they corrupt propagation
+- **CoDD-style module traceability** -- `modules:` frontmatter creates first-class `module:*` nodes and technical edges so spec changes can surface impacted implementation modules
+- **File-path traceability metadata** -- `source_files:` records concrete file paths for reference, but forward impact propagation is driven by the graph edges above rather than raw file-path lists
+- **Reference integrity enforcement** -- dangling references and placeholder nodes are hard errors at the Phase 2a gate; a broken graph blocks entering the red phase until fixed
+- **Opt-in** -- activates when spec frontmatter declares `coherence:` metadata or an existing `coherence.json` is already being tracked. Pure VCSDD features without coherence metadata remain a no-op. When opted in, dangling refs, cycles, invalid frontmatter, and runtime failures block the Phase 2a gate; a corrupted `coherence.json` is backed up to `coherence.json.bak` and rebuilt from current frontmatter
+- **Automatic refresh hook** -- in `standard` and `strict` hook profiles, spec edits automatically rebuild `coherence.json` before later commands rely on it
+
+> **Note:** Coherence scans and impact analyses are LLM-assisted, not automated static analysis. The CEG (`coherence.json`) is refreshed by `/vcsdd-coherence-scan`, `/vcsdd-coherence-validate`, the Phase 2a gate, or the `vcsdd-coherence-refresh` PostToolUse hook. A stale graph can still mislead impact analysis if specs are changed outside those paths.
 
 **Language verification profiles**
 - **Rust** -- `proptest`, `cargo-fuzz`, `cargo-mutants`, with `kani` as the bundled Tier 2 verifier and `cbmc` as a Tier 3 fallback hint
@@ -65,7 +80,7 @@ The `vsdd-gate-check.js` hook runs on `PreToolUse` for `Write`/`Edit`/`MultiEdit
 - **C/C++** -- `libFuzzer` and `CBMC`
 
 **Git integration with phase-tagged commits**
-The `/vsdd-commit` command generates conventional commit messages that include phase identifiers, bead traceability summaries, and artifact manifests. Optional auto-commit (disabled by default) only stages files that belong to the active feature and current phase, and creates `vsdd/<feature>/phase-<id>` tags without overwriting existing tags.
+The `/vcsdd-commit` command generates conventional commit messages that include phase identifiers, bead traceability summaries, and artifact manifests. Optional auto-commit (disabled by default) only stages files that belong to the active feature and current phase, and creates `vcsdd/<feature>/phase-<id>` tags without overwriting existing tags.
 
 ---
 
@@ -73,58 +88,67 @@ The `/vsdd-commit` command generates conventional commit messages that include p
 
 ### Methodology Roles vs Runtime Agents
 
-Canonical VSDD defines four roles: Human Architect, Builder, Tracker (Chainlink), and Adversary. This plugin maps those roles onto runtime components as follows: the human Architect remains outside the plugin, the Tracker is implemented as the bead graph plus `history.jsonl`, and the plugin adds `vsdd-orchestrator` and `vsdd-verifier` as execution aids for pipeline coordination and Phase 5 hardening.
+Canonical VCSDD defines four roles: Human Architect, Builder, Tracker (Chainlink), and Adversary. This plugin maps those roles onto runtime components as follows: the human Architect remains outside the plugin, the Tracker is implemented as the bead graph plus `history.jsonl`, and the plugin adds `vcsdd-orchestrator` and `vcsdd-verifier` as execution aids for pipeline coordination and Phase 5 hardening.
 
 ### 4 Runtime Agents
 
 | Agent | Model | Access | Role |
 |---|---|---|---|
-| `vsdd-orchestrator` | sonnet | Read, Write, Glob, Grep, Bash | Pipeline coordinator and gate enforcer. Never skips gate checks. |
-| `vsdd-builder` | sonnet | Read, Write, Edit, Bash, Glob, Grep | Spec author and TDD implementer. Phase-aware file writing only. |
-| `vsdd-adversary` | **opus** | Read, Write, Edit, Grep, Glob | Adversarial reviewer. Fresh context; writes only `reviews/**/output/` (verdict + findings). |
-| `vsdd-verifier` | sonnet | Read, Write, Edit, Bash, Grep, Glob | Formal verification coordinator. Language-profile aware. |
+| `vcsdd-orchestrator` | sonnet | Read, Write, Glob, Grep, Bash | Pipeline coordinator and gate enforcer. Never skips gate checks. |
+| `vcsdd-builder` | sonnet | Read, Write, Edit, Bash, Glob, Grep | Spec author and TDD implementer. Phase-aware file writing only. |
+| `vcsdd-adversary` | **opus** | Read, Write, Edit, Grep, Glob | Adversarial reviewer. Fresh context; writes only `reviews/**/output/` (verdict + findings). |
+| `vcsdd-verifier` | sonnet | Read, Write, Edit, Bash, Grep, Glob | Formal verification coordinator. Language-profile aware. |
 
-Agents communicate exclusively through files under `.vsdd/features/<feature-name>/`. There is no shared conversational context between the builder and the adversary.
+Agents communicate exclusively through files under `.vcsdd/features/<feature-name>/`. There is no shared conversational context between the builder and the adversary.
 
-### 13 Slash Commands
+### 17 Slash Commands
 
 | Command | Phase | Purpose |
 |---|---|---|
-| `/vsdd-init` | -- | Initialize a feature pipeline |
-| `/vsdd-spec` | 1a + 1b | Write behavioral spec and verification architecture |
-| `/vsdd-spec-review` | 1c | Spec review gate (canonical VSDD expects adversary + human review; this plugin makes human approval mandatory in strict mode and optional in lean mode) |
-| `/vsdd-tdd` | 2a | Generate failing tests (Red phase) |
-| `/vsdd-impl` | 2b + 2c | Implement to pass tests (Green) then refactor |
-| `/vsdd-contract-review` | 2c | Strict-mode sprint contract review before adversarial implementation review |
-| `/vsdd-adversary` | 3 | Run adversarial review with fresh-context agent |
-| `/vsdd-feedback` | 4 | Route adversary findings to the correct phase |
-| `/vsdd-harden` | 5 | Execute formal verification tier |
-| `/vsdd-converge` | 6 | Check four-dimensional convergence |
-| `/vsdd-status` | -- | Display current pipeline state |
-| `/vsdd-trace` | -- | Display full traceability chain for a bead |
-| `/vsdd-commit` | -- | Commit with phase tag and bead summary |
+| `/vcsdd-init` | -- | Initialize a feature pipeline |
+| `/vcsdd-spec` | 1a + 1b | Write behavioral spec and verification architecture |
+| `/vcsdd-spec-review` | 1c | Spec review gate (canonical VCSDD expects adversary + human review; this plugin makes human approval mandatory in strict mode and optional in lean mode) |
+| `/vcsdd-tdd` | 2a | Generate failing tests (Red phase) |
+| `/vcsdd-impl` | 2b + 2c | Implement to pass tests (Green) then refactor |
+| `/vcsdd-contract-review` | 2c | Strict-mode sprint contract review before adversarial implementation review |
+| `/vcsdd-adversary` | 3 | Run adversarial review with fresh-context agent |
+| `/vcsdd-feedback` | 4 | Route adversary findings to the correct phase |
+| `/vcsdd-harden` | 5 | Execute formal verification tier |
+| `/vcsdd-converge` | 6 | Check four-dimensional convergence |
+| `/vcsdd-escalate` | -- | Record an architect escalation approval |
+| `/vcsdd-status` | -- | Display current pipeline state |
+| `/vcsdd-trace` | -- | Display full traceability chain for a bead |
+| `/vcsdd-commit` | -- | Commit with phase tag and bead summary |
+| `/vcsdd-coherence-scan` | -- | Rebuild CEG from spec frontmatter |
+| `/vcsdd-coherence-impact` | -- | Run BFS change-impact analysis from changed spec nodes |
+| `/vcsdd-coherence-validate` | -- | Validate CEG reference integrity and detect cycles |
 
-### 13 Skills
+### 30 Skills
 
-Core workflow skills: `vsdd-spec-crystallization`, `vsdd-sprint-contracts`, `vsdd-adversarial-refinement`, `vsdd-grading-criteria`, `vsdd-feedback-routing`, `vsdd-convergence-detection`, `vsdd-formal-hardening`, `vsdd-verification-architecture`, `vsdd-traceability`, `vsdd-git-integration`
+Slash-command companion skills: `vcsdd-init`, `vcsdd-spec`, `vcsdd-spec-review`, `vcsdd-tdd`, `vcsdd-impl`, `vcsdd-contract-review`, `vcsdd-adversary`, `vcsdd-feedback`, `vcsdd-harden`, `vcsdd-converge`, `vcsdd-escalate`, `vcsdd-status`, `vcsdd-trace`, `vcsdd-commit`
 
-Language verification skills: `vsdd-language-rust`, `vsdd-language-python`, `vsdd-language-typescript`
+Core workflow skills: `vcsdd-spec-crystallization`, `vcsdd-sprint-contracts`, `vcsdd-adversarial-refinement`, `vcsdd-grading-criteria`, `vcsdd-feedback-routing`, `vcsdd-convergence-detection`, `vcsdd-formal-hardening`, `vcsdd-verification-architecture`, `vcsdd-traceability`, `vcsdd-git-integration`
 
-### 6 JSON Schemas
+Language verification skills: `vcsdd-language-rust`, `vcsdd-language-python`, `vcsdd-language-typescript`
+
+Coherence skills: `vcsdd-coherence-scan`, `vcsdd-coherence-impact`, `vcsdd-coherence-validate`
+
+### 7 JSON Schemas
 
 | Schema | Validates |
 |---|---|
-| `vsdd-state.schema.json` | Pipeline state including proof obligations |
-| `vsdd-index.schema.json` | Feature index (`.vsdd/index.json`) |
-| `vsdd-contract.schema.json` | Sprint contract format |
-| `vsdd-grading.schema.json` | Grading criteria |
-| `vsdd-finding.schema.json` | Adversary finding format |
-| `vsdd-bead.schema.json` | Traceability bead |
+| `vcsdd-state.schema.json` | Pipeline state including proof obligations |
+| `vcsdd-index.schema.json` | Feature index (`.vcsdd/index.json`) |
+| `vcsdd-contract.schema.json` | Sprint contract format |
+| `vcsdd-grading.schema.json` | Grading criteria |
+| `vcsdd-finding.schema.json` | Adversary finding format |
+| `vcsdd-bead.schema.json` | Traceability bead |
+| `vcsdd-coherence.schema.json` | Coherence graph (CEG nodes, edges, evidence) |
 
 ### Runtime State Layout
 
 ```
-.vsdd/
+.vcsdd/
   index.json                      # Known features and active pointers
   active-feature.txt              # Mirror of index.json.activeFeature for tool compatibility
   history.jsonl                   # Global append-only audit log
@@ -168,6 +192,7 @@ Language verification skills: `vsdd-language-rust`, `vsdd-language-python`, `vsd
         purity-audit.md
       escalations/
         escalation-{timestamp}.md
+      coherence.json                  # CEG (optional; coherence engine is no-op when absent)
 ```
 
 ---
@@ -180,19 +205,22 @@ Language verification skills: `vsdd-language-rust`, `vsdd-language-python`, `vsd
 
 ```bash
 # Register as a marketplace source (once)
-/plugin marketplace add sc30gsw/vsdd-claude-code
+/plugin marketplace add sc30gsw/vcsdd-claude-code
 
 # Install the plugin
-/plugin install vsdd@sc30gsw-vsdd-claude-code
+/plugin install vcsdd@sc30gsw-vcsdd-claude-code
+
+# Reload plugin
+/reload-plugins
 ```
 
-Skills are available as `/vsdd:init`, `/vsdd:spec`, `/vsdd:adversary`, etc.
+Skills are available as `/vcsdd:init`, `/vcsdd:spec`, `/vcsdd:adversary`, etc.
 
 **Option 2: Install Script**
 
 ```bash
-git clone https://github.com/sc30gsw/vsdd-claude-code.git
-cd vsdd-claude-code
+git clone https://github.com/sc30gsw/vcsdd-claude-code.git
+cd vcsdd-claude-code
 bash install.sh --profile standard
 
 # Optional: add a language profile
@@ -202,59 +230,73 @@ bash install.sh --profile standard --language typescript
 **Option 3: Package Manager**
 
 ```bash
-npx vsdd-claude-code --profile standard
-pnpm dlx vsdd-claude-code --profile standard
+npx vcsdd-claude-code --profile standard
+pnpm dlx vcsdd-claude-code --profile standard
 ```
 
-**Restart Claude Code** (or reload the window) after install. Confirm with `/vsdd-status` (install script) or `/vsdd:status` (plugin system).
+**Restart Claude Code** (or reload the window) after install. Confirm with `/vcsdd-status` (install script) or `/vcsdd:status` (plugin system).
 
 ```
 # Open a project in Claude Code, then:
 
 # Initialize a feature pipeline in lean mode
-/vsdd-init user-auth --mode lean
+/vcsdd-init user-auth --mode lean
 
 # Phase 1a + 1b: Write behavioral spec and verification architecture
-/vsdd-spec
+/vcsdd-spec
 
-# Phase 1c: Canonical VSDD expects adversary review plus human sign-off.
+# Phase 1c: Canonical VCSDD expects adversary review plus human sign-off.
 # This plugin enforces that in strict mode and leaves it optional in lean mode.
-/vsdd-spec-review
+/vcsdd-spec-review
 
 # Phase 2a: Generate failing tests (Red phase)
-/vsdd-tdd
+/vcsdd-tdd
 # Transitioning to 2a starts sprint 1 for this implementation cycle
 
 # Phase 2b + 2c: Implement to green, then refactor
-/vsdd-impl
+/vcsdd-impl
 # Recommended canonical checkpoint: human reviews tests + implementation for spirit-of-spec alignment before Phase 3
 
 # Strict mode only: adversary reviews the sprint contract before phase 3
-/vsdd-contract-review
+/vcsdd-contract-review
 # After PASS, changing anything except `status:` requires rerunning contract review
 
 # Phase 3: Adversarial review -- fresh opus agent, binary verdict
-/vsdd-adversary
+/vcsdd-adversary
 
 # Phase 4: Route findings back to affected phases (if FAIL)
-/vsdd-feedback
+/vcsdd-feedback
 
 # Phase 5: Run formal hardening
 # Even in lean mode, this writes verification-report.md, security-report.md, and purity-audit.md.
 # If there are zero required proof obligations, the proof report is lightweight, but security/purity artifacts are still required.
-/vsdd-harden
+/vcsdd-harden
 
 # Phase 6: Check four-dimensional convergence
-/vsdd-converge
+/vcsdd-converge
 
 # Check pipeline state at any point
-/vsdd-status
+/vcsdd-status
 
 # Display traceability chain for a bead
-/vsdd-trace REQ-001
+/vcsdd-trace REQ-001
 
 # Commit with phase tag and artifact manifest
-/vsdd-commit
+/vcsdd-commit
+
+# --- Optional: Coherence Engine (CoDD) ---
+# Rebuild the CEG from coherence: or codd: frontmatter in spec files
+/vcsdd-coherence-scan
+
+# Run change-impact analysis.
+# With no node_id, VCSDD auto-detects changed files from git diff HEAD and resolves them into graph start nodes.
+# Use --diff HEAD~1 to compare against an earlier revision, or pass explicit node_id values to override auto-detection.
+/vcsdd-coherence-impact
+/vcsdd-coherence-impact --diff HEAD~1
+/vcsdd-coherence-impact design:system-design
+
+# Validate CEG reference integrity and detect circular dependencies
+/vcsdd-coherence-validate
 ```
 
 ---
@@ -271,7 +313,7 @@ init
 1b  Verification architecture (purity boundary map, proof obligations)
   |
   v
-1c  Spec review gate (canonical VSDD expects adversary review + human sign-off; strict enforces this, lean relaxes it)
+1c  Spec review gate (canonical VCSDD expects adversary review + human sign-off; strict enforces this, lean relaxes it)
   |
   v
 2a  Test generation -- Red phase (new tests must fail)
@@ -312,7 +354,7 @@ Gate prerequisites:
 |---|---|
 | 1b | `behavioral-spec.md` exists |
 | 1c | `behavioral-spec.md` and `verification-architecture.md` exist |
-| 2a | Spec review PASS. Canonical VSDD expects explicit human approval at Phase 1c; this plugin enforces that in strict mode and treats it as a lean-mode relaxation |
+| 2a | Spec review PASS. Canonical VCSDD expects explicit human approval at Phase 1c; this plugin enforces that in strict mode and treats it as a lean-mode relaxation |
 | 2b | Red phase evidence exists, was recorded after entering 2a, and proves both `new-feature-tests: FAIL` and `regression-baseline: PASS` |
 | 2c | Green phase evidence exists, was recorded after entering 2b, and proves both `target-feature-tests: PASS` and `regression-baseline: PASS` |
 | 3 | Tests pass post-refactor, with green evidence recorded after the latest implementation/refactor phase and carrying both target/regression PASS markers. Strict mode also requires `contracts/sprint-{N}.md` with `status: approved`, at least one `CRIT-XXX`, and `reviews/contracts/sprint-{N}/output/verdict.json` with `overallVerdict: PASS`, matching `reviewContext.contractPath`, matching `reviewContext.contractDigest`, and `iteration = negotiationRound + 1` |
@@ -334,7 +376,7 @@ Runtime also rejects feedback routing that skips an earlier `routeToPhase` from 
 | Sprint contracts | Required per sprint | Required for risky work only |
 | Sprint contract review | Required before Phase 3; verdict is bound to the approved contract snapshot | Optional when a sprint contract exists |
 | Adversary review rounds | Multiple (up to 5 Phase 3 iterations) | Reduced (up to 3 Phase 3 iterations) |
-| Human approval at spec gate | Required; matches canonical VSDD | Optional plugin relaxation; canonical VSDD still expects human sign-off |
+| Human approval at spec gate | Required; matches canonical VCSDD | Optional plugin relaxation; canonical VCSDD still expects human sign-off |
 | Proof obligations | Required obligations are enforced | Selective; often zero are marked required |
 | Formal hardening artifacts | `verification-report.md`, `security-report.md`, `purity-audit.md` | `verification-report.md`, `security-report.md`, `purity-audit.md` |
 | Phases traversed | All 6 | All 6 |
@@ -345,17 +387,17 @@ Runtime also rejects feedback routing that skips an earlier `routeToPhase` from 
 Select mode at initialization:
 
 ```
-/vsdd-init <feature-name> --mode strict
-/vsdd-init <feature-name> --mode lean
+/vcsdd-init <feature-name> --mode strict
+/vcsdd-init <feature-name> --mode lean
 ```
 
-`--mode`, install profile, and `VSDD_HOOK_PROFILE` are separate knobs. A feature started in `--mode strict` does not automatically switch the hook profile to `strict`, and `install.sh --profile strict` does not rewrite `.vsdd/.../state.json`.
+`--mode`, install profile, and `VCSDD_HOOK_PROFILE` are separate knobs. A feature started in `--mode strict` does not automatically switch the hook profile to `strict`, and `install.sh --profile strict` does not rewrite `.vcsdd/.../state.json`.
 
 ---
 
 ## Installation
 
-This is a Claude Code plugin. Installing it copies agents, commands, skills, hooks, and runtime scripts into `~/.claude/plugins/vsdd-claude-code/`, where Claude Code discovers them automatically on next launch.
+This is a Claude Code plugin. Installing it copies agents, commands, skills, hooks, and runtime scripts into `~/.claude/plugins/vcsdd-claude-code/`, where Claude Code discovers them automatically on next launch.
 
 ### Option 1: Claude Code Plugin System (Recommended)
 
@@ -363,45 +405,45 @@ Claude Code のプラグインシステムを使って直接インストール�
 
 ```bash
 # マーケットプレイスとして登録（初回のみ）
-/plugin marketplace add sc30gsw/vsdd-claude-code
+/plugin marketplace add sc30gsw/vcsdd-claude-code
 
 # プラグインをインストール
-/plugin install vsdd@sc30gsw-vsdd-claude-code
+/plugin install vcsdd@sc30gsw-vcsdd-claude-code
 ```
 
 インストール後、以下のスキルが利用可能になります。
 
 | スキル | 説明 |
 |--------|------|
-| `/vsdd:init` | フィーチャーパイプラインを初期化 |
-| `/vsdd:spec` | 行動仕様を作成（Phase 1a/1b） |
-| `/vsdd:spec-review` | 仕様のAdversary Reviewを実行（Phase 1c） |
-| `/vsdd:tdd` | テストを生成（Phase 2a: Red Phase） |
-| `/vsdd:impl` | 実装とリファクタリング（Phase 2b/2c） |
-| `/vsdd:adversary` | 実装のAdversary Reviewを実行（Phase 3） |
-| `/vsdd:feedback` | Findingsを適切なフェーズにルーティング（Phase 4） |
-| `/vsdd:harden` | Formal Hardening（Phase 5） |
-| `/vsdd:converge` | Convergence検証（Phase 6） |
-| `/vsdd:escalate` | Architectエスカレーション承認 |
-| `/vsdd:status` | パイプラインステータスを表示 |
-| `/vsdd:trace` | トレーサビリティチェーンを確認 |
+| `/vcsdd:init` | フィーチャーパイプラインを初期化 |
+| `/vcsdd:spec` | 行動仕様を作成（Phase 1a/1b） |
+| `/vcsdd:spec-review` | 仕様のAdversary Reviewを実行（Phase 1c） |
+| `/vcsdd:tdd` | テストを生成（Phase 2a: Red Phase） |
+| `/vcsdd:impl` | 実装とリファクタリング（Phase 2b/2c） |
+| `/vcsdd:adversary` | 実装のAdversary Reviewを実行（Phase 3） |
+| `/vcsdd:feedback` | Findingsを適切なフェーズにルーティング（Phase 4） |
+| `/vcsdd:harden` | Formal Hardening（Phase 5） |
+| `/vcsdd:converge` | Convergence検証（Phase 6） |
+| `/vcsdd:escalate` | Architectエスカレーション承認 |
+| `/vcsdd:status` | パイプラインステータスを表示 |
+| `/vcsdd:trace` | トレーサビリティチェーンを確認 |
 
-> **Note:** Plugin System経由でインストールした場合、コマンドは `/vsdd:init` のようにコロン区切りの名前空間付きで呼び出します。
+> **Note:** Plugin System経由でインストールした場合、コマンドは `/vcsdd:init` のようにコロン区切りの名前空間付きで呼び出します。
 
 ### Option 2: Install Script
 
 ```bash
-git clone https://github.com/sc30gsw/vsdd-claude-code.git
-cd vsdd-claude-code
+git clone https://github.com/sc30gsw/vcsdd-claude-code.git
+cd vcsdd-claude-code
 bash install.sh --profile standard
 ```
 
 ### Option 2: Package Manager
 
 ```bash
-npx vsdd-claude-code --profile standard
-pnpm dlx vsdd-claude-code --profile standard
-bunx vsdd-claude-code --profile standard
+npx vcsdd-claude-code --profile standard
+pnpm dlx vcsdd-claude-code --profile standard
+bunx vcsdd-claude-code --profile standard
 ```
 
 After installation, **restart Claude Code** (or reload the window) so the new agents, commands, and skills are picked up.
@@ -411,7 +453,7 @@ After installation, **restart Claude Code** (or reload the window) so the new ag
 Once Claude Code reloads, confirm the plugin is active:
 
 ```
-/vsdd-status
+/vcsdd-status
 ```
 
 If the command is recognized, installation was successful.
@@ -426,7 +468,7 @@ bash install.sh --profile minimal
 bash install.sh --profile standard
 
 # Strict: installs the same file set as standard for high-assurance workflows;
-# pair it with /vsdd-init --mode strict and VSDD_HOOK_PROFILE=strict when you want strict runtime behavior
+# pair it with /vcsdd-init --mode strict and VCSDD_HOOK_PROFILE=strict when you want strict runtime behavior
 bash install.sh --profile strict
 ```
 
@@ -454,12 +496,13 @@ The canonical runtime tool hints live in `manifests/language-profiles.json`; thi
 | Skills | no | yes | yes |
 | Contexts | no | yes | yes |
 | Hooks | no | yes | yes |
+| Coherence Engine (`vcsdd-coherence`) | no | yes | yes |
 | Core runtime scripts (`scripts/lib/`) | yes | yes | yes |
 | Hook scripts (`scripts/hooks/`) | no | yes | yes |
 
 ---
 
-## VSDD 8 Principles
+## VCSDD 8 Principles
 
 1. **Spec Supremacy** -- The behavioral specification is the highest authority below the human developer. All code must answer to the spec, never the reverse.
 
@@ -505,13 +548,13 @@ REQ-001  "When input is empty, the parser returns an empty AST node"
                  (verification/proof-harnesses/parser_empty.rs, Phase 5)
 ```
 
-Every state change to a bead is appended to `.vsdd/history.jsonl`, providing a complete audit trail from first requirement to final proof.
+Every state change to a bead is appended to `.vcsdd/history.jsonl`, providing a complete audit trail from first requirement to final proof.
 
 ---
 
 ## Hook Profiles
 
-The `VSDD_HOOK_PROFILE` environment variable controls which hooks are active. Hooks are defined in `hooks/hooks.json` and loaded automatically by Claude Code v2.1+ plugin convention.
+The `VCSDD_HOOK_PROFILE` environment variable controls which hooks are active. Hooks are defined in `hooks/hooks.json` and loaded automatically by Claude Code v2.1+ plugin convention.
 These semantics apply when the hook bundle is installed. The `minimal` install profile does not install hooks.
 
 | Hook | Event | minimal | standard | strict |
@@ -520,26 +563,29 @@ These semantics apply when the hook bundle is installed. The `minimal` install p
 | Session persistence | SessionStart | ON | ON | ON |
 | State persist on exit | Stop | ON | ON | ON |
 | Pre-compact checkpoint | PreCompact | OFF | ON | ON |
-| Auto-commit on phase completion | PostToolUse (Bash) | OFF | OFF | ON |
+| Coherence refresh | PostToolUse (spec Write/Edit/MultiEdit) | OFF | ON | ON |
+| Auto-commit on phase completion | PostToolUse (Write/Edit/MultiEdit) | OFF | OFF | ON |
 
-Hook profile activation is orthogonal to feature mode. Use `VSDD_HOOK_PROFILE=minimal` when you want session lifecycle hooks without gate enforcement.
+Hook profile activation is orthogonal to feature mode. Use `VCSDD_HOOK_PROFILE=minimal` when you want session lifecycle hooks without gate enforcement.
 
 Auto-commit requires an explicit opt-in even in strict mode:
 
 ```bash
-export VSDD_AUTO_COMMIT=true
+export VCSDD_AUTO_COMMIT=true
 ```
 
-Without this flag, auto-commit is a no-op regardless of the hook profile. The manual `/vsdd-commit` command is the default path.
+Without this flag, auto-commit is a no-op regardless of the hook profile. The manual `/vcsdd-commit` command is the default path.
 Even with the flag enabled, auto-commit skips when dirty files fall outside the active feature's current phase scope.
 
 ---
 
 ## Reference
 
-- **VSDD Methodology** (original specification): https://gist.github.com/dollspace-gay/d8d3bc3ecf4188df049d7a4726bb2a00
+- **VCSDD Methodology** (original specification): https://gist.github.com/dollspace-gay/d8d3bc3ecf4188df049d7a4726bb2a00
 - **Anthropic Harness Design** (planner/generator/evaluator architecture): https://www.anthropic.com/engineering/harness-design-long-running-apps
 - **everything-claude-code** (ECC plugin patterns): https://github.com/affaan-m/everything-claude-code
+- **CoDD (Coherence-Driven Development)**: https://github.com/yohey-w/codd-dev
+- **CoDD — Coherence Engine解説** (Zenn article, Japanese): https://zenn.dev/shio_shoppaize/articles/shogun-codd-coherence
 
 ---
 

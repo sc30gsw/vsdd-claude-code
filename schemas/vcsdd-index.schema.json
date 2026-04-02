@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "vcsdd.index.v1",
+  "title": "VCSDD Feature Index",
+  "type": "object",
+  "required": ["version", "features", "activeFeature"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "type": "integer", "const": 1 },
+    "features": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["status", "createdAt", "mode"],
+        "additionalProperties": false,
+        "properties": {
+          "status": { "type": "string", "enum": ["active", "paused", "complete", "abandoned"] },
+          "createdAt": { "type": "string" },
+          "mode": { "type": "string", "enum": ["strict", "lean"] },
+          "language": {
+            "anyOf": [
+              { "type": "null" },
+              { "type": "string", "enum": ["rust", "python", "typescript", "go", "cpp"] }
+            ]
+          },
+          "currentPhase": { "type": "string" },
+          "updatedAt": { "type": "string" }
+        }
+      }
+    },
+    "activeFeature": { "type": ["string", "null"] }
+  }
+}

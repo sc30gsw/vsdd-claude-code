@@ -1,0 +1,32 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "vcsdd.contract.v1",
+  "title": "VCSDD Sprint Contract",
+  "type": "object",
+  "required": ["sprintNumber", "feature", "criteria"],
+  "additionalProperties": false,
+  "properties": {
+    "sprintNumber": { "type": "integer", "minimum": 1 },
+    "feature": { "type": "string", "minLength": 2 },
+    "scope": { "type": "string" },
+    "criteria": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "dimension", "description", "weight", "passThreshold"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "pattern": "^CRIT-\\d{3,}$" },
+          "dimension": { "type": "string", "enum": ["spec_fidelity", "edge_case_coverage", "implementation_correctness", "structural_integrity", "verification_readiness"] },
+          "description": { "type": "string", "minLength": 10 },
+          "weight": { "type": "number", "minimum": 0, "maximum": 1 },
+          "passThreshold": { "type": "string", "minLength": 10 },
+          "beadId": { "type": "string" }
+        }
+      }
+    },
+    "negotiationRound": { "type": "integer", "minimum": 0, "maximum": 2, "default": 0 },
+    "status": { "type": "string", "enum": ["draft", "under-review", "approved", "rejected"], "default": "draft" }
+  }
+}

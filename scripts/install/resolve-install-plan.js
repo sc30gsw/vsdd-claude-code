@@ -12,7 +12,7 @@ function loadJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
 }
 
-function resolveInstallPlan(profile, language) {
+function resolveInstallPlan(profile, language, extraModuleIds = []) {
   const profilesManifest = loadJson(PROFILES_PATH);
   const modulesManifest = loadJson(MODULES_PATH);
   const profileConfig = profilesManifest.profiles[profile];
@@ -31,6 +31,9 @@ function resolveInstallPlan(profile, language) {
       throw new Error(`Unknown language profile: ${language}`);
     }
     requestedModules.push(...languageConfig.modules);
+  }
+  if (extraModuleIds.length > 0) {
+    requestedModules.push(...extraModuleIds);
   }
 
   const resolvedModules = [];
@@ -88,6 +91,7 @@ function parseArgs(argv) {
   const options = {
     profile: 'standard',
     language: '',
+    modules: '',
     format: 'json',
   };
 
@@ -100,6 +104,10 @@ function parseArgs(argv) {
         break;
       case '--language':
         options.language = argv[i + 1];
+        i += 1;
+        break;
+      case '--modules':
+        options.modules = argv[i + 1];
         i += 1;
         break;
       case '--format':
@@ -117,7 +125,15 @@ function parseArgs(argv) {
 if (require.main === module) {
   try {
     const options = parseArgs(process.argv.slice(2));
-    const plan = resolveInstallPlan(options.profile, options.language || null);
+    const extraModuleIds = (options.modules || '')
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean);
+    const plan = resolveInstallPlan(
+      options.profile,
+      options.language || null,
+      extraModuleIds,
+    );
 
     if (options.format === 'paths') {
       process.stdout.write(plan.paths.join('\n') + '\n');

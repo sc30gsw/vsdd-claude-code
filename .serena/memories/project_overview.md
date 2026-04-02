@@ -1,0 +1,4 @@
+- Purpose: Claude Code plugin implementing VCSDD (Verified Coherence Spec-Driven Development), extending the original VSDD workflow with CoDD-style coherence tracking and impact analysis.
+- Tech stack: Node.js >=18, plain JavaScript runtime scripts, Markdown command/skill docs, JSON manifests and schemas.
+- Structure: `commands/` slash-command docs, `skills/` companion workflows, `agents/` runtime agent role docs, `scripts/lib/` state/coherence/traceability logic, `scripts/hooks/` hook runners, `schemas/` JSON schemas, `manifests/` installer manifests, `docs/ja-JP/` localized docs.
+- Key runtime modules: `scripts/lib/vcsdd-state.js`, `scripts/lib/vcsdd-coherence.js`, `scripts/lib/vcsdd-schema.js`, `scripts/lib/vcsdd-traceability.js`.

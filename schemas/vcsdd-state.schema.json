@@ -1,0 +1,107 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "vcsdd.state.v1",
+  "title": "VCSDD Pipeline State",
+  "type": "object",
+  "required": ["featureName", "mode", "currentPhase", "phaseHistory", "iterations", "proofObligations", "traceability", "gates", "sprintCount", "createdAt", "updatedAt"],
+  "additionalProperties": false,
+  "properties": {
+    "featureName": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*[a-z0-9]$", "minLength": 2, "maxLength": 64 },
+    "mode": { "type": "string", "enum": ["strict", "lean"] },
+    "language": {
+      "anyOf": [
+        { "type": "null" },
+        { "type": "string", "enum": ["rust", "python", "typescript", "go", "cpp"] }
+      ]
+    },
+    "currentPhase": { "$ref": "#/$defs/phaseId" },
+    "phaseHistory": { "type": "array", "items": { "$ref": "#/$defs/phaseTransition" } },
+    "iterations": { "type": "object", "additionalProperties": { "type": "integer", "minimum": 0 } },
+    "proofObligations": { "type": "array", "items": { "$ref": "#/$defs/proofObligation" } },
+    "traceability": {
+      "type": "object",
+      "required": ["epicId", "beads"],
+      "additionalProperties": false,
+      "properties": {
+        "epicId": { "type": "string", "pattern": "^VCSDD-[a-z0-9-]+-\\d+$" },
+        "beads": { "type": "array", "items": { "$ref": "#/$defs/bead" } }
+      }
+    },
+    "gates": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["verdict", "timestamp"],
+        "additionalProperties": false,
+        "properties": {
+          "verdict": { "type": "string", "enum": ["PASS", "FAIL", "SKIP"] },
+          "timestamp": { "type": "string" },
+          "reviewedBy": { "type": "string", "enum": ["adversary", "verifier", "human"] },
+          "details": {
+            "anyOf": [
+              { "type": "string" },
+              { "type": "object" },
+              { "type": "array" },
+              { "type": "null" }
+            ]
+          },
+          "adversaryVerdict": { "type": "string", "enum": ["PASS", "FAIL", "SKIP"] },
+          "adversaryReviewedAt": { "type": "string" },
+          "humanVerdict": { "type": "string", "enum": ["PASS", "FAIL", "SKIP"] },
+          "humanApproved": { "type": "boolean" },
+          "humanApprovedAt": { "type": "string" }
+        }
+      }
+    },
+    "sprintCount": { "type": "integer", "minimum": 0 },
+    "createdAt": { "type": "string" },
+    "updatedAt": { "type": "string" }
+  },
+  "$defs": {
+    "phaseId": {
+      "type": "string",
+      "enum": ["init", "1a", "1b", "1c", "2a", "2b", "2c", "3", "4", "5", "6", "complete"]
+    },
+    "phaseTransition": {
+      "type": "object",
+      "required": ["from", "to", "timestamp"],
+      "additionalProperties": false,
+      "properties": {
+        "from": { "$ref": "#/$defs/phaseId" },
+        "to": { "$ref": "#/$defs/phaseId" },
+        "timestamp": { "type": "string" },
+        "reason": { "type": "string" },
+        "sprint": { "type": "integer", "minimum": 1 },
+        "nextSprintHint": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "proofObligation": {
+      "type": "object",
+      "required": ["id", "tier", "required", "status"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^PROP-\\d{3,}$" },
+        "tier": { "type": "integer", "minimum": 0, "maximum": 3 },
+        "required": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["pending", "in-progress", "proved", "failed", "skipped"] },
+        "artifact": { "type": "string" },
+        "beadId": { "type": "string" }
+      }
+    },
+    "bead": {
+      "type": "object",
+      "required": ["beadId", "type", "artifactPath", "status", "linkedBeads"],
+      "additionalProperties": false,
+      "properties": {
+        "beadId": { "type": "string", "pattern": "^BEAD-\\d{3,}$" },
+        "type": { "type": "string", "enum": ["spec-requirement", "verification-property", "test-case", "implementation", "adversary-finding", "contract-criterion"] },
+        "artifactPath": { "type": "string", "minLength": 1 },
+        "status": { "type": "string", "enum": ["active", "draft", "red", "green", "passing", "failing", "implemented", "proved", "failed", "open", "resolved", "superseded"] },
+        "linkedBeads": { "type": "array", "items": { "type": "string", "pattern": "^BEAD-\\d{3,}$" }, "uniqueItems": true },
+        "createdAt": { "type": "string" },
+        "createdInPhase": { "type": "string" },
+        "externalId": { "type": "string" }
+      }
+    }
+  }
+}

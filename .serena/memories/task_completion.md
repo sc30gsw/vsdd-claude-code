@@ -1,0 +1,3 @@
+- After code or doc changes, run at minimum `node scripts/verify-vcsdd-state.js`, `node scripts/verify-vcsdd-runtime.js`, and `node tests/test-vcsdd-coherence.js`.
+- If package metadata or install flow changed, also inspect `README.md`, `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `manifests/install-*.json`, and `install.sh` for consistency.
+- For CoDD-related changes, verify docs, command/skill instructions, runtime code, and regression coverage stay aligned.

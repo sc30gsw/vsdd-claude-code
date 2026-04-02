@@ -1,0 +1,18 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "vcsdd.bead.v1",
+  "title": "VCSDD Traceability Bead",
+  "type": "object",
+  "required": ["beadId", "type", "artifactPath", "status", "linkedBeads"],
+  "additionalProperties": false,
+  "properties": {
+    "beadId": { "type": "string", "pattern": "^BEAD-\\d{3,}$" },
+    "type": { "type": "string", "enum": ["spec-requirement", "verification-property", "test-case", "implementation", "adversary-finding", "contract-criterion"] },
+    "artifactPath": { "type": "string", "minLength": 1 },
+    "status": { "type": "string", "enum": ["active", "draft", "red", "green", "passing", "failing", "implemented", "proved", "failed", "open", "resolved", "superseded"] },
+    "linkedBeads": { "type": "array", "items": { "type": "string", "pattern": "^BEAD-\\d{3,}$" }, "uniqueItems": true },
+    "createdAt": { "type": "string" },
+    "createdInPhase": { "type": "string" },
+    "externalId": { "type": "string" }
+  }
+}

@@ -1,12 +1,12 @@
 'use strict';
 
-const { isHookEnabled } = require('../lib/vsdd-flags');
+const { isHookEnabled } = require('../lib/vcsdd-flags');
 
 /**
  * Flag-gated hook runner. Reads stdin from Claude Code hook payload,
- * checks if hook should run based on VSDD_HOOK_PROFILE, then delegates.
+ * checks if hook should run based on VCSDD_HOOK_PROFILE, then delegates.
  *
- * @param {string} hookName - The hook identifier (e.g., 'vsdd-gate-check')
+ * @param {string} hookName - The hook identifier (e.g., 'vcsdd-gate-check')
  * @param {Function} handler - async (payload: object) => { blocked?: boolean, message?: string }
  */
 async function run(hookName, handler) {
@@ -37,7 +37,7 @@ async function run(hookName, handler) {
     }
     process.exit(0);
   } catch (err) {
-    process.stderr.write(`[vsdd-${hookName}] Error: ${err.message}\n`);
+    process.stderr.write(`[vcsdd-${hookName}] Error: ${err.message}\n`);
     // Don't block on hook errors - fail open
     process.exit(0);
   }

@@ -1,0 +1,67 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "vcsdd.grading.v1",
+  "title": "VCSDD Grading Result",
+  "type": "object",
+  "required": ["sprintNumber", "feature", "dimensions", "overallVerdict", "timestamp"],
+  "additionalProperties": false,
+  "properties": {
+    "sprintNumber": { "type": "integer", "minimum": 1 },
+    "feature": { "type": "string", "minLength": 2 },
+    "dimensions": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "required": ["name", "verdict", "findings"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string", "enum": ["spec_fidelity", "edge_case_coverage", "implementation_correctness", "structural_integrity", "verification_readiness"] },
+          "verdict": { "type": "string", "enum": ["PASS", "FAIL"] },
+          "findings": { "type": "array", "items": { "type": "string", "pattern": "^FIND-\\d{3,}$" } },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["type", "location"],
+              "additionalProperties": false,
+              "properties": {
+                "type": { "type": "string", "enum": ["file", "test-output", "coverage", "proof-result"] },
+                "location": { "type": "string", "minLength": 1 },
+                "description": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "overallVerdict": { "type": "string", "enum": ["PASS", "FAIL"] },
+    "timestamp": { "type": "string" },
+    "iteration": { "type": "integer", "minimum": 1 },
+    "reviewContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "reviewType": { "type": "string", "enum": ["spec", "contract", "implementation", "verification"] },
+        "contractPath": { "type": "string", "minLength": 1 },
+        "contractDigest": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    },
+    "convergenceSignals": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "findingCount": { "type": "integer", "minimum": 0 },
+        "previousFindingCount": { "type": "integer", "minimum": 0 },
+        "allCriteriaEvaluated": { "type": "boolean" },
+        "duplicateFindings": { "type": "array", "items": { "type": "string" } },
+        "evaluatedCriteria": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^CRIT-\\d{3,}$" }
+        }
+      }
+    }
+  }
+}

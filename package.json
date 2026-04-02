@@ -1,11 +1,11 @@
 {
-  "name": "vsdd-claude-code",
+  "name": "vcsdd-claude-code",
   "version": "1.0.0",
-  "description": "Verified Spec-Driven Development workflow plugin for Claude Code",
-  "main": "scripts/lib/vsdd-state.js",
+  "description": "Verified Coherence Spec-Driven Development workflow plugin for Claude Code",
+  "main": "scripts/lib/vcsdd-state.js",
   "bin": {
-    "vsdd": "./install.sh",
-    "vsdd-claude-code": "./install.sh"
+    "vcsdd": "./install.sh",
+    "vcsdd-claude-code": "./install.sh"
   },
   "files": [
     ".claude-plugin/",
@@ -19,27 +19,28 @@
     "manifests/",
     "contexts/",
     "CLAUDE.md",
-    "VSDD.md",
+    "VCSDD.md",
     "AGENTS.md",
     "install.sh"
   ],
   "keywords": [
     "claude-code",
     "plugin",
-    "vsdd",
+    "vcsdd",
     "spec-driven-development",
     "tdd",
     "formal-verification",
     "adversarial-review"
   ],
-  "author": "VSDD Contributors",
+  "author": "VCSDD Contributors",
   "license": "MIT",
   "engines": {
     "node": ">=18.0.0"
   },
   "scripts": {
-    "verify:state": "node scripts/verify-vsdd-state.js",
-    "verify:runtime": "node scripts/verify-vsdd-runtime.js",
-    "verify": "node scripts/verify-vsdd-state.js && node scripts/verify-vsdd-runtime.js"
+    "verify:state": "node scripts/verify-vcsdd-state.js",
+    "verify:runtime": "node scripts/verify-vcsdd-runtime.js",
+    "verify:coherence": "node tests/test-vcsdd-coherence.js",
+    "verify": "node scripts/verify-vcsdd-state.js && node scripts/verify-vcsdd-runtime.js && node tests/test-vcsdd-coherence.js"
   }
 }
