@@ -79,7 +79,7 @@ persisted な adversary finding に対応する `adversary-finding` ビードが
 
 PreToolUseフックがフェーズ外の `Write`/`Edit` および、リダイレクト等でソースやテストへ書き込む可能性のある `Bash` をヒューリスティックにブロックします。開発者が誤って作業順序を飛ばすことを防ぎます。
 
-### コヒーレンスエンジン（CoDD統合）
+### Coherence エンジン（CoDD統合）
 
 要件が途中で変わったとき、コヒーレンスエンジンがどの追跡対象成果物へ影響が及ぶかを追跡し、コードに触れる前に信頼度バンドで分類します。`scripts/lib/vcsdd-coherence.js` にネイティブ実装され、グラフは `.vcsdd/features/<name>/coherence.json` に保存されます。
 
