@@ -166,7 +166,7 @@ Install via the Claude Code plugin system:
 /plugin marketplace add sc30gsw/vcsdd-claude-code
 
 # Install the plugin
-/plugin install vcsdd@sc30gsw-vcsdd-claude-code
+/plugin install vcsdd@vcsdd-claude-code
 ```
 
 After installation, skills are available as:

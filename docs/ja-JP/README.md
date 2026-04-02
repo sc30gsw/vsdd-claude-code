@@ -153,7 +153,7 @@ canonical VCSDD が定義するのは Human Architect、Builder、Tracker（Chai
 /plugin marketplace add sc30gsw/vcsdd-claude-code
 
 # プラグインをインストール
-/plugin install vcsdd@sc30gsw-vcsdd-claude-code
+/plugin install vcsdd@vcsdd-claude-code
 
 # プラグインを再読み込み
 /reload-plugins

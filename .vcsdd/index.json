@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "features": {
+    "portfolio-pnl-breakdown": {
+      "status": "active",
+      "createdAt": "2026-04-02T04:31:06.718Z",
+      "mode": "strict",
+      "language": "typescript",
+      "currentPhase": "init",
+      "updatedAt": "2026-04-02T04:31:06.718Z"
+    }
+  },
+  "activeFeature": "portfolio-pnl-breakdown"
+}

@@ -1,0 +1,17 @@
+{
+  "featureName": "portfolio-pnl-breakdown",
+  "mode": "strict",
+  "language": "typescript",
+  "currentPhase": "init",
+  "phaseHistory": [],
+  "iterations": {},
+  "proofObligations": [],
+  "traceability": {
+    "epicId": "VCSDD-portfolio-pnl-breakdown-1775104266719",
+    "beads": []
+  },
+  "gates": {},
+  "sprintCount": 0,
+  "createdAt": "2026-04-02T04:31:06.718Z",
+  "updatedAt": "2026-04-02T04:31:06.718Z"
+}
