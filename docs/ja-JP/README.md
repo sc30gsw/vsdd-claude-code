@@ -81,7 +81,7 @@ PreToolUseフックがフェーズ外の `Write`/`Edit` および、リダイレ
 
 ### Coherence エンジン（CoDD統合）
 
-要件が途中で変わったとき、コヒーレンスエンジンがどの追跡対象成果物へ影響が及ぶかを追跡し、コードに触れる前に信頼度バンドで分類します。`scripts/lib/vcsdd-coherence.js` にネイティブ実装され、グラフは `.vcsdd/features/<name>/coherence.json` に保存されます。
+要件が途中で変わったとき、Coherence エンジンがどの追跡対象成果物へ影響が及ぶかを追跡し、コードに触れる前に信頼度バンドで分類します。`scripts/lib/vcsdd-coherence.js` にネイティブ実装され、グラフは `.vcsdd/features/<name>/coherence.json` に保存されます。
 
 - **CEG（Conditioned Evidence Graph）**: 仕様ドキュメントと宣言済み実装モジュールの有向依存グラフ。Markdown ファイルの `coherence:` フロントマターから構築され、upstream CoDD 互換として `codd:` も受け付ける
 - **Noisy-OR 信頼度スコアリング**: 証拠ベースのエッジ重みを集約して Green（≥90%）/ Amber（≥50%）/ Gray（<50%）のインパクトバンドに分類する
@@ -137,7 +137,7 @@ canonical VCSDD が定義するのは Human Architect、Builder、Tracker（Chai
 | コンポーネント | 数量 | 説明 |
 |--------------|------|------|
 | スラッシュコマンド | 17 | `/vcsdd-init` から `/vcsdd-coherence-validate` まで |
-| スキル | 30 | スラッシュコマンド補助、方法論コア、言語プロファイル、コヒーレンス |
+| スキル | 30 | スラッシュコマンド補助、方法論コア、言語プロファイル、Coherence |
 | JSONスキーマ | 7 | state, bead, finding, grading, coherence など |
 
 ---
