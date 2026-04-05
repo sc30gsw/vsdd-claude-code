@@ -9,6 +9,5 @@
   "repository": "https://github.com/sc30gsw/vcsdd-claude-code",
   "license": "MIT",
   "keywords": ["vcsdd", "tdd", "spec-driven", "verification", "adversarial-review"],
-  "skills": "./skills/",
-  "hooks": "./hooks/hooks.json"
+  "skills": "./skills/"
 }
