@@ -1,17 +1,11 @@
 ---
 name: vcsdd-init
-description: Initialize a VCSDD feature pipeline. Creates the .vcsdd/features/<name>/ directory tree, sets mode (strict|lean), and activates the feature. Must be run before any other VCSDD command.
+description: "Initialize a VCSDD feature pipeline with directory tree, mode selection (strict or lean), and optional language target. Use when starting a new feature, beginning a VCSDD workflow, or setting up the project structure before running vcsdd-spec or vcsdd-tdd."
 ---
-
-## What
-Initializes a new VCSDD feature pipeline for the specified feature name. Creates all required directories and state files, sets the operating mode (strict or lean), and marks the feature as active.
-
-## When
-Run at the start of every new feature development cycle. Must be run before `/vcsdd-spec`, `/vcsdd-tdd`, or any other VCSDD command.
 
 ## How
 
-1. **Parse arguments**: `<feature-name> [--mode strict|lean] [--language rust|python|typescript|go|cpp]`
+1. **Parse arguments**: `FEATURE_NAME [--mode strict|lean] [--language rust|python|typescript|go|cpp]`
 2. **Validate feature name**: must be kebab-case (a-z0-9 and hyphens only)
 3. **Create directory structure**:
    ```
@@ -19,7 +13,7 @@ Run at the start of every new feature development cycle. Must be run before `/vc
      index.json (created/updated)
      history.jsonl (created if missing)
      features/
-       <feature-name>/
+       FEATURE_NAME/
          state.json
          specs/
          contracts/
@@ -36,12 +30,10 @@ Run at the start of every new feature development cycle. Must be run before `/vc
    const path = require('path');
    const pluginRoot = process.env.CLAUDE_PLUGIN_ROOT || path.join(process.env.HOME, '.claude', 'plugins', 'vcsdd-claude-code');
    const { initFeature } = require(path.join(pluginRoot, 'scripts/lib/vcsdd-state.js'));
-   // language: optional string rust|python|typescript|go|cpp
-   initFeature('<feature-name>', '<strict|lean>', languageOrUndefined);
+   initFeature('user-auth', 'lean', undefined);
    ```
-   This writes `state.json` with `currentPhase: "init"`, mode, optional `language` field, empty traceability/gates/proofObligations, and updates `.vcsdd/index.json` (including `language` on the feature entry when provided).
-5. **Append to history.jsonl**: `{event: "feature_created", ...}` (done by `initFeature`)
-6. **Display confirmation**: feature name, mode, language (if any), next action
+5. **Verify initialization**: confirm `state.json` contains `currentPhase: "init"` and `.vcsdd/index.json` lists the new feature as active
+6. **Display confirmation**: feature name, mode, language (if any), next step (`/vcsdd-spec`)
 
 ## Examples
 
